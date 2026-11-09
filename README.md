@@ -1,6 +1,18 @@
-# Camera Reference 0.9 — single-photo detection test build
+# Camera Reference 0.9.1 — single-photo geometry patch
 
 Quit the old companion and open `build/CameraReference.app`. No Lightroom plugin reinstall or restart. Nothing is installed or launched by the build scripts.
+
+## New in 0.9.1
+
+This patch preserves the accepted 0.9 snapping, side bounds and Fit inset. It focuses on resize and macOS full-screen transitions. Full-screen placement still requires your live test; a specific root cause has not yet been established.
+
+- Geometry changes observed through the existing timer invalidate cached viewing areas and dismiss an overlay in the old location. Space and display changes also invalidate cached geometry. No screenshots are taken by this observer.
+- Capture is matched to the exact Lightroom window ID using current window-list coordinates. A 150ms stability check precedes capture, and the frame is checked again afterwards and before display. Transient changes retry up to three times. If still unstable, the app asks you to invoke again after the transition; it does not discard calibration or switch to manual mode.
+- Cache keys include window position, size, pixel scale and primary-display geometry.
+- The borderless overlay bypasses AppKit's automatic window-position constraint and explicitly sets the requested frame. If the actual frame differs, the app dismisses it instead of leaving a knowingly displaced overlay.
+- Bridge diagnostics now include capture window origin, content-filter rectangle, primary-display bounds, calculated photo/overlay screen coordinates and requested/actual overlay panel frame. All coordinates are geometry only: no paths or image contents are logged.
+
+Small-window detection limits are unchanged. If no reliable UI rectangle is found, the existing manual-calibration fallback remains. Split-view support is still deferred.
 
 ## Scope
 

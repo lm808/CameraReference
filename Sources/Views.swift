@@ -1,6 +1,9 @@
 import AppKit
 
 final class OverlayPanel: NSPanel {
+    // The detector already validates the display bounds. AppKit must not shift the
+    // borderless overlay away from its exact image coordinates in full-screen Spaces.
+    override func constrainFrameRect(_ frameRect:NSRect,to screen:NSScreen?)->NSRect { frameRect }
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 }

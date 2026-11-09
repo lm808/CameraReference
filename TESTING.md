@@ -1,10 +1,12 @@
-# 0.9 focused test
+# 0.9.1 focused acceptance test
 
-Quit the old companion and open this build. Keep the existing Lightroom plugin.
+Quit the old companion and open build/CameraReference.app. No plugin reinstall or restart needed. Keep your working configuration and use single-photo Develop at Fit.
 
-1. In Lightroom, select single-picture Develop view and Fit in its Navigator. Clear all region data and enable Automatic viewing area. Run Find viewing area: no internal-divider ambiguity message should appear.
-2. Preview the region: left/right at UI panes, top/bottom at the photograph. Invoke the overlay on landscape and portrait photographs. If the photo is slightly too large/small, adjust fitInsetPoints through Settings → Open detection configuration, save, dismiss and retry. Larger inset makes the calculated photo smaller.
-3. Try left=photo or top=ui. Save and retry. Only that overlay boundary should change; the photograph itself should retain its calculated position and scale.
-4. Start manual calibration and hold Option. Panel borders should remain available, while small controls/photo details attract less. Try verticalSnapFraction/horizontalSnapFraction=0.35 for stricter filtering, or 0.15 for more edges. Save and restart calibration, not the app.
+1. In the normal Lightroom window, invoke/dismiss the overlay. It should retain the alignment accepted in 0.9.
+2. Enter macOS full screen, let the transition finish, then invoke. Check both horizontal and vertical alignment.
+3. Exit full screen and invoke again. Resize smaller, invoke, then restore the original size and invoke. Recovery should not require restarting Lightroom or clearing region data. If a visible overlay is dismissed when the window moves/resizes, that is intentional.
+4. A window too small for reliable detection can still offer manual calibration. Cancel that prompt to continue testing automatic mode. A transition in progress should instead ask you to wait and invoke again.
 
-If detection still fails, send Show last result / timing diagnostics. No need to repeat unrelated extraction/export tests. Native alignment, TextEdit config opening and full-screen behaviour await your tests.
+If any overlay is offset, open Developer tools → Bridge diagnostics immediately after invoking it, and send the full report (including requested and actual panel frames). Do not run Find viewing area first, because that would replace the overlay-placement report.
+
+No need to repeat all side combinations or snapping tests. Full-screen/Spaces behaviour cannot be confirmed by the automated geometry tests alone.

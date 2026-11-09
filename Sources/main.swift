@@ -23,6 +23,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     func updateFloatingTitle() { floating?.title=floatingTitle + String(format:" — %.1f%%",floatingZoom) }
     let detectionSettings=DetectionConfigStore()
+    var observedWindowFrame:CGRect?
+    var hasObservedWindow=false
     var lastImageSize: CGSize?
     let folder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/CameraReference")
     var floating: NSPanel?
@@ -136,11 +138,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         updateToggleTitle()
         if !register(currentShortcut) { report("Shortcut unavailable. Choose Change shortcut.") }
         moduleTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
-            guard let self, self.panel != nil || self.destination == .overlay else { return }
+            guard let self else { return }
+            self.observeWindowGeometry()
+            guard self.panel != nil || self.destination == .overlay else { return }
             if let module = self.currentModule(), module != "develop" { self.hide(); self.report("Overlay dismissed: Lightroom left Develop.") }
             else if self.panel != nil && self.currentModule() == nil { self.hide(); self.report("Overlay dismissed: bridge status is unavailable.") }
         }
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(frontAppChanged), name: NSWorkspace.didActivateApplicationNotification, object: nil)
+        NSWorkspace.shared.notificationCenter.addObserver(self,selector:#selector(spaceChanged),name:NSWorkspace.activeSpaceDidChangeNotification,object:nil)
         NotificationCenter.default.addObserver(self, selector: #selector(displaysChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
     }
     @discardableResult func add(_ title: String, _ action: Selector, to menu: NSMenu) -> NSMenuItem {
@@ -197,7 +202,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let own=NSWorkspace.shared.frontmostApplication?.processIdentifier == ProcessInfo.processInfo.processIdentifier
         if !isLightroom() && !own { saveToast.close(); hide(); calibration?.finish(nil) }
     }
+    func invalidateAutomaticGeometry() {
+        lastProbe=nil
+        Task { await ScreenGeometryCache.shared.reset() }
+    }
+    func observeWindowGeometry() {
+        let current=lightroomWindowFrame()
+        defer { observedWindowFrame=current;hasObservedWindow=true }
+        guard hasObservedWindow else { return }
+        if current == nil && observedWindowFrame == nil { return }
+        if !sameWindowGeometry(current,observedWindowFrame) {
+            hide();invalidateAutomaticGeometry()
+        }
+    }
+    @objc func spaceChanged() {
+        hide();cancelScreenInspection();invalidateAutomaticGeometry()
+        hasObservedWindow=false
+    }
     @objc func displaysChanged() {
+        invalidateAutomaticGeometry()
         hide(); calibration?.finish(nil)
         displayTimer?.invalidate()
         displayTimer=Timer.scheduledTimer(withTimeInterval:0.6,repeats:false) { [weak self] _ in
@@ -312,7 +335,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         configureImageView(view)
         view.refresh = { [weak self] in self?.reloadOverlay() }
         view.image = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
-        p.contentView = view; panel = p; p.orderFrontRegardless(); updateIcon()
+        p.contentView = view; panel = p; p.orderFrontRegardless()
+        let requested=region.insetBy(dx:-1,dy:-1)
+        p.setFrame(requested,display:true)
+        lastLayout += "\nOverlay panel requested (AppKit): \(requested). Actual: \(p.frame)."
+        if !sameWindowGeometry(requested,p.frame) { hide();report("macOS moved the overlay panel. No offset overlay displayed; see geometry diagnostics.");return }
+        updateIcon()
     }
     @objc func openFloating() {
         if let floating { floating.orderFrontRegardless(); return } // Opening an existing window never refreshes it.
@@ -604,6 +632,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         screenInspectionID=nil; screenTask=nil; screenTimeout?.invalidate(); screenTimeout=nil; detectionCompletion=nil
         updateToggleTitle()
         guard currentModule()=="develop" else { report("Detection cancelled: Develop is no longer active."); return }
+        if result.geometryChanged { report(result.summary);lastLayout=result.summary;return }
+        if let windowID=result.windowID, !sameWindowGeometry(result.windowFrame,currentCaptureWindowFrame(windowID)) {
+            invalidateAutomaticGeometry();lastLayout=result.summary+"\nRejected before display: Lightroom window geometry changed.";report(lastLayout);return
+        }
         if result.previewImage == nil { lastProbe=result }; lastLayout=result.summary; report(result.summary)
         if let callback { callback(result); return }
         let alert=NSAlert(); alert.messageText="Viewing area detection"; alert.informativeText=result.summary
@@ -619,7 +651,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let date = attributes?[.modificationDate] as? Date
         let age = date.map { "\(max(0, Int(Date().timeIntervalSince($0)))) seconds ago" } ?? "not received"
         let state = (try? String(contentsOf: folder.appendingPathComponent("status.txt"), encoding: .utf8)) ?? "No plugin status. The bridge may not have started."
-        return "Camera Reference 0.9\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + lastLayout
+        return "Camera Reference 0.9.1\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + lastLayout
     }
     @objc func showDiagnostics() {
         let saved = lastResult
