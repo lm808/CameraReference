@@ -9,6 +9,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var saving = false
     let saveToast=SaveToastController()
     var floatingTitle="Camera Reference"
+    private var versionTitle: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
+        return "Camera Reference \(version)"
+    }
     var floatingZoom:Double=0
     var calibrationTask:Task<Void,Never>?
     var calibrationTimer:Timer?
@@ -92,6 +96,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         status = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         updateIcon()
         let menu = NSMenu(); menu.delegate=self
+        menu.addItem(NSMenuItem(title: versionTitle, action: nil, keyEquivalent: ""))
+        menu.addItem(.separator())
         detail = NSMenuItem(title: "Ready — first test: Check selected photo", action: nil, keyEquivalent: "")
         menu.addItem(detail)
         menu.addItem(.separator())
@@ -660,7 +666,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let date = attributes?[.modificationDate] as? Date
         let age = date.map { "\(max(0, Int(Date().timeIntervalSince($0)))) seconds ago" } ?? "not received"
         let state = (try? String(contentsOf: folder.appendingPathComponent("status.txt"), encoding: .utf8)) ?? "No plugin status. The bridge may not have started."
-        return "Camera Reference 0.9.2\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + lastLayout
+        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + lastLayout
     }
     @objc func showDiagnostics() {
         let saved = lastResult

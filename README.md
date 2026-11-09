@@ -1,6 +1,10 @@
-# Camera Reference 0.9.2 — overlay rounding fix
+# Camera Reference 0.9.3 — menu version
 
 Quit the old companion and open `build/CameraReference.app`. No Lightroom plugin reinstall or restart. Nothing is installed or launched by the build scripts.
+
+## New in 0.9.3
+
+The menu now shows the running app version at the top. The menu and Bridge diagnostics both read the version from the app bundle metadata.
 
 ## New in 0.9.2
 
