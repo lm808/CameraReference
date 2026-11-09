@@ -49,3 +49,7 @@ Build, full regression suite, signature and Info.plist checks passed on the user
 ## 0.9.5
 
 The supplied 900×702 pt screenshot reproduces the complete 0.9.4 failure report exactly before the change. The wider side search finds (612,180,554,860), matching the visible viewport. Full regression suite passes, including new narrow-view fixtures with black/grey/white/coloured surrounds. Both optional user screenshot checks pass: previous non-maximised capture alignment and the new narrow viewport/photo placement. Build, code signature and Info.plist checks pass. Live user acceptance remains pending; no app launched or Lightroom controlled.
+
+## 0.9.6
+
+Full regression suite, app build, signature and Info.plist checks passed. Additional tests cover sideSearchPercent parsing/range/duplicates, migration without losing existing settings/comments or adding duplicate keys, live reload, manual-layout key changes, and invalidation of cached bounds after changing the interval. A valid narrow viewport outside a 30% interval returns the exact requested message and no candidate; a blank capture retains a general failure. The diagnostic centre-reaching search never supplies placement bounds. Native alert/button interaction remains a user acceptance check.

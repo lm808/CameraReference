@@ -591,11 +591,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             if let key=result.layoutKey,key==self.manualLayoutKey,let area=self.region {
                 self.display(image,in:area)?.exportSnapshot=snapshot; return
             }
-            guard let area=result.candidate else { self.askForCalibration(); return }
+            guard let area=result.candidate else { self.askForCalibration(workingAreaTooNarrow:result.workingAreaTooNarrow); return }
             if result.split && self.acceptedSplitKey != result.layoutKey {
                 let alert=NSAlert(); alert.messageText="Use the left or upper reference pane?"
                 alert.informativeText="A split layout was found. Confirm this is Reference view; Before/After can have similar dividers."
-                alert.addButton(withTitle:"Use reference pane"); alert.addButton(withTitle:"Calibrate…"); alert.addButton(withTitle:"Cancel")
+                alert.addButton(withTitle:"Use reference pane"); alert.addButton(withTitle:"Calibrate manually…"); alert.addButton(withTitle:"Cancel")
                 NSApp.activate(ignoringOtherApps:true)
                 let choice=alert.runModal()
                 if choice == .alertSecondButtonReturn { self.beginCalibration(); return }
@@ -609,10 +609,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.report("Reference shown using UI viewing-area bounds.")
         }
     }
-    func askForCalibration() {
-        let alert=NSAlert(); alert.messageText="Select the reference viewing area"
+    func askForCalibration(workingAreaTooNarrow:Bool = false) {
+        let alert=NSAlert(); alert.messageText=workingAreaTooNarrow ? "Working area too narrow for automatic placement—enlarge it or calibrate manually." : "Select the reference viewing area"
         alert.informativeText="The viewing area could not be identified reliably. Drag around the area for the JPEG, then invoke the overlay again. Accepting a region switches to manual mode. Cancelling keeps your current mode and region."
-        alert.addButton(withTitle:"Calibrate…"); alert.addButton(withTitle:"Cancel")
+        alert.addButton(withTitle:"Calibrate manually…"); alert.addButton(withTitle:"Cancel")
         NSApp.activate(ignoringOtherApps:true)
         if alert.runModal() == .alertFirstButtonReturn {
             beginCalibration(useManualOnAccept:true)

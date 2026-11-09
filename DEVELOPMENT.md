@@ -28,3 +28,7 @@ Calibration fallback used to disable automatic mode before acceptance. It now ch
 ## Narrow viewport detection (0.9.5)
 
 User confirmed 0.9.4 fixes non-maximised placement. The new 900×702 pt failure reproduces exactly from the supplied screenshot: x612 and x1166 viewport borders fall outside the old 30%/70% side search ranges in its 1800px capture. Widening to 45%/55% finds (612,180,554,860). Border support, surround consistency and ambiguity thresholds stay unchanged; no capture-coordinate changes are needed. More extreme layouts may still require manual calibration.
+
+## Configurable side interval (0.9.6)
+
+sideSearchPercent defaults to 45 and accepts 5–50 percent from each side. The config store appends it to existing files when absent. Both viewport cache and manual-layout keys account for the interval. On unsupported rectangles, a bounded second search reaching the centre can identify a valid viewport outside the configured range and set workingAreaTooNarrow; its bounds are discarded. The automatic overlay fallback offers the user's exact narrow-area message and Calibrate manually…/Cancel. Generic detection failures are not relabelled as narrow.

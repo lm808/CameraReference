@@ -182,3 +182,29 @@ for bg:[UInt8] in [[0,0,0],[70,70,70],[255,255,255],[40,80,110]] {
     expect(narrow.bounds == CGRect(x:320,y:60,width:260,height:520),"Narrow centre viewport lost: \(narrow.summary)")
 }
 print("PASS: narrow centre viewport with wide side panels across black, grey, white and coloured surrounds")
+
+let limited=detectViewport(in:fixture(bg:[0,0,0],narrow:true),singlePhoto:true,sideSearchPercent:30)
+expect(limited.bounds == nil && limited.workingAreaTooNarrow,"Interval-limited viewport must fail gracefully, not use wider bounds")
+expect(limited.summary.contains("Working area too narrow for automatic placement—enlarge it or calibrate manually."),"Narrow message changed")
+expect(!detectViewport(in:blank,singlePhoto:true,sideSearchPercent:30).workingAreaTooNarrow,"Missing borders incorrectly labelled narrow")
+var intervalCache=ViewportCache()
+expect(intervalCache.inspect(fixture(bg:[0,0,0],narrow:true),key:"same",singlePhoto:true,sideSearchPercent:45).0.bounds != nil,"Wide interval failed")
+let changedInterval=intervalCache.inspect(fixture(bg:[0,0,0],narrow:true),key:"same",singlePhoto:true,sideSearchPercent:30)
+expect(!changedInterval.1 && changedInterval.0.bounds == nil && changedInterval.0.workingAreaTooNarrow,"Interval edit reused cached placement")
+expect(try! DetectionConfig.parse("sideSearchPercent = 30").sideSearchPercent == 30,"Interval config not parsed")
+for invalid in ["sideSearchPercent = 4", "sideSearchPercent = 51", "sideSearchPercent = nan", "sideSearchPercent = 30\nsideSearchPercent = 45"] {
+    do { _=try DetectionConfig.parse(invalid);fatalError("Invalid interval accepted") } catch {}
+}
+let oldConfigURL=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+defer { try? FileManager.default.removeItem(at:oldConfigURL) }
+try! "# User comment\nfitInsetPoints = 22\n".write(to:oldConfigURL,atomically:true,encoding:.utf8)
+let oldStore=DetectionConfigStore(url:oldConfigURL)
+let migrated=try! oldStore.reload()
+expect(migrated.fitInsetPoints == 22 && migrated.sideSearchPercent == 45,"Existing settings not preserved")
+let once=try! String(contentsOf:oldConfigURL,encoding:.utf8)
+try! oldStore.ensureFile()
+expect(try! String(contentsOf:oldConfigURL,encoding:.utf8) == once,"Interval appended twice")
+try! "sideSearchPercent = 30\nfitInsetPoints = 22\n".write(to:oldConfigURL,atomically:true,encoding:.utf8)
+expect(try! oldStore.reload().sideSearchPercent == 30,"Edited interval not reloaded")
+expect(DetectionConfig().key != (try! DetectionConfig.parse("sideSearchPercent = 30")).key,"Manual layout key ignores interval")
+print("PASS: configurable side search, narrow-only failure message, cache invalidation, config migration and reload")

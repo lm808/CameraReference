@@ -1,6 +1,12 @@
-# Camera Reference 0.9.5 — narrow viewport detection
+# Camera Reference 0.9.6 — configurable side search
 
 Quit the old companion and open `build/CameraReference.app`. No Lightroom plugin reinstall or restart. Nothing is installed or launched by the build scripts.
+
+## New in 0.9.6
+
+`sideSearchPercent = 45` controls the side-border search interval. Edit it in Settings → Open detection configuration…; range 5–50, reloaded on the next invocation. 45 searches the leftmost/rightmost 45% of the window, 30 restores the earlier ranges, and 50 reaches the centre. Existing configuration files gain the new setting without overwriting other values or comments. Changing it invalidates cached bounds and saved layout overrides for the previous setting.
+
+When a valid viewport is found beyond the configured interval, the app says “Working area too narrow for automatic placement—enlarge it or calibrate manually.” and offers **Calibrate manually…** or **Cancel**. The wider diagnostic search never displays an overlay. Other failures retain their general explanation. Cancelling preserves automatic mode and calibration.
 
 ## New in 0.9.5
 
@@ -49,6 +55,7 @@ Save your edits. The file is reloaded at the next detection or calibration, with
 |---|---|---|
 | left / right | ui | Each side independently accepts ui or photo |
 | top / bottom | photo | Photo bounds calculated from Fit geometry |
+| sideSearchPercent | 45 | Search inward from each horizontal window edge, range 5–50 percent |
 | fitInsetPoints | 18 | Minimum margin inside detected UI viewport, range 0–100 points |
 | verticalSnapFraction | 0.25 | Minimum vertical segment length/window height, range 0.05–1 |
 | horizontalSnapFraction | 0.25 | Minimum horizontal segment length/window width, range 0.05–1 |

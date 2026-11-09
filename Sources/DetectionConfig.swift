@@ -5,10 +5,11 @@ struct DetectionConfig: Equatable {
     enum Bound:String { case ui,photo }
     var left=Bound.ui,right=Bound.ui,top=Bound.photo,bottom=Bound.photo
     var fitInsetPoints:CGFloat=18
+    var sideSearchPercent:Double=45
     var verticalSnapFraction:CGFloat=0.25,horizontalSnapFraction:CGFloat=0.25
     var snapDistancePoints:CGFloat=8,snapGapPoints:CGFloat=4
     var snapContrast=4
-    var key:String { "\(left.rawValue),\(right.rawValue),\(top.rawValue),\(bottom.rawValue),\(fitInsetPoints)" }
+    var key:String { "\(left.rawValue),\(right.rawValue),\(top.rawValue),\(bottom.rawValue),\(fitInsetPoints),\(sideSearchPercent)" }
     var needsPhoto:Bool { [left,right,top,bottom].contains(.photo) }
     static let template="""
     # Camera Reference detection settings. Save as plain text.
@@ -21,6 +22,9 @@ struct DetectionConfig: Equatable {
     bottom = photo
     # Minimum Fit margin, in macOS points (not Retina pixels). Range 0...100.
     fitInsetPoints = 18
+    # Side-border search from each window edge, 5...50 percent. Previously 30.
+    # 45 searches left 0...45% and right 55...100%; 50 reaches the centre.
+    sideSearchPercent = 45
     # Minimum sustained edge length as fraction of Lightroom window, 0.05...1.
     verticalSnapFraction = 0.25
     horizontalSnapFraction = 0.25
@@ -45,6 +49,7 @@ struct DetectionConfig: Equatable {
             }
             guard let n=Double(v),n.isFinite else { throw invalid(index+1) }
             switch k {
+            case "sideSearchPercent" where (5...50).contains(n):c.sideSearchPercent=n
             case "fitInsetPoints" where (0...100).contains(n):c.fitInsetPoints=n
             case "verticalSnapFraction" where (0.05...1).contains(n):c.verticalSnapFraction=n
             case "horizontalSnapFraction" where (0.05...1).contains(n):c.horizontalSnapFraction=n
@@ -75,6 +80,14 @@ final class DetectionConfigStore {
         if !FileManager.default.fileExists(atPath:url.path) {
             try FileManager.default.createDirectory(at:url.deletingLastPathComponent(),withIntermediateDirectories:true)
             try DetectionConfig.template.write(to:url,atomically:true,encoding:.utf8)
+        } else {
+            let text=try String(contentsOf:url,encoding:.utf8)
+            let hasInterval=text.components(separatedBy:.newlines).contains {
+                $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces) == "sideSearchPercent"
+            }
+            if !hasInterval {
+                try (text + "\n# Side-border search from each window edge, 5...50 percent (previously 30).\n# 45 searches left 0...45% and right 55...100%; 50 reaches the centre.\nsideSearchPercent = 45\n").write(to:url,atomically:true,encoding:.utf8)
+            }
         }
     }
     func reload() throws -> DetectionConfig {

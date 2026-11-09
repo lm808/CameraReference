@@ -8,8 +8,9 @@ struct ViewportDetection {
     let horizontalDivider: CGFloat?
     let background: [Double]
     let summary: String
+    var workingAreaTooNarrow=false
 }
-func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto:Bool=false) -> ViewportDetection {
+func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto:Bool=false,sideSearchPercent:Double=45) -> ViewportDetection {
     let w=raster.width, h=raster.height
     func failure(_ reason:String) -> ViewportDetection {
         ViewportDetection(bounds:nil,verticalDivider:nil,horizontalDivider:nil,background:[0,0,0],summary:reason)
@@ -112,8 +113,8 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
         // Fixed-width side panels occupy more of a narrow window. Search up
         // to the centre on each side; complete-rectangle validation still
         // rejects panel controls and photograph details.
-        let ls=candidates(vertical:true,low:2,high:w*45/100)
-        let rs=candidates(vertical:true,low:w*55/100,high:w-2)
+        let ls=candidates(vertical:true,low:2,high:Int(Double(w)*sideSearchPercent/100))
+        let rs=candidates(vertical:true,low:Int(Double(w)*(100-sideSearchPercent)/100),high:w-2)
         let ts=candidates(vertical:false,low:2,high:h*30/100)
         let bs=candidates(vertical:false,low:h*65/100,high:h-2)
         var accepted=[(CGRect,Double)](),checked=0
@@ -123,7 +124,18 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
         } } } }
         accepted.sort { $0.1==$1.1 ? $0.0.width*$0.0.height<$1.0.width*$1.0.height : $0.1>$1.1 }
         searchReport="Rectangle search: L \(ls), R \(rs), T \(ts), B \(bs); \(checked) checked, \(accepted.count) supported."
-        guard let strongest=accepted.first else { return failure(searchReport+"\nNo rectangle has four supported borders and a consistent inner surround. Manual calibration is available.") }
+        guard let strongest=accepted.first else {
+            // Diagnose an interval-limited viewport with the same full validation.
+            // The wider result is evidence for the message, never a placement fallback.
+            if sideSearchPercent < 50,
+               let wider=detectViewport(in:raster,singlePhoto:singlePhoto,sideSearchPercent:50).bounds,
+               wider.minX >= CGFloat(Int(Double(w)*sideSearchPercent/100)) || wider.maxX < CGFloat(Int(Double(w)*(100-sideSearchPercent)/100)) {
+                var result=failure(searchReport+"\nWorking area too narrow for automatic placement—enlarge it or calibrate manually.")
+                result.workingAreaTooNarrow=true
+                return result
+            }
+            return failure(searchReport+"\nNo rectangle has four supported borders and a consistent inner surround. Manual calibration is available.")
+        }
         // Nested header rails may bound the same uniform surround. Prefer the innermost supported rectangle.
         let supported=accepted.filter { strongest.1-$0.1<0.08 }
         let outer=supported.max { $0.0.width*$0.0.height<$1.0.width*$1.0.height }!
@@ -209,14 +221,15 @@ struct ViewportCache {
         }
         return result
     }
-    mutating func inspect(_ raster:EdgeRaster,key:String,singlePhoto:Bool=false)->(ViewportDetection,Bool) {
+    mutating func inspect(_ raster:EdgeRaster,key:String,singlePhoto:Bool=false,sideSearchPercent:Double=45)->(ViewportDetection,Bool) {
+        let cacheKey="\(key):sideSearchPercent=\(sideSearchPercent)"
         var reuse=false
-        if key==windowKey,width==raster.width,height==raster.height,let bounds {
+        if cacheKey==windowKey,width==raster.width,height==raster.height,let bounds {
             let now=signature(raster,bounds)
             reuse=now.count==samples.count && zip(now,samples).allSatisfy { abs(Int($0)-Int($1))<=3 }
         }
-        let result=detectViewport(in:raster,knownBounds:reuse ? bounds:nil,singlePhoto:singlePhoto)
-        bounds=result.bounds;width=raster.width;height=raster.height;windowKey=key
+        let result=detectViewport(in:raster,knownBounds:reuse ? bounds:nil,singlePhoto:singlePhoto,sideSearchPercent:sideSearchPercent)
+        bounds=result.bounds;width=raster.width;height=raster.height;windowKey=cacheKey
         samples=result.bounds.map { signature(raster,$0) } ?? []
         return (result,reuse)
     }
@@ -227,8 +240,8 @@ actor ScreenGeometryCache {
     var generation=UUID()
     func reset() { generation=UUID();cache=ViewportCache() }
     func ticket()->UUID { generation }
-    func inspect(_ raster:EdgeRaster,key:String,ticket:UUID,singlePhoto:Bool=false)->(ViewportDetection,Bool)? {
-        guard ticket==generation else { return nil };return cache.inspect(raster,key:key,singlePhoto:singlePhoto)
+    func inspect(_ raster:EdgeRaster,key:String,ticket:UUID,singlePhoto:Bool=false,sideSearchPercent:Double=45)->(ViewportDetection,Bool)? {
+        guard ticket==generation else { return nil };return cache.inspect(raster,key:key,singlePhoto:singlePhoto,sideSearchPercent:sideSearchPercent)
     }
-    func inspect(_ raster:EdgeRaster,key:String,singlePhoto:Bool=false)->(ViewportDetection,Bool) { cache.inspect(raster,key:key,singlePhoto:singlePhoto) }
+    func inspect(_ raster:EdgeRaster,key:String,singlePhoto:Bool=false,sideSearchPercent:Double=45)->(ViewportDetection,Bool) { cache.inspect(raster,key:key,singlePhoto:singlePhoto,sideSearchPercent:sideSearchPercent) }
 }
