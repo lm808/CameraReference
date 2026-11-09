@@ -109,8 +109,11 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
     if let knownBounds,rectangleScore(knownBounds) != nil {
         left=Int(knownBounds.minX);right=Int(knownBounds.maxX);top=Int(knownBounds.minY);bottom=Int(knownBounds.maxY)
     } else {
-        let ls=candidates(vertical:true,low:2,high:w*30/100)
-        let rs=candidates(vertical:true,low:w*70/100,high:w-2)
+        // Fixed-width side panels occupy more of a narrow window. Search up
+        // to the centre on each side; complete-rectangle validation still
+        // rejects panel controls and photograph details.
+        let ls=candidates(vertical:true,low:2,high:w*45/100)
+        let rs=candidates(vertical:true,low:w*55/100,high:w-2)
         let ts=candidates(vertical:false,low:2,high:h*30/100)
         let bs=candidates(vertical:false,low:h*65/100,high:h-2)
         var accepted=[(CGRect,Double)](),checked=0

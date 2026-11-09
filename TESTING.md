@@ -1,4 +1,4 @@
-# 0.9.4 focused acceptance test
+# 0.9.5 focused acceptance test
 
 Quit the old companion and open build/CameraReference.app. No plugin reinstall or restart needed. Keep your working configuration and use single-photo Develop at Fit.
 
@@ -15,6 +15,10 @@ If placement fails, the status must retain the failure message rather than say â
 
 ## Small-window regression
 
-Confirm 0.9.4 at the top of the companion menu. Enable Automatic viewing area if a previous cancelled calibration left it off. Use the small Lightroom window from the report, entirely on one display. Invoke repeatedly and check that the photograph aligns and does not overlap the right controls. Resize larger and smaller and repeat.
+Confirm 0.9.5 at the top of the companion menu. Enable Automatic viewing area if a previous cancelled calibration left it off. Use the small Lightroom window from the report, entirely on one display. Invoke repeatedly and check that the photograph aligns and does not overlap the right controls. Resize larger and smaller and repeat.
 
 If detection fails, choose Calibrate then Escape: Automatic viewing area should remain enabled and the next shortcut should try detection again. Also check the initial Cancel button. Accepting a new region should switch to manual mode. Send Bridge diagnostics immediately after an incorrect overlay; the capture mode should say display-bound window filter, explicit crop.
+
+## Narrow viewport regression
+
+With Automatic viewing area enabled, repeat the supplied 900 Ã— 702 pt window in single-photo Develop at Fit. The reference should appear in the central viewport between the wide side panels. Check alignment, then enlarge the window and invoke again. Cancel remains safe if another layout cannot be detected.

@@ -1,6 +1,10 @@
-# Camera Reference 0.9.4 — small-window capture patch
+# Camera Reference 0.9.5 — narrow viewport detection
 
 Quit the old companion and open `build/CameraReference.app`. No Lightroom plugin reinstall or restart. Nothing is installed or launched by the build scripts.
+
+## New in 0.9.5
+
+Side-border searches now reach 45% of the window width from each edge (previously 30%), allowing fixed-width side panels around a narrow photo viewport. The supplied 900 × 702 pt window failure is reproduced exactly before the change and detects the visible viewport afterwards. Complete-rectangle evidence and ambiguity thresholds are unchanged. Extremely narrow or unsupported layouts can still fall back to calibration.
 
 ## New in 0.9.4
 

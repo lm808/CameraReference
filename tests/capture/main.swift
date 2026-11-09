@@ -38,3 +38,19 @@ if CommandLine.arguments.count > 1 {
     assert(abs(wrong.minX-722)<2 && abs(wrong.width-1301)<2)
     print("PASS: supplied small-window screenshot reproduces wrong full-width bounds; explicit crop aligns viewport and fitted photograph")
 }
+
+// Second optional fixture: the 900 × 702 pt window with wide side panels.
+if CommandLine.arguments.count > 2 {
+    let source=CGImageSourceCreateWithURL(URL(fileURLWithPath:CommandLine.arguments[2]) as CFURL,nil)!
+    let image=CGImageSourceCreateImageAtIndex(source,0,nil)!
+    let crop=image.cropping(to:CGRect(x:224,y:308,width:1800,height:1404))!
+    let found=detectViewport(in:EdgeRaster(image:crop)!,singlePhoto:true)
+    guard let bounds=found.bounds else { fatalError(found.summary) }
+    assert(abs(bounds.minX-612)<2 && abs(bounds.maxX-1166)<2)
+    assert(abs(bounds.minY-180)<2 && abs(bounds.maxY-1040)<2)
+    let ui=CGRect(x:112+bounds.minX/2,y:154+bounds.minY/2,width:bounds.width/2,height:bounds.height/2)
+    let photo=DetectionConfig().placement(ui:ui,image:CGSize(width:6000,height:4000))!.photo
+    assert(abs(photo.minX-438)<3 && abs(photo.minY-380)<3)
+    assert(abs(photo.width-237)<5 && abs(photo.height-158)<4)
+    print("PASS: 900 × 702 screenshot detects narrow viewport and fits photograph within measured screen bounds")
+}

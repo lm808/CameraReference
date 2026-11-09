@@ -26,8 +26,8 @@ if CommandLine.arguments.count>1 {
         expect(abs(r.minY/CGFloat(raster.height)-0.086)<0.006 && abs(r.maxY/CGFloat(raster.height)-0.868)<0.006,"Screenshot vertical bounds wrong: \(r)")
     }
 }
-func fixture(bg:[UInt8],hidden:Bool=false,split:Int=0)->EdgeRaster {
-    let w=900,h=650,l=hidden ? 8:120,r=hidden ? 892:780,t=60,b=580
+func fixture(bg:[UInt8],hidden:Bool=false,split:Int=0,narrow:Bool=false)->EdgeRaster {
+    let w=900,h=650,l=hidden ? 8:(narrow ? 320:120),r=hidden ? 892:(narrow ? 580:780),t=60,b=580
     var rgba=[UInt8](repeating:255,count:w*h*4)
     for y in 0..<h { for x in 0..<w {
         var c:[UInt8]=[45,45,45]
@@ -176,3 +176,9 @@ expect(transitionCache.inspect(fixture(bg:[0,0,0]),key:"window",singlePhoto:true
 expect(!transitionCache.inspect(fixture(bg:[0,0,0]),key:"fullscreen",singlePhoto:true).1,"Full-screen transition reused prior bounds")
 expect(!transitionCache.inspect(fixture(bg:[0,0,0]),key:"window",singlePhoto:true).1,"Restored window reused full-screen bounds")
 print("PASS: reported full-screen coordinates, moved/negative-origin geometry and window/full-screen/restore cache transitions")
+
+for bg:[UInt8] in [[0,0,0],[70,70,70],[255,255,255],[40,80,110]] {
+    let narrow=detectViewport(in:fixture(bg:bg,narrow:true),singlePhoto:true)
+    expect(narrow.bounds == CGRect(x:320,y:60,width:260,height:520),"Narrow centre viewport lost: \(narrow.summary)")
+}
+print("PASS: narrow centre viewport with wide side panels across black, grey, white and coloured surrounds")
