@@ -28,6 +28,14 @@ struct EdgeRaster {
     }
 }
 
+// A display-bound, window-filtered capture uses an explicit display-local crop.
+// Do not infer the captured extent from the output bitmap size: window child
+// surfaces can extend beyond the parent, especially after a resize.
+func windowCaptureSourceRect(window:CGRect, display:CGRect) -> CGRect? {
+    guard window.width > 0, window.height > 0, display.contains(window) else { return nil }
+    return window.offsetBy(dx:-display.minX,dy:-display.minY)
+}
+
 // CG window-list geometry is top-left screen coordinates, matched by exact window ID.
 func currentCaptureWindowFrame(_ id:CGWindowID)->CGRect? {
     guard let rows=CGWindowListCopyWindowInfo(.optionIncludingWindow,id) as? [[String:Any]],
@@ -75,8 +83,17 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         guard sameWindowGeometry(originFrame,currentCaptureWindowFrame(window.windowID)) else {
             return ScreenProbeResult(candidate:nil,summary:"Waiting for stable window geometry.",geometryChanged:true)
         }
-        let filter=SCContentFilter(desktopIndependentWindow:window)
+        guard let display=content.displays.first(where:{ windowCaptureSourceRect(window:originFrame,display:$0.frame) != nil }),
+              let sourceRect=windowCaptureSourceRect(window:originFrame,display:display.frame) else {
+            return ScreenProbeResult(candidate:nil,summary:"Automatic capture needs the Lightroom window wholly on one display. Move it onto one display or use manual calibration.")
+        }
+        // Keep only Lightroom's selected window and its children, but anchor the
+        // raster to an explicit crop instead of a desktop-independent surface extent.
+        let filter=SCContentFilter(display:display,including:[window])
         let config=SCStreamConfiguration()
+        config.sourceRect=sourceRect
+        config.scalesToFit=true
+        config.ignoreShadowsDisplay=true
         let scale=min(max(1,Double(filter.pointPixelScale)),min(6000/window.frame.width,4000/window.frame.height))
         config.width=max(1,Int(window.frame.width*scale)); config.height=max(1,Int(window.frame.height*scale))
         config.showsCursor=false; config.capturesAudio=false; config.ignoreShadowsSingleWindow=true
@@ -87,7 +104,7 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
             return ScreenProbeResult(candidate:nil,summary:"Window changed during capture.",geometryChanged:true)
         }
         if previewCapture {
-            return ScreenProbeResult(candidate:nil,summary:"Captured Lightroom window: \(image.width) × \(image.height) pixels. Same capture path as detection/calibration; child windows included on macOS 14.2+. In-memory preview only; closing releases it.",previewImage:image)
+            return ScreenProbeResult(candidate:nil,summary:"Captured Lightroom window: \(image.width) × \(image.height) pixels. Explicit window crop, same capture path as detection/calibration; child windows included on macOS 14.2+. In-memory preview only; closing releases it.",previewImage:image)
         }
         guard let raster=EdgeRaster(image:image) else { return ScreenProbeResult(candidate:nil,summary:"Could not inspect the captured pixels.") }
         if forCalibration {
@@ -97,12 +114,12 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
             let summary="Calibration capture: \(image.width) × \(image.height) pixels; child windows: \(childMode).\nEdge segments: \(edges.filter{$0.vertical}.count) vertical, \(edges.filter{!$0.vertical}.count) horizontal.\nMinimum edge fractions V/H: \(settings.verticalSnapFraction)/\(settings.horizontalSnapFraction); snap radius: \(settings.snapDistancePoints) pt.\nOption aligns the full crosshair lines; segments need not meet. No image saved."
             return ScreenProbeResult(candidate:nil,summary:summary,windowID:window.windowID,windowFrame:window.frame,snapEdges:edges)
         }
-        guard let (detection,reused)=await ScreenGeometryCache.shared.inspect(raster,key:"\(window.windowID):\(window.frame):\(filter.pointPixelScale):\(CGDisplayBounds(CGMainDisplayID()))",ticket:ticket,singlePhoto:true) else {
+        guard let (detection,reused)=await ScreenGeometryCache.shared.inspect(raster,key:"crop:\(display.displayID):\(display.frame):\(sourceRect):\(window.windowID):\(window.frame):\(filter.pointPixelScale):\(CGDisplayBounds(CGMainDisplayID()))",ticket:ticket,singlePhoto:true) else {
             return ScreenProbeResult(candidate:nil,summary:"Window/display geometry was invalidated during capture.",geometryChanged:true)
         }
         let childMode:String
         if #available(macOS 14.2,*) { childMode="included" } else { childMode="system default" }
-        let header="Child windows: \(childMode).\nUI-boundary detection (no OCR; no image saved).\nWindow: \(Int(window.frame.width)) × \(Int(window.frame.height)) pt.\nWindow origin (top-left): \(window.frame.origin).\nFilter content rect: \(filter.contentRect).\nPrimary display: \(CGDisplayBounds(CGMainDisplayID())).\nCapture: \(image.width) × \(image.height) pixels.\n"
+        let header="Capture mode: display-bound window filter, explicit crop.\nDisplay frame (top-left): \(display.frame).\nSource crop (display-local): \(sourceRect).\nAnalysis raster: \(raster.width) × \(raster.height).\nChild windows: \(childMode).\nUI-boundary detection (no OCR; no image saved).\nWindow: \(Int(window.frame.width)) × \(Int(window.frame.height)) pt.\nWindow origin (top-left): \(window.frame.origin).\nFilter content rect: \(filter.contentRect).\nPrimary display: \(CGDisplayBounds(CGMainDisplayID())).\nCapture: \(image.width) × \(image.height) pixels.\n"
         var candidate:CGRect?,photoFrame:CGRect?
         var key:String?
         var placementSummary=""

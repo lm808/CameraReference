@@ -1,4 +1,4 @@
-# 0.9.2 focused acceptance test
+# 0.9.4 focused acceptance test
 
 Quit the old companion and open build/CameraReference.app. No plugin reinstall or restart needed. Keep your working configuration and use single-photo Develop at Fit.
 
@@ -12,3 +12,9 @@ If any overlay is offset, open Developer tools → Bridge diagnostics immediatel
 No need to repeat all side combinations or snapping tests. Full-screen/Spaces behaviour cannot be confirmed by the automated geometry tests alone.
 
 If placement fails, the status must retain the failure message rather than say “Reference shown”. Repeat on the external display if available. Diagnostics now include actual view coordinates and panel visibility; visibility alone does not prove the panel is unobscured in the intended Space.
+
+## Small-window regression
+
+Confirm 0.9.4 at the top of the companion menu. Enable Automatic viewing area if a previous cancelled calibration left it off. Use the small Lightroom window from the report, entirely on one display. Invoke repeatedly and check that the photograph aligns and does not overlap the right controls. Resize larger and smaller and repeat.
+
+If detection fails, choose Calibrate then Escape: Automatic viewing area should remain enabled and the next shortcut should try detection again. Also check the initial Cancel button. Accepting a new region should switch to manual mode. Send Bridge diagnostics immediately after an incorrect overlay; the capture mode should say display-bound window filter, explicit crop.

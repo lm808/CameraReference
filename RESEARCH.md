@@ -155,3 +155,12 @@ are rejected. This is deterministic Swift CPU code, not a trained model or a doc
 One missing edge can be inferred from aspect ratio, which is useful but ambiguous with a cropped RAW. The current
 release therefore requires visual preview/acceptance. Synthetic fixtures establish algorithm behaviour only;
 real Lightroom image recognition has not been validated. Frame capture still uses Apple's ScreenCaptureKit.
+
+## 0.9.4 explicit capture extent
+
+Apple's SCStreamConfiguration documentation describes sourceRect and scalesToFit; the installed macOS SDK specifies sourceRect in the display's logical coordinate system. SCContentFilter(display:including:) captures only the selected windows, excluding the desktop and Dock. The SDK describes includeChildWindows as applying to display-bound sharing. Use this path with an explicit display-local window crop, instead of assuming a desktop-independent capture's composited extent equals SCWindow.frame.
+
+- https://developer.apple.com/documentation/screencapturekit/scstreamconfiguration
+- https://developer.apple.com/documentation/screencapturekit/sccontentfilter/init(display:including:)
+
+The supplied screen screenshot reproduces the wrong bounds when analysed at full display width. This supports an extent mismatch but does not independently establish which native surface or framework behaviour enlarged the previous capture. Native acceptance remains required.

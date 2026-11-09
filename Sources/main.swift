@@ -501,7 +501,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     @objc func calibrate() { beginCalibration() }
-    func beginCalibration(proposal:CGRect? = nil) {
+    func beginCalibration(proposal:CGRect? = nil, useManualOnAccept:Bool = false) {
         guard !regionResetting else { return }
         cancelScreenInspection(); hide(); cancelRequest(); calibration?.finish(nil)
         let settings=reloadDetectionConfig()
@@ -511,7 +511,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.calibrationTask?.cancel(); self.calibrationTask=nil
             self.calibrationTimer?.invalidate();self.calibrationTimer=nil
             self.calibration=nil
-            if let result { self.region=result; self.manualLayoutKey=self.lastProbe?.layoutKey; self.report("Image region saved. Shortcut toggles the reference.") }
+            if let result {
+                self.region=result; self.manualLayoutKey=self.lastProbe?.layoutKey
+                if useManualOnAccept {
+                    UserDefaults.standard.set(false,forKey:"automaticBounds"); self.autoItem.state = .off
+                }
+                self.report("Image region saved. Shortcut toggles the reference.")
+            }
             else { self.report("Calibration cancelled. Previous region retained.") }
         }
         guard #available(macOS 14.0,*),FeaturePermission.screenCapture.ensure() else {
@@ -605,11 +611,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     func askForCalibration() {
         let alert=NSAlert(); alert.messageText="Select the reference viewing area"
-        alert.informativeText="The viewing area could not be identified reliably. Drag around the area for the JPEG, then invoke the overlay again. Manual mode will stay enabled until you turn automatic detection back on."
+        alert.informativeText="The viewing area could not be identified reliably. Drag around the area for the JPEG, then invoke the overlay again. Accepting a region switches to manual mode. Cancelling keeps your current mode and region."
         alert.addButton(withTitle:"Calibrate…"); alert.addButton(withTitle:"Cancel")
         NSApp.activate(ignoringOtherApps:true)
         if alert.runModal() == .alertFirstButtonReturn {
-            UserDefaults.standard.set(false,forKey:"automaticBounds"); autoItem.state = .off; beginCalibration()
+            beginCalibration(useManualOnAccept:true)
         } else { report("Overlay cancelled; calibration was not changed.") }
     }
     func startPhotoDetection(imageSize:CGSize,previewCapture:Bool=false,completion:((ScreenProbeResult)->Void)? = nil) {

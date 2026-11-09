@@ -1,6 +1,12 @@
-# Camera Reference 0.9.3 — menu version
+# Camera Reference 0.9.4 — small-window capture patch
 
 Quit the old companion and open `build/CameraReference.app`. No Lightroom plugin reinstall or restart. Nothing is installed or launched by the build scripts.
+
+## New in 0.9.4
+
+Capture now uses a display-bound filter containing only the selected Lightroom window and its children, with an explicit crop to that window. A full-width interpretation of the supplied small-window screenshot reproduces the reported displaced detection; the correct window crop aligns the detected viewport and Fit photograph. Native capture acceptance remains to be tested. Automatic capture requires the window wholly on one display; manual calibration remains available otherwise.
+
+Entering fallback calibration no longer disables automatic detection immediately. Manual mode is selected only after accepting a new region; cancelling preserves the current mode and saved region. Diagnostics include capture mode, display frame, source crop and analysis raster dimensions.
 
 ## New in 0.9.3
 
@@ -62,7 +68,7 @@ Preview: Return accepts, drag adjusts, Escape cancels. A manual correction is re
 
 Settings → **Set image region…** captures edges once. Hold Option to align full crosshair lines independently; release for free selection. Long edges are filtered relative to the Lightroom window; short UI/photo details are rejected. Small gaps are allowed. Escape cancels and retains the previous calibration. Screen Recording permission is needed for detection/snapping, not free manual selection.
 
-If detection fails, automatic overlay offers Calibrate/Cancel. Choosing Calibrate switches automatic mode off to avoid repeated requests. Re-enable it to test automatic detection again. Manual calibration persists across sleep/wake; resize suspends stale geometry rather than erasing it.
+If detection fails, automatic overlay offers Calibrate/Cancel. Accepting a calibration switches automatic mode off; cancelling preserves the current mode. Re-enable automatic mode to test detection after accepting a manual region. Manual calibration persists across sleep/wake; resize suspends stale geometry rather than erasing it.
 
 Developer tools → **Preview captured Lightroom window…** displays the exact capture in memory with zoom/pan and no save command. Close it before calibration. Capture includes child windows on macOS 14.2+; the user confirmed it now matches Lightroom visually.
 

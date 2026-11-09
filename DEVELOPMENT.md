@@ -18,3 +18,9 @@ The user also reports no overlay on the built-in display with v0.9, which lacks 
 Current diagnostics: UI bounds are in the analysis raster (downsampled to at most2560px width), window geometry in macOS points, output frames in AppKit bottom-left coordinates. The reported3024px Retina capture is downsampled before analysis; those numbers must not be compared directly as if all were points.
 
 Live user acceptance of 0.9.2 is pending.
+
+## Small-window investigation (0.9.4)
+
+The user's unobscured 3024×1964 screenshot, cropped to x0/y66/w3024/h1776, reproduces the reported bounds (722,153,1301,1042) within one raster pixel. Cropping to the reported Lightroom window x240/y66/w2784/h1776 instead yields bounds (563,166,1414,1132), aligned with the visible UI. This is strong evidence of an incorrect capture extent, not proof of the internal ScreenCaptureKit cause. Do not hard-code a display-width correction. The new display-bound window filter has an explicit display-local sourceRect and retains child windows while excluding other apps. A window spanning displays is rejected for automatic capture.
+
+Calibration fallback used to disable automatic mode before acceptance. It now changes mode only on accepting a new region, preserving mode on Escape/cancellation. The initial alert's Cancel already preserved mode.

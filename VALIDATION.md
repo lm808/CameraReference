@@ -41,3 +41,7 @@ Final 0.9.1 checks: app compilation, full regression suite, code signature and I
 ## 0.9.2
 
 Full regression suite passed on the user's Mac, including the reported fractional-to-integer overlay frame, negative display origins, rejection of larger panel shifts/resizes, and preservation of the stricter capture-geometry check. AppKit screen-to-content-view conversion replaces the assumed requested-origin offset; failure propagation prevents the automatic caller from overwriting a placement error with success. Built-in display and full-screen/Spaces acceptance remain live user checks; the earlier v0.9 failure is not claimed resolved. External screenshot fixtures from earlier development were not supplied in this working tree.
+
+## 0.9.4
+
+Build, full regression suite, signature and Info.plist checks passed on the user's Mac. New capture tests cover explicit display-local crop geometry, negative display origins, full-screen bounds and cross-display rejection. Running build/capture-tests with the supplied unobscured screenshot reproduces the reported displaced bounds from a full-width crop and verifies that a correct window crop aligns both the UI viewport and fitted photograph. The image remains an optional external fixture, not a repository asset. Calibration cancellation mode preservation was checked by code review; native capture and the interactive cancel/retry sequence still require user acceptance.
