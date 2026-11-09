@@ -1,6 +1,12 @@
-# Camera Reference 0.9.1 — single-photo geometry patch
+# Camera Reference 0.9.2 — overlay rounding fix
 
 Quit the old companion and open `build/CameraReference.app`. No Lightroom plugin reinstall or restart. Nothing is installed or launched by the build scripts.
+
+## New in 0.9.2
+
+Fixes the confirmed 0.9.1 immediate-dismissal regression: final panel placement permits up to one point of rounding on each edge and dimension. Capture/window-movement checks retain their existing strict tolerance. The photo viewport is converted from screen coordinates through the actual window and content view, preserving its intended position after rounding. Failed placement no longer gets overwritten by a success message.
+
+Diagnostics include the actual content bounds, photo viewport, visibility and display scale, plus rejected off-display regions. This does not establish the cause of the earlier v0.9 built-in-display failure. Live built-in-display and full-screen testing is still required.
 
 ## New in 0.9.1
 

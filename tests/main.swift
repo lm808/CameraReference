@@ -263,3 +263,17 @@ let topLabel=referenceLabelRect(viewport:labelViewport,imageFrame:wideFrame,labe
 assert(topLabel != nil && !topLabel!.intersects(wideFrame))
 assert(referenceLabelRect(viewport:labelViewport,imageFrame:labelViewport,labelSize:labelSize)==nil)
 print("PASS: reference label fits top or side margins without overlapping image")
+
+// Reported 0.9.1 native rounding regression. Capture stability stays stricter.
+let requestedOverlay = CGRect(x:304.94375,y:265.64814,width:890.890625,height:570.87138)
+let roundedOverlay = CGRect(x:304,y:265,width:891,height:571)
+assert(overlayPlacementIsAcceptable(requested:requestedOverlay,actual:roundedOverlay))
+assert(!sameWindowGeometry(requestedOverlay,roundedOverlay))
+assert(overlayPlacementIsAcceptable(requested:requestedOverlay,actual:requestedOverlay))
+assert(!overlayPlacementIsAcceptable(requested:requestedOverlay,actual:requestedOverlay.offsetBy(dx:2,dy:0)))
+assert(!overlayPlacementIsAcceptable(requested:requestedOverlay,actual:requestedOverlay.offsetBy(dx:0,dy:20)))
+assert(!overlayPlacementIsAcceptable(requested:requestedOverlay,actual:requestedOverlay.insetBy(dx:2,dy:0)))
+assert(!overlayPlacementIsAcceptable(requested:.zero,actual:.zero))
+let negativeOverlay = requestedOverlay.offsetBy(dx:-2000,dy:-1000)
+assert(overlayPlacementIsAcceptable(requested:negativeOverlay,actual:roundedOverlay.offsetBy(dx:-2000,dy:-1000)))
+print("PASS: overlay rounding accepted independently of capture stability; displaced/resized panels rejected")

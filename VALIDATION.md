@@ -37,3 +37,7 @@ Final checks: full regression suite passed; both complete screenshot fixtures pa
 User accepted proportional snapping and mixed side placement for landscape/portrait/dark photos in 0.9. Resize and full-screen offsets remain the target of this patch. Added tests for the supplied full-screen photo rectangle (top-left y107,height1137 converts to AppKit y196 on1440pt screen), negative-origin displays, moved/resized/missing-window checks and window/full-screen/restore cache transitions. Existing capture-generation tests cover invalidation while capture is pending. Native panel constraining, Space events and timing require user acceptance; no native app launched or installed during development.
 
 Final 0.9.1 checks: app compilation, full regression suite, code signature and Info.plist validation passed. No native full-screen acceptance claimed.
+
+## 0.9.2
+
+Full regression suite passed on the user's Mac, including the reported fractional-to-integer overlay frame, negative display origins, rejection of larger panel shifts/resizes, and preservation of the stricter capture-geometry check. AppKit screen-to-content-view conversion replaces the assumed requested-origin offset; failure propagation prevents the automatic caller from overwriting a placement error with success. Built-in display and full-screen/Spaces acceptance remain live user checks; the earlier v0.9 failure is not claimed resolved. External screenshot fixtures from earlier development were not supplied in this working tree.

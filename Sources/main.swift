@@ -324,14 +324,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             }
         }
     }
-    func display(_ image: CGImage, in region: NSRect) {
-        guard NSScreen.screens.contains(where: { $0.frame.contains(region) }) else { report("Set image region again for this display layout."); return }
+    func display(_ image: CGImage, in region: NSRect, photoFrame: NSRect? = nil) -> ReferenceView? {
+        guard NSScreen.screens.contains(where: { $0.frame.contains(region) }) else {
+            lastLayout += "\nOverlay rejected: region \(region) is outside current displays \(NSScreen.screens.map { $0.frame })."
+            report("Set image region again for this display layout."); return nil
+        }
         let p = OverlayPanel(contentRect: region.insetBy(dx: -1, dy: -1), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         p.level = .floating; p.isOpaque = true; p.backgroundColor = .black
         p.hasShadow = false; p.hidesOnDeactivate = false; p.isReleasedWhenClosed = false
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         let view = ReferenceView(frame: NSRect(origin: .zero, size: p.frame.size))
         view.showIndicator = true
+        view.autoresizingMask = [.width, .height]
         configureImageView(view)
         view.refresh = { [weak self] in self?.reloadOverlay() }
         view.image = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
@@ -339,8 +343,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let requested=region.insetBy(dx:-1,dy:-1)
         p.setFrame(requested,display:true)
         lastLayout += "\nOverlay panel requested (AppKit): \(requested). Actual: \(p.frame)."
-        if !sameWindowGeometry(requested,p.frame) { hide();report("macOS moved the overlay panel. No offset overlay displayed; see geometry diagnostics.");return }
+        guard overlayPlacementIsAcceptable(requested:requested,actual:p.frame) else {
+            hide();report("macOS moved the overlay panel. No offset overlay displayed; see geometry diagnostics.");return nil
+        }
+        // Convert through the actual native window and content view after AppKit rounding.
+        view.imageViewport = view.convert(p.convertFromScreen(photoFrame ?? region), from:nil)
+        view.needsDisplay = true
+        lastLayout += "\nOverlay content bounds: \(view.bounds). Photo viewport (view): \(view.imageViewport!). Panel visible: \(p.isVisible). Display scale: \(p.backingScaleFactor)."
+        guard p.isVisible else { hide();report("Overlay panel did not become visible; see geometry diagnostics.");return nil }
         updateIcon()
+        return view
     }
     @objc func openFloating() {
         if let floating { floating.orderFrontRegardless(); return } // Opening an existing window never refreshes it.
@@ -556,7 +568,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     func resolveOverlay(_ image:CGImage,snapshot:ExportSnapshot?) {
         guard UserDefaults.standard.bool(forKey:"automaticBounds") else {
-            if let area=region { display(image,in:area); (panel?.contentView as? ReferenceView)?.exportSnapshot=snapshot }
+            if let area=region { display(image,in:area)?.exportSnapshot=snapshot }
             else { askForCalibration() }; return
         }
         guard #available(macOS 14.0,*), FeaturePermission.screenCapture.ensure() else {
@@ -565,7 +577,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         startPhotoDetection(imageSize:CGSize(width:image.width,height:image.height)) { [weak self] result in
             guard let self, self.isLightroom(), self.currentModule()=="develop" else { return }
             if let key=result.layoutKey,key==self.manualLayoutKey,let area=self.region {
-                self.display(image,in:area); (self.panel?.contentView as? ReferenceView)?.exportSnapshot=snapshot; return
+                self.display(image,in:area)?.exportSnapshot=snapshot; return
             }
             guard let area=result.candidate else { self.askForCalibration(); return }
             if result.split && self.acceptedSplitKey != result.layoutKey {
@@ -579,12 +591,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 self.acceptedSplitKey=result.layoutKey
                 NSWorkspace.shared.runningApplications.first(where:isLightroomApp)?.activate(options:[])
             }
-            self.display(image,in:area)
-            if let view=self.panel?.contentView as? ReferenceView {
-                view.exportSnapshot=snapshot
-                if let photo=result.photoFrame { view.imageViewport=photo.offsetBy(dx:-area.minX+1,dy:-area.minY+1) }
-                view.backgroundColour=NSColor(srgbRed:result.background[0],green:result.background[1],blue:result.background[2],alpha:1)
-            }
+            guard let view=self.display(image,in:area,photoFrame:result.photoFrame) else { return }
+            view.exportSnapshot=snapshot
+            view.backgroundColour=NSColor(srgbRed:result.background[0],green:result.background[1],blue:result.background[2],alpha:1)
             self.report("Reference shown using UI viewing-area bounds.")
         }
     }
@@ -651,7 +660,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let date = attributes?[.modificationDate] as? Date
         let age = date.map { "\(max(0, Int(Date().timeIntervalSince($0)))) seconds ago" } ?? "not received"
         let state = (try? String(contentsOf: folder.appendingPathComponent("status.txt"), encoding: .utf8)) ?? "No plugin status. The bridge may not have started."
-        return "Camera Reference 0.9.1\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + lastLayout
+        return "Camera Reference 0.9.2\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + lastLayout
     }
     @objc func showDiagnostics() {
         let saved = lastResult

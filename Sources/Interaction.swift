@@ -70,3 +70,13 @@ func referenceLabelRect(viewport:CGRect,imageFrame:CGRect,labelSize:CGSize)->CGR
     guard let area=regions.first(where:{$0.width>=labelSize.width+2*margin && $0.height>=labelSize.height+8}) else { return nil }
     return CGRect(x:area.minX+margin,y:area.maxY-4-labelSize.height,width:labelSize.width,height:labelSize.height)
 }
+
+// AppKit may round borderless frames to whole points, even on Retina displays.
+// This policy applies only to final panel placement, never capture stability.
+func overlayPlacementIsAcceptable(requested:CGRect, actual:CGRect) -> Bool {
+    let pairs = [(requested.minX,actual.minX),(requested.minY,actual.minY),
+                 (requested.maxX,actual.maxX),(requested.maxY,actual.maxY),
+                 (requested.width,actual.width),(requested.height,actual.height)]
+    return requested.width > 0 && requested.height > 0 && actual.width > 0 && actual.height > 0 &&
+        pairs.allSatisfy { $0.0.isFinite && $0.1.isFinite && abs($0.0-$0.1) <= 1.000001 }
+}
