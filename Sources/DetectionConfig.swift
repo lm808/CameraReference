@@ -4,6 +4,7 @@ import CoreGraphics
 struct DetectionConfig: Equatable {
     enum Bound:String { case ui,photo }
     var left=Bound.ui,right=Bound.ui,top=Bound.photo,bottom=Bound.photo
+    var panelCheckIntervalSeconds:Double=3
     var fitInsetPoints:CGFloat=18
     var sideSearchPercent:Double=45
     var verticalSnapFraction:CGFloat=0.25,horizontalSnapFraction:CGFloat=0.25
@@ -14,6 +15,8 @@ struct DetectionConfig: Equatable {
     static let template="""
     # Camera Reference detection settings. Save as plain text.
     # Reloaded only when this file changes. No restart required.
+    # Background UI checks in seconds; 0 disables checks. Range 0...3600.
+    panelCheckIntervalSeconds = 3
     # Each side: ui or photo. Photo bounds are calculated, not edge-detected.
     left = ui
     right = ui
@@ -52,6 +55,7 @@ struct DetectionConfig: Equatable {
             }
             guard let n=Double(v),n.isFinite else { throw invalid(index+1) }
             switch k {
+            case "panelCheckIntervalSeconds" where (0...3600).contains(n):c.panelCheckIntervalSeconds=n
             case "sideSearchPercent" where (5...50).contains(n):c.sideSearchPercent=n
             case "fitInsetPoints" where (0...100).contains(n):c.fitInsetPoints=n
             case "verticalSnapFraction" where (0.05...1).contains(n):c.verticalSnapFraction=n
@@ -90,7 +94,11 @@ final class DetectionConfigStore {
             try FileManager.default.createDirectory(at:url.deletingLastPathComponent(),withIntermediateDirectories:true)
             try DetectionConfig.template.write(to:url,atomically:true,encoding:.utf8)
         } else {
-            let text=try String(contentsOf:url,encoding:.utf8)
+            var text=try String(contentsOf:url,encoding:.utf8)
+            if !text.components(separatedBy:.newlines).contains(where:{ $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces)=="panelCheckIntervalSeconds" }) {
+                text += "\n# Background panel checks in seconds; 0 disables (range 0...3600).\npanelCheckIntervalSeconds = 3\n"
+                try text.write(to:url,atomically:true,encoding:.utf8)
+            }
             let hasInterval=text.components(separatedBy:.newlines).contains {
                 $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces) == "sideSearchPercent"
             }

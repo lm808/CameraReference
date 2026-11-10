@@ -53,9 +53,9 @@ func appKitRect(_ rect:CGRect,primaryHeight:CGFloat)->CGRect {
     CGRect(x:rect.minX,y:primaryHeight-rect.maxY,width:rect.width,height:rect.height)
 }
 @available(macOS 14.0, *)
-func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,seed:CGRect? = nil) async -> ScreenProbeResult {
+func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,seed:CGRect? = nil,maxPixelWidth:CGFloat? = nil) async -> ScreenProbeResult {
     for attempt in 0..<3 {
-        let result=await captureStableLayout(imageSize:imageSize,forCalibration:forCalibration,previewCapture:previewCapture,settings:settings,layout:layout,seed:seed)
+        let result=await captureStableLayout(imageSize:imageSize,forCalibration:forCalibration,previewCapture:previewCapture,settings:settings,layout:layout,seed:seed,maxPixelWidth:maxPixelWidth)
         if !result.geometryChanged || Task.isCancelled { return result }
         await ScreenGeometryCache.shared.reset()
         if attempt<2 { try? await Task.sleep(nanoseconds:250_000_000) }
@@ -63,7 +63,7 @@ func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
     return ScreenProbeResult(candidate:nil,summary:"Lightroom is still moving or resizing. Wait for the transition to finish, then invoke again. Calibration was not changed.",geometryChanged:true)
 }
 @available(macOS 14.0, *)
-func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,seed:CGRect? = nil) async -> ScreenProbeResult {
+func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,seed:CGRect? = nil,maxPixelWidth:CGFloat? = nil) async -> ScreenProbeResult {
     guard CGPreflightScreenCaptureAccess() else { return ScreenProbeResult(candidate:nil,summary:"Screen Recording permission is required. Use Inspect screen layout again to open permission settings.") }
     let probeStarted=ProcessInfo.processInfo.systemUptime
     let ticket=await ScreenGeometryCache.shared.ticket()
@@ -98,7 +98,8 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         config.sourceRect=sourceRect
         config.scalesToFit=true
         config.ignoreShadowsDisplay=true
-        let scale=min(max(1,Double(filter.pointPixelScale)),min(6000/window.frame.width,4000/window.frame.height))
+        let nativeScale=min(max(1,Double(filter.pointPixelScale)),min(6000/window.frame.width,4000/window.frame.height))
+        let scale=min(nativeScale,maxPixelWidth.map { Double($0/window.frame.width) } ?? nativeScale)
         config.width=max(1,Int(window.frame.width*scale)); config.height=max(1,Int(window.frame.height*scale))
         config.showsCursor=false; config.capturesAudio=false; config.ignoreShadowsSingleWindow=true
         if #available(macOS 14.2, *) { config.includeChildWindows=true }
@@ -174,7 +175,7 @@ func detectSplitViewport(in raster:EdgeRaster,layout:OverlayLayout,seed:CGRect?=
             return ViewportDetection(bounds:found,verticalDivider:nil,horizontalDivider:nil,background:result.background,summary:"Validated calibrated \(layout.label) pane UI borders.\n"+result.summary)
         }
     }
-    let outer=detectViewport(in:raster,singlePhoto:false,sideSearchPercent:sideSearchPercent)
+    let outer=detectViewport(in:raster,singlePhoto:false,sideSearchPercent:sideSearchPercent,splitAxis:layout.group)
     let pane=outer.bounds.flatMap { layout.pane(in:$0,vertical:outer.verticalDivider,horizontal:outer.horizontalDivider) }
     return ViewportDetection(bounds:pane,verticalDivider:nil,horizontalDivider:nil,background:outer.background,summary:outer.summary+"\nExplicit \(layout.label) pane: " + (pane == nil ? "No supported divider; calibrate the chosen pane.":"UI bounds accepted."))
 }

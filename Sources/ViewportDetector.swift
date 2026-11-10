@@ -10,7 +10,7 @@ struct ViewportDetection {
     let summary: String
     var workingAreaTooNarrow=false
 }
-func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto:Bool=false,sideSearchPercent:Double=45) -> ViewportDetection {
+func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto:Bool=false,sideSearchPercent:Double=45,splitAxis:Int=0) -> ViewportDetection {
     let w=raster.width, h=raster.height
     func failure(_ reason:String) -> ViewportDetection {
         ViewportDetection(bounds:nil,verticalDivider:nil,horizontalDivider:nil,background:[0,0,0],summary:reason)
@@ -172,8 +172,8 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
         let samples=[rgb(left+5,top+5),rgb(right-6,top+5),rgb(left+5,bottom-6),rgb(right-6,bottom-6)]
         return ViewportDetection(bounds:rect,verticalDivider:nil,horizontalDivider:nil,background:representative(samples).0.map{$0/255},summary:searchReport+"\nSingle-photo mode: UI bounds \(rect). Internal divider search disabled.")
     }
-    let vx=lines(vertical:true,from:left+(right-left)*30/100,to:left+(right-left)*70/100,alongFrom:top+6,alongTo:bottom-6,separator:true)
-    let hy=lines(vertical:false,from:top+(bottom-top)*30/100,to:top+(bottom-top)*70/100,alongFrom:left+6,alongTo:right-6,separator:true)
+    let vx=splitAxis==2 ? []:lines(vertical:true,from:left+(right-left)*30/100,to:left+(right-left)*70/100,alongFrom:top+6,alongTo:bottom-6,separator:true)
+    let hy=splitAxis==1 ? []:lines(vertical:false,from:top+(bottom-top)*30/100,to:top+(bottom-top)*70/100,alongFrom:left+6,alongTo:right-6,separator:true)
     func divider(_ values:[Int])->CGFloat? {
         guard let first=values.first,let last=values.last,last-first<=12 else { return nil }
         return CGFloat(first+last)/2

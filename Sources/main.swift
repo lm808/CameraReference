@@ -104,17 +104,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
               isLightroom(),currentModule()=="develop",UserDefaults.standard.bool(forKey:regionKey("automaticBounds")),
               let memory=placementMemory,memory.layout==overlayLayout,let imageSize=lastImageSize,
               selectionEpoch()==memory.epoch else { return }
-        nextPanelCheck=ProcessInfo.processInfo.systemUptime+1.5
+        let old=detectionSettings.current
+        if let updated=try? detectionSettings.reload(),updated.key != old.key { invalidateAutomaticGeometry();return }
+        let interval=detectionSettings.current.panelCheckIntervalSeconds
+        guard interval>0 else { nextPanelCheck=ProcessInfo.processInfo.systemUptime+1;panelCheckStatus="Background panel checks disabled (interval 0).";return }
+        nextPanelCheck=ProcessInfo.processInfo.systemUptime+interval
         let id=UUID();panelCheckID=id
         let settings=detectionSettings.current
+        let started=ProcessInfo.processInfo.systemUptime
         let seed=overlayLayout == .full ? nil:region
         panelCheckTask=Task.detached(priority:.utility) { [weak self] in
-            let result=await inspectScreenLayout(imageSize:imageSize,settings:settings,layout:memory.layout,seed:seed)
+            let result=await inspectScreenLayout(imageSize:imageSize,settings:settings,layout:memory.layout,seed:seed,maxPixelWidth:1280)
             guard !Task.isCancelled else { return }
-            await self?.finishPanelCheck(result,id:id,memory:memory)
+            await self?.finishPanelCheck(result,id:id,memory:memory,elapsed:ProcessInfo.processInfo.systemUptime-started)
         }
     }
-    @MainActor func finishPanelCheck(_ result:ScreenProbeResult,id:UUID,memory:PlacementMemory) {
+    @MainActor func finishPanelCheck(_ result:ScreenProbeResult,id:UUID,memory:PlacementMemory,elapsed:TimeInterval) {
         guard panelCheckID==id else { return };panelCheckID=nil;panelCheckTask=nil
         guard isLightroom(),pending==nil,screenTask==nil,calibration==nil,
               placementMemory?.epoch==memory.epoch,selectionEpoch()==memory.epoch,
@@ -122,11 +127,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
               let current=currentCaptureWindowFrame(memory.windowID),sameWindowGeometry(current,result.windowFrame) else { return }
         let window=appKitRect(current,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
         let expected=memory.translated(window:window,windowID:memory.windowID,epoch:memory.epoch,settingsKey:memory.settingsKey,layout:memory.layout)
-        if panelBoundsChanged(previous:expected,current:result.uiFrame) {
+        if panelBoundsChanged(previous:expected,current:result.uiFrame,tolerance:4) {
             panelCheckStatus="Background check: UI boundaries changed or could not be validated; placement invalidated."
             invalidateAutomaticGeometry()
             if panel != nil { hide();report("Lightroom viewing area changed. Invoke again to place the overlay.") }
         } else { panelCheckStatus="Background check: UI boundaries unchanged. Repeated toggle can skip capture." }
+        panelCheckStatus += String(format:" 1280px check: %.0f ms elapsed.",elapsed*1000)
     }
     @discardableResult func orderOverlayAboveLightroom()->Bool {
         guard let panel else { return false }
@@ -151,14 +157,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     func buildLayoutMenu(_ menu:NSMenu) {
         layoutSeparator=NSMenuItem.separator();menu.addItem(layoutSeparator!)
-        let full=add("Full",#selector(selectLayout(_:)),to:menu)
+        let full=add("▣  Full",#selector(selectLayout(_:)),to:menu)
         full.representedObject=OverlayLayout.full.rawValue;full.image=layoutMenuIcon(.full);layoutItems[.full]=full
-        for (title,modes) in [("Side-by-side",[OverlayLayout.left,.right]),("Above-and-below",[OverlayLayout.upper,.lower])] {
+        for (title,modes) in [("◧  Side-by-side",[OverlayLayout.left,.right]),("⬒  Above-and-below",[OverlayLayout.upper,.lower])] {
             let parent=NSMenuItem(title:title,action:nil,keyEquivalent:"")
             parent.image=layoutMenuIcon(modes[0]);let child=NSMenu(title:title);parent.submenu=child;menu.addItem(parent)
             layoutGroups[modes[0].group]=parent
             for mode in modes {
-                let item=add(mode.label,#selector(selectLayout(_:)),to:child)
+                let item=add((mode == .left ? "◧":mode == .right ? "◨":mode == .upper ? "⬒":"⬓")+"  "+mode.label,#selector(selectLayout(_:)),to:child)
                 item.representedObject=mode.rawValue;item.image=layoutMenuIcon(mode);layoutItems[mode]=item
             }
         }
@@ -242,6 +248,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        if let url=Bundle.main.url(forResource:"AppIcon",withExtension:"icns") { NSApp.applicationIconImage=NSImage(contentsOf:url) }
         // Carry only calibration and shortcut settings forward; no photo paths or images.
         if !UserDefaults.standard.bool(forKey: "migrated03") {
             if let old = UserDefaults.standard.persistentDomain(forName: "org.local.JPEGReference") {
@@ -405,10 +412,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard hasObservedWindow else { return }
         if current == nil && observedWindowFrame == nil { return }
         if !sameWindowGeometry(current,observedWindowFrame) {
-            hide()
             if let current,let previous=observedWindowFrame,abs(current.width-previous.width)<0.5,abs(current.height-previous.height)<0.5 {
-                // Placement memory is window-local and follows movement without capture.
-            } else { invalidateAutomaticGeometry() }
+                if let panel {
+                    let moved=panel.frame.offsetBy(dx:current.minX-previous.minX,dy:current.minY-previous.minY)
+                    if NSScreen.screens.contains(where:{$0.frame.contains(moved)}) { panel.setFrame(moved,display:true,animate:false) }
+                    else { hide() }
+                }
+            } else { hide();invalidateAutomaticGeometry() }
         }
     }
     @objc func spaceChanged() {
@@ -446,7 +456,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     @objc func checkPhoto() { request(.check) }
     func request(_ target: Destination) {
         guard !regionResetting else { return }
-        cancelPanelCheck();nextPanelCheck=ProcessInfo.processInfo.systemUptime+1.5
+        cancelPanelCheck();nextPanelCheck=ProcessInfo.processInfo.systemUptime+reloadDetectionConfig().panelCheckIntervalSeconds
         cancelScreenInspection(); cancelRequest()
         let token = UUID().uuidString, work = Cancellation()
         pending = token; destination = target; cancellation = work
@@ -663,7 +673,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         do {
             let existing = try exportIdentity(url)
             if existing != nil {
-                let alert = NSAlert(); alert.messageText = "Replace existing extracted JPEG?"
+                let alert = NSAlert();alert.icon=NSApp.applicationIconImage; alert.messageText = "Replace existing extracted JPEG?"
                 alert.informativeText = "The _JpgFromRaw.jpg export beside this RAW already exists."
                 alert.addButton(withTitle: "Cancel"); alert.addButton(withTitle: "Replace")
                 NSApp.activate(ignoringOtherApps: true)
@@ -746,7 +756,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             return next
         }
         catch {
-            let alert=NSAlert();alert.messageText="Detection configuration was not applied"
+            let alert=NSAlert();alert.icon=NSApp.applicationIconImage;alert.messageText="Detection configuration was not applied"
             alert.informativeText=error.localizedDescription+" The last valid settings will be used."
             alert.runModal();return detectionSettings.current
         }
@@ -877,7 +887,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     func askForCalibration(workingAreaTooNarrow:Bool = false) {
-        let alert=NSAlert(); alert.messageText=workingAreaTooNarrow ? "Working area too narrow for automatic placement—enlarge it or calibrate manually." : "Select the reference viewing area"
+        let alert=NSAlert();alert.icon=NSApp.applicationIconImage; alert.messageText=workingAreaTooNarrow ? "Working area too narrow for automatic placement—enlarge it or calibrate manually." : "Select the reference viewing area"
         alert.informativeText="The viewing area could not be identified reliably. Select the entire photo backdrop between the panels, including the margins around the photo, then invoke again. Accepting a region switches to manual mode. Cancelling keeps your current mode and region."
         alert.addButton(withTitle:"Calibrate manually…"); alert.addButton(withTitle:"Cancel")
         NSApp.activate(ignoringOtherApps:true)
@@ -931,7 +941,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
         if result.previewImage == nil { lastProbe=result }; lastLayout=result.summary; report(result.summary)
         if let callback { callback(result); return }
-        let alert=NSAlert(); alert.messageText="Viewing area detection"; alert.informativeText=result.summary
+        let alert=NSAlert();alert.icon=NSApp.applicationIconImage; alert.messageText="Viewing area detection"; alert.informativeText=result.summary
         if result.candidate != nil { alert.addButton(withTitle:"Preview region…") }
         alert.addButton(withTitle:"Close")
         NSApp.activate(ignoringOtherApps:true)
@@ -954,7 +964,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     @objc func showResult() {
         hide(); NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert(); alert.messageText = "Camera Reference"; alert.informativeText = lastResult + "\n\n" + lastTiming; alert.runModal()
+        let alert = NSAlert();alert.icon=NSApp.applicationIconImage; alert.messageText = "Camera Reference"; alert.informativeText = lastResult + "\n\n" + lastTiming; alert.runModal()
     }
     @objc func changeShortcut() {
         hide();calibration?.finish(nil);recording=true
@@ -981,7 +991,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let stack=NSStackView(views:[grid,help]);stack.orientation = .vertical;stack.alignment = .leading;stack.spacing=12
         stack.frame=CGRect(x:0,y:0,width:370,height:105)
         help.widthAnchor.constraint(equalToConstant:370).isActive=true
-        let alert=NSAlert();alert.messageText="Keyboard shortcuts";alert.accessoryView=stack
+        let alert=NSAlert();alert.icon=NSApp.applicationIconImage;alert.messageText="Keyboard shortcuts";alert.accessoryView=stack
         alert.addButton(withTitle:"Save");alert.addButton(withTitle:"Cancel")
         NSApp.activate(ignoringOtherApps:true)
         while true {

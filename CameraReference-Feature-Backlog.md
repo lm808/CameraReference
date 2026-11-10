@@ -3,6 +3,15 @@
 Updated: 10 November 2026.
 Current baseline: 0.9.6 accepted by user as working for most cases; 0.9.7 adds the icon; 0.9.8 is the polish/test build. Historical sections below are retained as development history, not current outstanding requirements. This checklist supersedes their old statuses.
 
+## 0.9.13 — current status
+
+- [x] Configurable3s background interval,0 off;1280px check captures; detector benchmark recorded.
+- [x] Visible overlay follows same-size window movement; accepted ordering/resize safeguards retained.
+- [x] Single window-level floating hover state; explicit application/dialog icon and bundle icon metadata; inline menu diagram fallback.
+- [x] Menu selection restricts split divider search orientation; Full path unchanged.
+- [x] Slim current TESTING.md; useful prior acceptance summarised in VALIDATION.md.
+- [ ] Live icons/Privacy, hover, movement, monitoring overhead and split-auto acceptance. No native UI success claimed from unit tests.
+
 ## 0.9.12 — current status
 
 - [x] Preserve user-confirmed 0.9.11 floating sizing, manual placement, selection/resize invalidation and 178–184 ms repeated toggles as regression targets.

@@ -58,9 +58,9 @@ func regionPreferenceKey(_ key:String,layout:OverlayLayout)->String {
     layout == .full ? key:"split.\(layout.rawValue).\(key)"
 }
 
-func panelBoundsChanged(previous:CGRect?,current:CGRect?)->Bool {
+func panelBoundsChanged(previous:CGRect?,current:CGRect?,tolerance:CGFloat=1)->Bool {
     guard let previous,let current else { return true }
-    return abs(previous.minX-current.minX)>1 || abs(previous.minY-current.minY)>1 || abs(previous.width-current.width)>1 || abs(previous.height-current.height)>1
+    return abs(previous.minX-current.minX)>tolerance || abs(previous.minY-current.minY)>tolerance || abs(previous.width-current.width)>tolerance || abs(previous.height-current.height)>tolerance
 }
 func overlayNeedsOrdering(order:[Int],overlay:Int,lightroom:Int)->Bool {
     guard let lr=order.firstIndex(of:lightroom) else { return false }

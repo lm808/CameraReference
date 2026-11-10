@@ -15,7 +15,7 @@ enum FeaturePermission {
             } else { _ = CGRequestScreenCaptureAccess() }
             if granted { return true }
         }
-        let alert=NSAlert(); alert.messageText="Allow \(name) for Camera Reference"
+        let alert=NSAlert();alert.icon=NSApp.applicationIconImage; alert.messageText="Allow \(name) for Camera Reference"
         alert.informativeText=self == .accessibility
             ? "Read-only layout inspection needs Accessibility access. Enable Camera Reference in Privacy & Security → Accessibility, then try again. Manual calibration does not need this permission."
             : "Screen-based detection needs Screen Recording access to inspect Lightroom’s window in memory. No screenshot is saved. Enable Camera Reference in Privacy & Security → Screen Recording (or Screen & System Audio Recording), then try again. macOS may ask you to quit and reopen the app."

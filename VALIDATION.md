@@ -73,3 +73,17 @@ Build and full regression suite passed. New tests cover half-width/full-height f
 ## 0.9.12
 
 Build and full regression suite passed. New checks verify all five eagerly rendered menu masks are nonempty/distinct, title-bar dragging moves the floating window at any zoom, chrome leaves full-size photo geometry unchanged, legacy animation booleans parse without affecting settings, changed/missing panel bounds invalidate placement, and ordering decisions leave other windows above Lightroom. These are geometry/state/rendering checks, not live cross-process acceptance. Full single-photo and split raster regressions pass unchanged. User 0.9.11 test results are preserved below the fresh 0.9.12 list; Clear region was confirmed working and not treated as a failure. Background polling, native menu visibility, hover chrome, macOS cross-app window order/Spaces, latency and idle cost need the new live tests. No app installation or Lightroom interaction was performed.
+
+## User acceptance through 0.9.12
+
+0.9.11: accepted RAM/placement reuse, movement/resize invalidation, selection/restart handling, manual calibration/cancel/clear behaviour, landscape/portrait floating size and reload. Repeats178/184ms; first1364ms. User later clarified clearing region does force correct detection; the issue was unobserved panel changes, not clearing.
+
+0.9.12: accepted hiding layout section in manual mode, manual placement, calibration/clear semantics, background panel-change invalidation, floating size/reload, title-bar dragging while zoomed, Cmd-scroll and pan, cross-app overlay ordering, dialogs/fullscreen/Space safeguards. Repeated197ms (bridge154, image3). Outstanding: diagrams absent; floating hover inconsistent/flickering and wrong when cursor already inside; popup/Privacy app icon missing. Idle overhead and final legacy-config/no-animation checks were unchecked. Useful history retained here; obsolete setup instructions and duplicate release descriptions removed from TESTING.md at user request.
+
+## 0.9.13
+
+Full regression suite passed after split-axis, low-resolution capture, interval and chrome changes. Full single-photo detector branch is unchanged; explicit split orientation restricts divider scanning and raster tests cover crossed separators. Existing tests retain wrong-orientation fallback, four pane placement, calibration isolation, source safety and geometry. Icon assignment is explicit in app/alerts, bundle metadata uses AppIcon.icns, and inline menu symbols supplement native item images; native Privacy cache and menu rendering remain acceptance items. Floating hover uses one window-coordinate sample every80ms only while a float exists, including initial display and drag tracking; it does not capture pixels.
+
+Supplied 900x702pt screenshot benchmark: 1800px fresh detector median47.16ms vs1280px33.57ms over five runs. Mapped UI bounds differed under1pt. This is one image's detector timing, not live ScreenCaptureKit/power measurement. Background capture is capped at1280px, with4pt comparison tolerance; normal placement capture remains unchanged. First/repeated live timing and idle CPU require acceptance.
+
+Final 0.9.13 build/signature/plist checks and config follow-up tests passed. Launch Services registration of the built app refreshed successfully without TCC reset or launching the companion. Privacy icon display still requires reopening System Settings and native acceptance.

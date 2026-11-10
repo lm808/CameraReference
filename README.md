@@ -1,6 +1,16 @@
-# Camera Reference 0.9.12 — menu, floating chrome and overlay behaviour
+# Camera Reference 0.9.13 — split guidance and lighter monitoring
 
 Quit the old companion and open `build/CameraReference.app`. For RAM reuse, reload the updated `CameraReference.lrplugin` (bridge 0.5.0) and run File → Plug-in Extras → Start / restart Camera Reference bridge. Older bridges remain compatible but disable caching. Nothing is installed or launched by the build scripts.
+
+## New in 0.9.13
+
+`panelCheckIntervalSeconds` is configurable (default3,0 disables, maximum3600) and added to existing detection.conf files. Turning checks off leaves normal detection, calibration and window geometry monitoring intact. Clear region forces detection after internal-panel changes when monitoring is off. Background checks capture at most1280px width and compare with4pt tolerance; normal placement detection keeps its existing resolution. A supplied screenshot showed detector time47→34ms with under1pt bounds difference; live capture/power savings remain unmeasured.
+
+Visible overlays follow Lightroom movement using the existing0.2s geometry timer. Resizing and display/Space transitions retain safeguards. Floating chrome uses one window-level pointer sample, including when the cursor starts inside, rather than competing child tracking events. Its80ms timer exists only while a float is open and takes no screenshots.
+
+Layout titles now include inline pane symbols as a fallback for missing native item images. The bundle icon is explicitly loaded into the application and alerts; macOS Privacy icon caching still needs live verification. Manual layout hiding and accepted placement/sizing are preserved.
+
+Split-auto detection searches only vertical dividers for Side-by-side and only horizontal dividers for Above-and-below; chosen pane then determines the target rectangle. Full single-photo detection remains unchanged. This narrows the divider search, not the outer-panel search, and retains manual fallback when the selected orientation has no supported divider. Wipe is unsupported. TESTING.md now contains only current acceptance checks; useful history is in VALIDATION.md.
 
 ## New in 0.9.12
 

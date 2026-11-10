@@ -32,22 +32,6 @@ final class ReferenceView: NSView, NSMenuItemValidation {
     var movesWindowAtFit=false
     var navigation=ImageNavigation()
     private var lastDrag:CGPoint?
-    private var hoverTracking:NSTrackingArea?
-    override func updateTrackingAreas() {
-        if let hoverTracking { removeTrackingArea(hoverTracking) }
-        if movesWindowAtFit {
-            hoverTracking=NSTrackingArea(rect:.zero,options:[.activeAlways,.inVisibleRect,.mouseMoved,.mouseEnteredAndExited],owner:self)
-            addTrackingArea(hoverTracking!)
-        }
-        super.updateTrackingAreas()
-    }
-    override func mouseMoved(with event:NSEvent) {
-        (window as? FloatingPanel)?.revealChrome(true)
-    }
-    override func mouseEntered(with event:NSEvent) { mouseMoved(with:event) }
-    override func mouseExited(with event:NSEvent) {
-        if let window,!window.frame.contains(NSEvent.mouseLocation) { (window as? FloatingPanel)?.revealChrome(false) }
-    }
     private(set) var toast: String?
     private var toastTimer: Timer?
     func showToast(_ message:String, duration:TimeInterval=3) {
@@ -218,6 +202,11 @@ final class FloatingPanel:OverlayPanel {
     private let chrome=FloatingChrome()
     private let caption=ChromeLabel(labelWithString:"")
     private var chromeVisible=false
+    private var hoverTimer:Timer?
+    override func orderFrontRegardless() { super.orderFrontRegardless();updateHover() }
+    private func updateHover() { revealChrome(isVisible && frame.contains(NSEvent.mouseLocation)) }
+    override func close() { hoverTimer?.invalidate();hoverTimer=nil;super.close() }
+    deinit { hoverTimer?.invalidate() }
     override var title:String { didSet { caption.stringValue=title } }
     func installChrome() {
         titleVisibility = .hidden;titlebarAppearsTransparent=true
@@ -232,6 +221,8 @@ final class FloatingPanel:OverlayPanel {
             caption.autoresizingMask=[.width];chrome.addSubview(caption)
         }
         chrome.alphaValue=0
+        hoverTimer=Timer(timeInterval:0.08,repeats:true) { [weak self] _ in self?.updateHover() }
+        RunLoop.main.add(hoverTimer!,forMode:.common)
         for type in [NSWindow.ButtonType.closeButton,.miniaturizeButton,.zoomButton] { standardWindowButton(type)?.alphaValue=0;standardWindowButton(type)?.isEnabled=false }
     }
     func revealChrome(_ visible:Bool) {

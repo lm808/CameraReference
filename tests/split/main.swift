@@ -64,3 +64,11 @@ assert(overlayNeedsOrdering(order:[9,4,5,3],overlay:5,lightroom:4))
 assert(overlayNeedsOrdering(order:[9,4,3],overlay:5,lightroom:4))
 assert(!overlayNeedsOrdering(order:[9,5,3],overlay:5,lightroom:4))
 print("PASS: panel changes invalidate placement; overlay ordering preserves windows above Lightroom")
+
+assert(try! DetectionConfig.parse("").panelCheckIntervalSeconds == 3)
+assert(try! DetectionConfig.parse("panelCheckIntervalSeconds = 0").panelCheckIntervalSeconds == 0)
+assert(try! DetectionConfig.parse("panelCheckIntervalSeconds = 12").panelCheckIntervalSeconds == 12)
+do { _ = try DetectionConfig.parse("panelCheckIntervalSeconds = -1");fatalError("Negative interval accepted") } catch {}
+assert(!panelBoundsChanged(previous:viewport,current:viewport.offsetBy(dx:2,dy:2),tolerance:4))
+assert(panelBoundsChanged(previous:viewport,current:viewport.offsetBy(dx:10,dy:0),tolerance:4))
+print("PASS: panel interval defaults/off/range and low-resolution quantisation tolerance")

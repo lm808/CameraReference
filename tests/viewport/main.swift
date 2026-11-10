@@ -225,3 +225,11 @@ for mode:OverlayLayout in [.left,.right,.upper,.lower] {
  expect(seeded.bounds != nil,"Calibrated pane validation failed")
 }
 print("PASS: explicit split raster path selects all four panes; wrong orientation/single view fall back; calibrated seeds validate")
+
+// Selected orientation ignores unrelated perpendicular UI lines, retaining evidence on its own axis.
+var crossed=fixture(bg:[0,0,0],split:1).rgba
+for y in 319...321 { for x in 120..<780 { for c in 0..<3 { crossed[(y*900+x)*4+c]=90 } } }
+let crossRaster=EdgeRaster(width:900,height:650,rgba:crossed)
+expect(detectSplitViewport(in:crossRaster,layout:.left).bounds != nil,"Left/right choice should restrict divider search to vertical")
+expect(detectSplitViewport(in:crossRaster,layout:.upper).bounds != nil,"Upper/lower choice should restrict divider search to horizontal")
+print("PASS: selected split orientation constrains divider search; Full path remains independent")
