@@ -1,6 +1,14 @@
-# Camera Reference 0.9.13 — split guidance and lighter monitoring
+# Camera Reference 0.9.14 — robust split boundaries
 
 Quit the old companion and open `build/CameraReference.app`. For RAM reuse, reload the updated `CameraReference.lrplugin` (bridge 0.5.0) and run File → Plug-in Extras → Start / restart Camera Reference bridge. Older bridges remain compatible but disable caching. Nothing is installed or launched by the build scripts.
+
+## New in 0.9.14
+
+Split detection validates the combined viewport before selecting a pane, rather than preferring an inner gap. Divider evidence is checked near both opposite margins: top/bottom for side-by-side, left/right for stacked layouts, avoiding photo edges and one-sided captions. Saved auto hints must validate against the combined viewport too. Very narrow split candidates fall back to manual calibration. Full single-photo detection retains its existing path.
+
+The overlay is marked transient for Mission Control/Exposé; normal-level Lightroom-relative ordering is retained, but the timer does not reinsert a panel suppressed from the onscreen window list. Native overview/exit behaviour needs acceptance.
+
+If a background check dismisses the overlay, Bridge diagnostics now includes whether bounds changed or could not be validated, the previous/checked bounds, and the detector report. This helps distinguish real panel changes from detection disagreements. See the focused TESTING.md list; no plugin update.
 
 ## New in 0.9.13
 

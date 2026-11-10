@@ -87,3 +87,15 @@ Full regression suite passed after split-axis, low-resolution capture, interval 
 Supplied 900x702pt screenshot benchmark: 1800px fresh detector median47.16ms vs1280px33.57ms over five runs. Mapped UI bounds differed under1pt. This is one image's detector timing, not live ScreenCaptureKit/power measurement. Background capture is capped at1280px, with4pt comparison tolerance; normal placement capture remains unchanged. First/repeated live timing and idle CPU require acceptance.
 
 Final 0.9.13 build/signature/plist checks and config follow-up tests passed. Launch Services registration of the built app refreshed successfully without TCC reset or launching the companion. Privacy icon display still requires reopening System Settings and native acceptance.
+
+## User acceptance of 0.9.13
+
+Accepted: menu/app icons, hover/fade including cursor already inside, floating drag/zoom/pan and size/reload, overlay following in ordinary window use, background3s/off behaviour, cache reuse and Full switching. Repeated148ms (bridge102, image3). Mission Control/Exposé remains faulty. Side-by-side fails with wrong pane/gap/tiny portrait overlays; a later landscape success does not retire the defect. Stacked works but needs the same robustness checks. User also reports the tiny overlay disappears quickly; a periodic boundary rejection is plausible but unconfirmed without diagnostics. Interval6/idle-cost and wrong-orientation tests remained unverified.
+
+## 0.9.14
+
+Split-only search prefers the combined supported viewport rather than the innermost narrow gap, rejects combined candidates under25% of either window dimension, and requires divider transitions in both opposite margin bands. Full's single-photo branch retains its existing choices. Seeded auto panes must validate against a complete two-pane viewport; tiny old-gap hints cannot bypass validation. Synthetic portrait/landscape-like pairs cover all four panes and resolution consistency. The0.9.13 baseline rejects these fixtures; the new detector selects correct panes. The supplied screenshot's exact path is unavailable locally (a similarly named file is a different screenshot), so no exact pixel reproduction is claimed.
+
+Overlay uses public AppKit transient/ignoresCycle behaviour, intended to hide during Mission Control, and ordering reconciliation does not reinsert an already shown panel absent from the onscreen list. Native overview/return behaviour remains acceptance work. Background rejection diagnostics now distinguish changed from unvalidated bounds and include before/after UI plus detector report; they do not claim the user's disappearance cause is proven.
+
+Full regression suite passed for the margin/combined-viewport change. Final targeted viewport tests also passed after seed hardening and normal/1280px consistency additions; final app build, signature, plist and diff checks passed. No native Mission Control or Lightroom acceptance is claimed.

@@ -233,3 +233,46 @@ let crossRaster=EdgeRaster(width:900,height:650,rgba:crossed)
 expect(detectSplitViewport(in:crossRaster,layout:.left).bounds != nil,"Left/right choice should restrict divider search to vertical")
 expect(detectSplitViewport(in:crossRaster,layout:.upper).bounds != nil,"Upper/lower choice should restrict divider search to horizontal")
 print("PASS: selected split orientation constrains divider search; Full path remains independent")
+
+// Portrait photos leave a narrow central gap. Photo edges must not become
+// either the combined viewport or the internal divider.
+func portraitPair(orientation:Int)->EdgeRaster {
+    let width=1600,height=1000
+    var bytes=[UInt8](repeating:255,count:width*height*4)
+    for y in 0..<height { for x in 0..<width {
+        var color:[UInt8]=[45,45,45]
+        if x>=200 && x<1400 && y>=80 && y<900 { color=[0,0,0] }
+        if x==199 || x==1400 || y==79 || y==900 { color=[90,90,90] }
+        let photo = orientation==1
+          ? ((x>=300 && x<700 || x>=900 && x<1300) && y>=96 && y<884)
+          : (x>=216 && x<1384 && (y>=110 && y<460 || y>=520 && y<870))
+        if photo { color=[UInt8(80+(x/11)%70),UInt8(80+(y/13)%70),110] }
+        if orientation==1 && abs(x-800)<=1 && y>=80 && y<900 { color=[60,60,60] }
+        if orientation==2 && abs(y-490)<=1 && x>=200 && x<1400 { color=[60,60,60] }
+        for c in 0..<3 { bytes[(y*width+x)*4+c]=color[c] }
+    } }
+    return EdgeRaster(width:width,height:height,rgba:bytes)
+}
+for mode:OverlayLayout in [.left,.right,.upper,.lower] {
+    let found=detectSplitViewport(in:portraitPair(orientation:mode.group),layout:mode)
+    expect(found.bounds != nil,"Portrait pair rejected: \(mode): \(found.summary)")
+    let expected=mode.pane(in:CGRect(x:200,y:80,width:1200,height:820),vertical:800,horizontal:490)!
+    expect(abs(found.bounds!.minX-expected.minX)<3 && abs(found.bounds!.minY-expected.minY)<3 && abs(found.bounds!.width-expected.width)<3 && abs(found.bounds!.height-expected.height)<3,"Photo edge/gap chosen: \(mode) \(found.summary)")
+}
+print("PASS: portrait and landscape-like pairs select entire left/right/upper/lower panes, not photo edges or gaps")
+
+let staleGap=CGRect(x:700,y:80,width:100,height:820)
+let corrected=detectSplitViewport(in:portraitPair(orientation:1),layout:.left,seed:staleGap)
+expect(corrected.bounds != nil && corrected.bounds!.width>590 && corrected.bounds!.minX<203,"Stale gap calibration hint reused as a pane")
+print("PASS: stale narrow-gap seed cannot bypass combined-viewport validation")
+for mode:OverlayLayout in [.left,.right,.upper,.lower] {
+    let full=portraitPair(orientation:mode.group),w=1280,h=800
+    var bytes=[UInt8](repeating:0,count:w*h*4)
+    for y in 0..<h { for x in 0..<w { for c in 0..<4 { bytes[(y*w+x)*4+c]=full.rgba[((y*full.height/h)*full.width+x*full.width/w)*4+c] } } }
+    let low=detectSplitViewport(in:EdgeRaster(width:w,height:h,rgba:bytes),layout:mode)
+    let high=detectSplitViewport(in:full,layout:mode)
+    expect(low.bounds != nil && high.bounds != nil,"Resolution-dependent split rejection")
+    let r=low.bounds!,normalized=CGRect(x:r.minX/0.8,y:r.minY/0.8,width:r.width/0.8,height:r.height/0.8)
+    expect(!panelBoundsChanged(previous:high.bounds,current:normalized,tolerance:4),"Background resolution invalidates stable split")
+}
+print("PASS: split placement agrees across normal and 1280px background resolution")

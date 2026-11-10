@@ -1,35 +1,26 @@
-# Camera Reference 0.9.13 — current tests
+# Camera Reference 0.9.14 — focused tests
 
-Quit the previous app, open `build/CameraReference.app`, confirm **0.9.13**. Bridge **0.5.0** is unchanged. Mark `[x]` for pass and add notes to failures. Earlier acceptance and timing history is summarised in VALIDATION.md.
+Quit the old app, open `build/CameraReference.app`, confirm0.9.14. Bridge0.5.0 is unchanged. Prior acceptance/results are in VALIDATION.md.
 
-## Fixes
+## Split placement
 
-- [ ] Auto mode: layout diagrams/symbols are visible beside Full, Side-by-side, Above-and-below and each pane. Manual mode hides that section; existing manual placement still works.
-- [ ] Popup dialogs show the camera app icon. Reopen macOS Privacy settings and check its icon (do not reset permissions).
-- [ ] Open a floating photo with the cursor already inside its eventual frame: title/controls appear. Moving across photo/title/controls causes no flicker. Leaving anywhere fades them out; re-entering reveals them.
-- [ ] Title-bar drag moves a zoomed float; photo drag pans. At Fit, photo drag moves it. Cmd-scroll/pan, initial portrait/landscape sizing and close/reload remain correct.
-- [ ] Move Lightroom with overlay visible: overlay follows without new capture or dismissal (up to0.2s lag). Resize/minimise/Space changes still use safeguards. Other apps cover the overlay naturally; it stays above Lightroom without stealing focus.
+Use Lightroom Fit and matching app layout selection. Clear region in auto mode before each fresh-detection check.
 
-## Background checks and speed
+- [ ] Portrait side-by-side: Left covers the full left pane and Right the full right pane—no tiny photograph or central-gap overlay.
+- [ ] Landscape side-by-side: repeat Left/Right on several images. Earlier failures remain a regression target even where0.9.13 sometimes worked.
+- [ ] Above-and-below: Upper/Lower select full panes for portrait and landscape photos.
+- [ ] Leave each correct overlay visible at least10 seconds with `panelCheckIntervalSeconds = 3`. It should not vanish with unchanged panels. If it does, copy Developer tools → Bridge diagnostics immediately; the rejection reason and before/after bounds are recorded.
+- [ ] Hide/show a Lightroom panel: background checks still invalidate genuinely changed placement. Clear region remains the immediate fallback; manual calibration still uses the selected backdrop.
+- [ ] Wrong orientation/no supported divider falls back to calibration. Very narrow split areas may also require calibration. Full single-photo alignment remains unchanged.
 
-Settings → Edit config file: `panelCheckIntervalSeconds = 3` is added to existing configs. Save changes; values0...3600 are supported.
+## Mission Control / Exposé
 
-- [ ] Default3: with auto placement cached and Lightroom active, change an internal panel; wait about4s. Background check invalidates placement; next invocation redetects correctly. Bridge diagnostics show1280px check timing.
-- [ ] Set0: panel checks stop, while ordinary overlay detection, manual calibration, window movement/resize tracking and JPEG RAM reuse still work. After internal-panel changes, Clear region forces fresh detection without changing auto/manual preference.
-- [ ] Set6: checks resume at the longer interval without restarting. Return to3. Manual mode/other foreground apps have no background captures. Watch for false invalidations or idle CPU impact.
-- [ ] Repeated same-photo toggles show RAM and placement cache hits, with capture skipped. Compare with0.9.12's197ms. No overlay animation; legacy `overlayAnimation` booleans remain harmless.
+- [ ] With an overlay visible, enter Mission Control or App Exposé: no separate/orphan overlay floating over thumbnails. Exit to the same Lightroom window: check correct visibility/alignment.
+- [ ] Repeat with another app in front, a floating display open, fullscreen Lightroom and a Space switch. Ordinary app switching still lets other windows cover the overlay; movement follows Lightroom. Resize/Space safeguards must still prevent stale placement.
 
-Repeated timing:
+## Remaining checks
 
-Background check timing / idle CPU observations:
+- [ ] Repeated toggles still report RAM/placement hits and skip capture; compare with0.9.13's148ms.
+- [ ] Set panel interval6, verify resumed monitoring; set0, verify no periodic capture, then restore3. Check idle overhead.
 
-## Split auto — priority new testing
-
-Choose matching layouts in Lightroom and the app. Enable Automatic viewing area; Clear region before testing fresh detection. Use Fit zoom. Full mode remains the regression baseline.
-
-- [ ] Side-by-side → Left then Right: fresh detection uses vertical divider evidence and fits the chosen pane, for landscape and portrait photos.
-- [ ] Above-and-below → Upper then Lower: fresh detection uses horizontal divider evidence and fits the chosen pane.
-- [ ] Switch between Full and split selections: no old pane placement reused; Full alignment remains correct.
-- [ ] With no divider of the selected orientation, detection offers calibration rather than guessing. Wipe layouts remain unsupported. Manual calibration still selects the chosen UI backdrop at its actual window-relative position.
-
-For split failures, provide diagnostics and a screenshot with the overlay dismissed, retaining the same window/panel arrangement. Background changes are periodic, not immediate; Clear region remains the immediate fallback.
+Failures: include selected layout/pane, Bridge diagnostics, and a screenshot with overlay dismissed but window/panels unchanged. For disappearance, copy diagnostics before another invocation overwrites the evidence.

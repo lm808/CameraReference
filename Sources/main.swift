@@ -128,13 +128,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let window=appKitRect(current,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
         let expected=memory.translated(window:window,windowID:memory.windowID,epoch:memory.epoch,settingsKey:memory.settingsKey,layout:memory.layout)
         if panelBoundsChanged(previous:expected,current:result.uiFrame,tolerance:4) {
-            panelCheckStatus="Background check: UI boundaries changed or could not be validated; placement invalidated."
+            let reason=result.uiFrame == nil ? "UI boundaries could not be validated":"UI boundaries changed"
+            panelCheckStatus="Background check dismissed/invalidated placement: \(reason).\nPrevious UI: \(String(describing:expected)); checked UI: \(String(describing:result.uiFrame)).\n"+result.summary
             invalidateAutomaticGeometry()
-            if panel != nil { hide();report("Lightroom viewing area changed. Invoke again to place the overlay.") }
+            if panel != nil { hide();report("Overlay dismissed: \(reason.lowercased()). Invoke again; Bridge diagnostics records the boundary check.") }
         } else { panelCheckStatus="Background check: UI boundaries unchanged. Repeated toggle can skip capture." }
         panelCheckStatus += String(format:" 1280px check: %.0f ms elapsed.",elapsed*1000)
     }
-    @discardableResult func orderOverlayAboveLightroom()->Bool {
+    @discardableResult func orderOverlayAboveLightroom(initial:Bool=false)->Bool {
         guard let panel else { return false }
         guard let owner=NSWorkspace.shared.runningApplications.first(where:isLightroomApp),
               let rows=CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements],kCGNullWindowID) as? [[String:Any]] else { return false }
@@ -151,6 +152,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
         guard let number=(lightroom?[kCGWindowNumber as String] as? NSNumber)?.intValue else { return false }
         let order=windows.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.intValue }
+        if !initial && !order.contains(panel.windowNumber) { return true }
         if overlayNeedsOrdering(order:order,overlay:panel.windowNumber,lightroom:number) { panel.order(.above,relativeTo:number) }
         return true
     }
@@ -570,7 +572,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         p.animationBehavior = .none
         p.level = .normal; p.isOpaque = true; p.backgroundColor = .black
         p.hasShadow = false; p.hidesOnDeactivate = false; p.isReleasedWhenClosed = false
-        p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
         let view = ReferenceView(frame: NSRect(origin: .zero, size: p.frame.size))
         view.showIndicator = true
         view.autoresizingMask = [.width, .height]
@@ -578,7 +580,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         view.refresh = { [weak self] in self?.reloadOverlay() }
         view.image = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
         p.contentView = view; panel = p;
-        guard orderOverlayAboveLightroom() else { hide();report("Lightroom window unavailable; invoke again when it is visible.");return nil }
+        guard orderOverlayAboveLightroom(initial:true) else { hide();report("Lightroom window unavailable; invoke again when it is visible.");return nil }
         let requested=region.insetBy(dx:-1,dy:-1)
         p.setFrame(requested,display:true)
         lastLayout += "\nOverlay panel requested (AppKit): \(requested). Actual: \(p.frame)."

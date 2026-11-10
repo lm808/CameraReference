@@ -169,10 +169,16 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
 
 // Split-only boundary validation. Full mode never calls this path.
 func detectSplitViewport(in raster:EdgeRaster,layout:OverlayLayout,seed:CGRect?=nil,sideSearchPercent:Double=45)->ViewportDetection {
-    if let seed {
-        let result=detectViewport(in:raster,knownBounds:seed,singlePhoto:true,sideSearchPercent:50)
-        if let found=result.bounds,abs(found.minX-seed.minX)<3,abs(found.minY-seed.minY)<3,abs(found.maxX-seed.maxX)<3,abs(found.maxY-seed.maxY)<3 {
-            return ViewportDetection(bounds:found,verticalDivider:nil,horizontalDivider:nil,background:result.background,summary:"Validated calibrated \(layout.label) pane UI borders.\n"+result.summary)
+    if let seed,seed.width*(layout.group==1 ? 2:1)>=CGFloat(raster.width)*0.25,seed.height*(layout.group==2 ? 2:1)>=CGFloat(raster.height)*0.25 {
+        // A pane hint must also validate as part of a complete two-pane viewport.
+        // Never accept a stale narrow gap merely because its own four edges exist.
+        var combined=seed
+        if layout.group==1 { combined.size.width *= 2;if layout == .right { combined.origin.x -= seed.width } }
+        else { combined.size.height *= 2;if layout == .lower { combined.origin.y -= seed.height } }
+        let result=detectViewport(in:raster,knownBounds:combined,singlePhoto:false,sideSearchPercent:sideSearchPercent,splitAxis:layout.group)
+        if let full=result.bounds,let found=layout.pane(in:full,vertical:result.verticalDivider,horizontal:result.horizontalDivider),
+           abs(found.minX-seed.minX)<3,abs(found.minY-seed.minY)<3,abs(found.maxX-seed.maxX)<3,abs(found.maxY-seed.maxY)<3 {
+            return ViewportDetection(bounds:found,verticalDivider:nil,horizontalDivider:nil,background:result.background,summary:"Calibrated pane validated against combined viewport and divider.\n"+result.summary)
         }
     }
     let outer=detectViewport(in:raster,singlePhoto:false,sideSearchPercent:sideSearchPercent,splitAxis:layout.group)

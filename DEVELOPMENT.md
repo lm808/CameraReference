@@ -56,3 +56,7 @@ Overlay is normal-level and uses AppKit order(_:relativeTo:) above Lightroom's v
 ## 0.9.13
 
 Authorised combined scope includes menu-guided split work and slimming TESTING.md. SplitAxis argument defaults0 so existing callers/Full remain unchanged; selected split group searches only its corresponding divider orientation. Low-resolution checks may flag changes but never supply displayed placement; foreground detection stays normal resolution. Capture raster dimensions already prevent cache reuse across resolutions. Valid legacy animation values remain ignored. Manual mode/pane storage was not redesigned. Visible overlay translates on same-size movement; it is still dismissed on resize/Space/display changes. macOS icon metadata/Launch Services repair does not reset TCC.
+
+## 0.9.14 Mission Control
+
+Use public `.transient` + `.ignoresCycle` on the normal-level overlay; do not use private Dock notifications. Apple documents transient as hidden in Mission Control: https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct/transient . Ordering has an explicit initial-show path; subsequent reconciliation does not reinsert a window missing from the onscreen list. Fullscreen/Space guards remain. Native verification is required.

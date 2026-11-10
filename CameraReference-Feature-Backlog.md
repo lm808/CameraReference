@@ -3,6 +3,15 @@
 Updated: 10 November 2026.
 Current baseline: 0.9.6 accepted by user as working for most cases; 0.9.7 adds the icon; 0.9.8 is the polish/test build. Historical sections below are retained as development history, not current outstanding requirements. This checklist supersedes their old statuses.
 
+## 0.9.14 — current status
+
+- [x] Preserve accepted0.9.13 icons, hover, navigation, ordinary following and148ms cache-hit result as regression baselines.
+- [x] Split combined-viewport selection, opposing-margin divider evidence and stale-gap seed rejection; Full path protected.
+- [x] Mission Control transient behaviour and no timer reinsertion of system-suppressed overlay.
+- [x] Explicit background dismissal diagnostics, including previous/checked bounds and detector evidence.
+- [ ] Native split portrait/landscape/all-pane and Mission Control acceptance; original screenshot unavailable for exact pixel reproduction.
+- [ ] Monitor stable overlays across background checks; interval6/idle-cost tests remain.
+
 ## 0.9.13 — current status
 
 - [x] Configurable3s background interval,0 off;1280px check captures; detector benchmark recorded.

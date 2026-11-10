@@ -120,6 +120,7 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
         var accepted=[(CGRect,Double)](),checked=0
         for l in ls { for r in rs { for t in ts { for b in bs {
             let rect=CGRect(x:l,y:t,width:r-l,height:b-t);checked+=1
+            if splitAxis != 0 && (rect.width<CGFloat(w)*0.25 || rect.height<CGFloat(h)*0.25) { continue }
             if let score=rectangleScore(rect) { accepted.append((rect,score)) }
         } } } }
         accepted.sort { $0.1==$1.1 ? $0.0.width*$0.0.height<$1.0.width*$1.0.height : $0.1>$1.1 }
@@ -140,7 +141,11 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
         let supported=accepted.filter { strongest.1-$0.1<0.08 }
         let outer=supported.max { $0.0.width*$0.0.height<$1.0.width*$1.0.height }!
         let surround=rgb(Int(outer.0.minX)+4,Int(outer.0.minY)+4)
-        let best=supported.filter { distance(rgb(Int($0.0.minX)+4,Int($0.0.minY)+4),surround)<=8 }.min { $0.0.width*$0.0.height<$1.0.width*$1.0.height }!
+        let sameSurround=supported.filter { distance(rgb(Int($0.0.minX)+4,Int($0.0.minY)+4),surround)<=8 }
+        // Split mode needs the combined viewport, never the innermost gap rectangle.
+        let best = splitAxis == 0
+            ? sameSurround.min { $0.0.width*$0.0.height<$1.0.width*$1.0.height }!
+            : sameSurround.max { $0.0.width*$0.0.height<$1.0.width*$1.0.height }!
         let distinct=accepted.first { candidate in
             let intersection=candidate.0.intersection(best.0)
             let overlap=intersection.isNull ? 0:intersection.width*intersection.height
@@ -172,8 +177,26 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
         let samples=[rgb(left+5,top+5),rgb(right-6,top+5),rgb(left+5,bottom-6),rgb(right-6,bottom-6)]
         return ViewportDetection(bounds:rect,verticalDivider:nil,horizontalDivider:nil,background:representative(samples).0.map{$0/255},summary:searchReport+"\nSingle-photo mode: UI bounds \(rect). Internal divider search disabled.")
     }
-    let vx=splitAxis==2 ? []:lines(vertical:true,from:left+(right-left)*30/100,to:left+(right-left)*70/100,alongFrom:top+6,alongTo:bottom-6,separator:true)
-    let hy=splitAxis==1 ? []:lines(vertical:false,from:top+(bottom-top)*30/100,to:top+(bottom-top)*70/100,alongFrom:left+6,alongTo:right-6,separator:true)
+    func marginLines(vertical:Bool)->[Int] {
+        let start=vertical ? left:top,end=vertical ? right:bottom
+        let near=vertical ? top:left,far=vertical ? bottom:right
+        var found=[Int]()
+        for i in (start+(end-start)*30/100)..<(start+(end-start)*70/100) {
+            var support=[0,0]
+            // Require a transition at BOTH opposite margins. Photo edges terminate
+            // before these bands; captions near one margin cannot satisfy both.
+            for side in 0..<2 { for offset in 2...7 {
+                let p=side==0 ? near+offset:far-1-offset
+                let a=vertical ? rgb(i-1,p):rgb(p,i-1)
+                let b=vertical ? rgb(i,p):rgb(p,i)
+                if distance(a,b)>=3 { support[side]+=1 }
+            } }
+            if support[0]>=4 && support[1]>=4 { found.append(i) }
+        }
+        return found
+    }
+    let vx=splitAxis==2 ? []:(splitAxis==1 ? marginLines(vertical:true):lines(vertical:true,from:left+(right-left)*30/100,to:left+(right-left)*70/100,alongFrom:top+6,alongTo:bottom-6,separator:true))
+    let hy=splitAxis==1 ? []:(splitAxis==2 ? marginLines(vertical:false):lines(vertical:false,from:top+(bottom-top)*30/100,to:top+(bottom-top)*70/100,alongFrom:left+6,alongTo:right-6,separator:true))
     func divider(_ values:[Int])->CGFloat? {
         guard let first=values.first,let last=values.last,last-first<=12 else { return nil }
         return CGFloat(first+last)/2
