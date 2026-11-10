@@ -1,6 +1,20 @@
-# Camera Reference 0.9.10 — current-photo RAM cache and focused fixes
+# Camera Reference 0.9.11 — fast toggling and explicit split panes
 
 Quit the old companion and open `build/CameraReference.app`. For RAM reuse, reload the updated `CameraReference.lrplugin` (bridge 0.5.0) and run File → Plug-in Extras → Start / restart Camera Reference bridge. Older bridges remain compatible but disable caching. Nothing is installed or launched by the build scripts.
+
+## New in 0.9.11
+
+The layout section directly below Show overlay offers **Full**, **Side-by-side → Left / Right**, and **Above-and-below → Upper / Lower**, with pane diagrams and checkmarks. Full uses the existing single-photo detector and original calibration keys. Each split pane has separate calibration and automatic/manual preference; a newly selected split pane starts in manual mode. Selecting a menu layout does not change Lightroom's view: select the matching layout in Lightroom too. Split automatic placement requires a supported divider or validated previously calibrated pane; otherwise it offers calibration. Wipe views are not supported.
+
+Calibrate the entire chosen pane's UI backdrop, including photo margins, between panels and divider. Its position is stored relative to the Lightroom window. Successful calibration turns off Automatic viewing area for that layout/pane; cancelling changes nothing. **Clear region setting** clears only the current layout/pane's saved bounds and placement cache, preserving its Automatic viewing area preference. In auto mode the next invocation redetects; in manual mode it asks for calibration.
+
+Repeated automatic overlay toggles on the same photo reuse UI placement without capturing the screen. Window movement translates cached bounds; resize, layout/settings/display changes, a new photo or bridge selection revision prevent reuse. Timing reports `placement cache hit; capture skipped`. Internal panel changes are not automatically tracked yet: clear the region after showing/hiding/resizing panels or changing Lightroom's internal layout. Image RAM reuse still requires bridge 0.5.0; no plugin update is needed from 0.9.10.
+
+Initial floating size now fits **either photo orientation into half the Full UI area's width and its full height**, with the usual Fit inset. It no longer halves the already-fitted photo. Full manual calibration provides the baseline; a split calibration can approximate the full area by doubling the pane's split dimension. The floating title and controls fade over the stationary image when the pointer enters/leaves its top edge. At Fit or below, dragging the picture moves the floating window; above Fit it pans the picture. Cmd-scroll zoom and two-finger pan remain. Pinch support and its diagnostics were removed.
+
+Overlay animation defaults to off. Set `overlayAnimation = true` in Settings → Edit config file to opt into native utility-window animation. Parsed config is cached, with file metadata checked on invocation and edits reloaded without restart. Invalid edits retain the last valid settings.
+
+Fresh native acceptance checks are at the top of TESTING.md. Split placement, hover chrome, physical dragging and live latency still need user testing; synthetic tests do not establish Lightroom acceptance.
 
 ## New in 0.9.10
 

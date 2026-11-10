@@ -58,6 +58,6 @@ func calibrationEdges(in raster:EdgeRaster,window:CGRect,primaryHeight:CGFloat,c
     return edges
 }
 let regionPreferenceKeys=["regionKind","region","regionDisplay","regionWindow","manualLayoutKey"]
-func clearRegionPreferences(_ defaults:UserDefaults) {
-    for key in regionPreferenceKeys { defaults.removeObject(forKey:key) }
+func clearRegionPreferences(_ defaults:UserDefaults,layout:OverlayLayout = .full) {
+    for key in regionPreferenceKeys { defaults.removeObject(forKey:regionPreferenceKey(key,layout:layout)) }
 }

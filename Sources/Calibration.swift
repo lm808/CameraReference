@@ -62,7 +62,6 @@ private final class CalibrationView: NSView {
     }
     override func rightMouseDown(with event: NSEvent) { cancel?() }
     override func scrollWheel(with event: NSEvent) {} // Never forward calibration gestures to Lightroom.
-    override func magnify(with event: NSEvent) {}
     override func draw(_ dirtyRect: NSRect) {
         NSColor.clear.setFill(); bounds.fill(using:.copy)
         // A nearly transparent full-screen view owns hit-testing, even over Lightroom controls.
@@ -96,6 +95,7 @@ final class CalibrationController {
     private var panels=[NSPanel]()
     private var escapeMonitor: Any?
     var completed: ((CGRect?) -> Void)?
+    var instruction:String?
     var snapRadius:CGFloat=8
     func start(proposal: CGRect? = nil,edges:[SnapEdge]=[],snapAvailable:Bool=true) {
         for screen in NSScreen.screens {
@@ -115,6 +115,7 @@ final class CalibrationController {
                 v.selection=proposal.offsetBy(dx:-screen.frame.minX,dy:-screen.frame.minY)
                 v.hint=snapAvailable ? "Proposed UI working area — Return accepts; drag to adjust the full backdrop. Hold ⌥ Option to snap. Esc cancels." : "Proposed UI working area — Return accepts; drag to adjust the full backdrop. Snapping unavailable. Esc cancels."
             }
+            if let instruction { v.hint=instruction + (snapAvailable ? "":" Snapping unavailable.") }
             v.finish = { [weak self, weak p] rect in
                 guard let self, let p else { return }; self.finish(p.convertToScreen(rect))
             }

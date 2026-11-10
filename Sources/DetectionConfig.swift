@@ -4,6 +4,7 @@ import CoreGraphics
 struct DetectionConfig: Equatable {
     enum Bound:String { case ui,photo }
     var left=Bound.ui,right=Bound.ui,top=Bound.photo,bottom=Bound.photo
+    var overlayAnimation=false
     var fitInsetPoints:CGFloat=18
     var sideSearchPercent:Double=45
     var verticalSnapFraction:CGFloat=0.25,horizontalSnapFraction:CGFloat=0.25
@@ -13,8 +14,9 @@ struct DetectionConfig: Equatable {
     var needsPhoto:Bool { [left,right,top,bottom].contains(.photo) }
     static let template="""
     # Camera Reference detection settings. Save as plain text.
-    # Reloaded on each detection/calibration. No restart required.
-    # Single-photo Develop at Lightroom Fit only. Split views are deferred.
+    # Reloaded only when this file changes. No restart required.
+    # Overlay appearance/disappearance animation (true or false).
+    overlayAnimation = false
     # Each side: ui or photo. Photo bounds are calculated, not edge-detected.
     left = ui
     right = ui
@@ -43,6 +45,10 @@ struct DetectionConfig: Equatable {
             let parts=line.components(separatedBy:"=").map{$0.trimmingCharacters(in:.whitespaces)}
             guard parts.count==2,seen.insert(parts[0]).inserted else { throw invalid(index+1) }
             let k=parts[0],v=parts[1]
+            if k == "overlayAnimation" {
+                guard v == "true" || v == "false" else { throw invalid(index+1) }
+                c.overlayAnimation = v == "true";continue
+            }
             if ["left","right","top","bottom"].contains(k) {
                 guard let b=Bound(rawValue:v) else { throw invalid(index+1) }
                 switch k { case "left":c.left=b;case "right":c.right=b;case "top":c.top=b;default:c.bottom=b };continue
@@ -75,13 +81,23 @@ struct DetectionConfig: Equatable {
 final class DetectionConfigStore {
     let url:URL
     private(set) var current=DetectionConfig()
+    private var stamp:String?
+    private(set) var parseCount=0
+    private func fileStamp() throws -> String {
+        let a=try FileManager.default.attributesOfItem(atPath:url.path)
+        return "\((a[.modificationDate] as? Date)?.timeIntervalSinceReferenceDate ?? 0): \(a[.size] ?? ""): \(a[.systemFileNumber] ?? "")"
+    }
     init(url:URL=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Camera Reference/detection.conf")) { self.url=url }
     func ensureFile() throws {
         if !FileManager.default.fileExists(atPath:url.path) {
             try FileManager.default.createDirectory(at:url.deletingLastPathComponent(),withIntermediateDirectories:true)
             try DetectionConfig.template.write(to:url,atomically:true,encoding:.utf8)
         } else {
-            let text=try String(contentsOf:url,encoding:.utf8)
+            var text=try String(contentsOf:url,encoding:.utf8)
+            if !text.components(separatedBy:.newlines).contains(where:{ $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces)=="overlayAnimation" }) {
+                text += "\n# Overlay appearance/disappearance animation.\noverlayAnimation = false\n"
+                try text.write(to:url,atomically:true,encoding:.utf8)
+            }
             let hasInterval=text.components(separatedBy:.newlines).contains {
                 $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces) == "sideSearchPercent"
             }
@@ -91,8 +107,10 @@ final class DetectionConfigStore {
         }
     }
     func reload() throws -> DetectionConfig {
+        if let stamp,stamp == (try? fileStamp()) { return current }
         try ensureFile()
+        let readStamp=try fileStamp()
         let next=try DetectionConfig.parse(String(contentsOf:url,encoding:.utf8))
-        current=next;return next
+        current=next;stamp=readStamp;parseCount += 1;return next
     }
 }

@@ -22,8 +22,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var acceptedSplitKey:String?
     var lastProbe:ScreenProbeResult?
     var manualLayoutKey:String? {
-        get { UserDefaults.standard.string(forKey:"manualLayoutKey") }
-        set { UserDefaults.standard.set(newValue,forKey:"manualLayoutKey") }
+        get { UserDefaults.standard.string(forKey:regionKey("manualLayoutKey")) }
+        set { UserDefaults.standard.set(newValue,forKey:regionKey("manualLayoutKey")) }
     }
     func updateFloatingTitle() { floating?.title=floatingTitle + String(format:" — %.1f%%",floatingZoom) }
     let detectionSettings=DetectionConfigStore()
@@ -45,7 +45,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var shortcutItem: NSMenuItem!
     var panel: OverlayPanel?
     let imageCache=SelectionImageCache()
-    var gestureMonitor:Any?
+    var overlayLayout:OverlayLayout = OverlayLayout(rawValue:UserDefaults.standard.string(forKey:"overlayLayout") ?? "full") ?? .full
+    var layoutItems=[OverlayLayout:NSMenuItem]()
+    var layoutGroups=[Int:NSMenuItem]()
+    var placementMemory:PlacementMemory?
+    func regionKey(_ key:String,layout:OverlayLayout? = nil)->String {
+        regionPreferenceKey(key,layout:layout ?? overlayLayout)
+    }
     var floatingHotKey: EventHotKeyRef?
     var floatingShortcut=(UInt32(kVK_ANSI_F),UInt32(controlKey | optionKey | cmdKey))
     var floatingKeyLabel="F"
@@ -63,36 +69,139 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var recording = false
     var currentShortcut: (UInt32, UInt32) = (UInt32(kVK_ANSI_J), UInt32(controlKey | optionKey | cmdKey))
     var savedRegion: NSRect? {
-        guard let text=UserDefaults.standard.string(forKey:"region") else { return nil }
+        guard let text=UserDefaults.standard.string(forKey:regionKey("region")) else { return nil }
         return NSRectFromString(text)
     }
     var region: NSRect? {
         get {
             guard let r=savedRegion else { return nil }
-            let saved=UserDefaults.standard.data(forKey:"regionDisplay").flatMap { try? JSONDecoder().decode(DisplayGeometry.self,from:$0) }
+            let saved=UserDefaults.standard.data(forKey:regionKey("regionDisplay")).flatMap { try? JSONDecoder().decode(DisplayGeometry.self,from:$0) }
             guard calibratedRegionIsUsable(r,savedDisplay:saved,current:currentDisplays()) else { return nil }
-            if let text=UserDefaults.standard.string(forKey:"regionWindow"),let current=lightroomWindowFrame() {
+            if let text=UserDefaults.standard.string(forKey:regionKey("regionWindow")),let current=lightroomWindowFrame() {
                 return translatedCalibration(r,from:NSRectFromString(text),to:current)
             }
             return r
         }
         set {
             guard let newValue else { return } // Temporary display changes never erase calibration.
-            UserDefaults.standard.set(NSStringFromRect(newValue),forKey:"region")
-            if let frame=lightroomWindowFrame() { UserDefaults.standard.set(NSStringFromRect(frame),forKey:"regionWindow") }
-            else { UserDefaults.standard.removeObject(forKey:"regionWindow") }
+            UserDefaults.standard.set(NSStringFromRect(newValue),forKey:regionKey("region"))
+            if let frame=lightroomWindowFrame() { UserDefaults.standard.set(NSStringFromRect(frame),forKey:regionKey("regionWindow")) }
+            else { UserDefaults.standard.removeObject(forKey:regionKey("regionWindow")) }
             if let screen=currentDisplays().first(where:{$0.frame.contains(newValue)}), let data=try? JSONEncoder().encode(screen) {
-                UserDefaults.standard.set(data,forKey:"regionDisplay")
+                UserDefaults.standard.set(data,forKey:regionKey("regionDisplay"))
             }
         }
     }
+    func layoutIcon(_ layout:OverlayLayout)->NSImage {
+        let image=NSImage(size:NSSize(width:22,height:16),flipped:false) { rect in
+            NSColor.labelColor.setStroke()
+            let outer=rect.insetBy(dx:1,dy:1);NSBezierPath(rect:outer).stroke()
+            if layout == .full { NSColor.labelColor.withAlphaComponent(0.25).setFill();outer.insetBy(dx:2,dy:2).fill() }
+            else {
+                let leftRight=layout.group==1
+                let path=NSBezierPath()
+                path.move(to:leftRight ? CGPoint(x:11,y:1):CGPoint(x:1,y:8))
+                path.line(to:leftRight ? CGPoint(x:11,y:15):CGPoint(x:21,y:8));path.stroke()
+                let fill:CGRect
+                switch layout {
+                case .left:fill=CGRect(x:3,y:3,width:6,height:10)
+                case .right:fill=CGRect(x:13,y:3,width:6,height:10)
+                case .upper:fill=CGRect(x:3,y:10,width:16,height:3)
+                default:fill=CGRect(x:3,y:3,width:16,height:3)
+                }
+                NSColor.labelColor.withAlphaComponent(0.35).setFill();fill.fill()
+            }
+            return true
+        }
+        image.isTemplate=true;return image
+    }
+    func buildLayoutMenu(_ menu:NSMenu) {
+        let full=add("Full",#selector(selectLayout(_:)),to:menu)
+        full.representedObject=OverlayLayout.full.rawValue;full.image=layoutIcon(.full);layoutItems[.full]=full
+        for (title,modes) in [("Side-by-side",[OverlayLayout.left,.right]),("Above-and-below",[OverlayLayout.upper,.lower])] {
+            let parent=NSMenuItem(title:title,action:nil,keyEquivalent:"")
+            parent.image=layoutIcon(modes[0]);let child=NSMenu(title:title);parent.submenu=child;menu.addItem(parent)
+            layoutGroups[modes[0].group]=parent
+            for mode in modes {
+                let item=add(mode.label,#selector(selectLayout(_:)),to:child)
+                item.representedObject=mode.rawValue;item.image=layoutIcon(mode);layoutItems[mode]=item
+            }
+        }
+        updateLayoutMenu()
+    }
+    func updateLayoutMenu() {
+        for (mode,item) in layoutItems { item.state=mode==overlayLayout ? .on:.off }
+        for (group,item) in layoutGroups { item.state=group==overlayLayout.group ? .on:.off }
+    }
+    @objc func selectLayout(_ sender:NSMenuItem) {
+        guard let raw=sender.representedObject as? String,let mode=OverlayLayout(rawValue:raw),mode != overlayLayout else { return }
+        cancelScreenInspection();cancelRequest();hide();calibration?.finish(nil)
+        overlayLayout=mode;UserDefaults.standard.set(mode.rawValue,forKey:"overlayLayout")
+        invalidateAutomaticGeometry();updateLayoutMenu()
+        autoItem.state=UserDefaults.standard.bool(forKey:regionKey("automaticBounds")) ? .on:.off
+        report(mode == .full ? "Full layout selected.":"\(mode.label) pane selected. Calibrate its entire UI backdrop, including photo margins.")
+    }
+    func calibratedUI(_ mode:OverlayLayout)->CGRect? {
+        guard let text=UserDefaults.standard.string(forKey:regionKey("region",layout:mode)) else { return nil }
+        let rect=NSRectFromString(text)
+        let display=UserDefaults.standard.data(forKey:regionKey("regionDisplay",layout:mode)).flatMap { try? JSONDecoder().decode(DisplayGeometry.self,from:$0) }
+        guard calibratedRegionIsUsable(rect,savedDisplay:display,current:currentDisplays()),
+              let saved=UserDefaults.standard.string(forKey:regionKey("regionWindow",layout:mode)),let window=lightroomWindowFrame(),
+              let translated=translatedCalibration(rect,from:NSRectFromString(saved),to:window),window.contains(translated),
+              NSScreen.screens.contains(where:{$0.frame.contains(translated)}) else { return nil }
+        return translated
+    }
+    func cachedUI(epoch:String?,settings:DetectionConfig,layout:OverlayLayout)->CGRect? {
+        guard let memory=placementMemory,let current=lightroomWindowFrame(),
+              let cg=currentCaptureWindowFrame(memory.windowID),sameWindowGeometry(current,appKitRect(cg,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)),
+              let ui=memory.translated(window:current,windowID:memory.windowID,epoch:epoch,settingsKey:settings.key,layout:layout),
+              NSScreen.screens.contains(where:{$0.frame.contains(ui)}) else { return nil }
+        lastTiming += "; placement cache hit; capture skipped"
+        lastLayout="Reused \(layout.label) UI bounds (AppKit): \(ui). Window size unchanged; position translated. Clear region setting after internal panel changes."
+        return ui
+    }
+    func rememberPlacement(_ result:ScreenProbeResult,epoch:String?,settings:DetectionConfig,layout:OverlayLayout) {
+        guard let ui=result.uiFrame,let window=result.windowFrame,let id=result.windowID,let epoch else { return }
+        placementMemory=PlacementMemory(ui:ui,window:appKitRect(window,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height),windowID:id,epoch:epoch,settingsKey:settings.key,layout:layout,background:result.background)
+    }
+    func showUI(_ image:CGImage,ui:CGRect,snapshot:ExportSnapshot?,settings:DetectionConfig) {
+        let height=CGDisplayBounds(CGMainDisplayID()).height
+        guard let placed=settings.placement(ui:appKitRect(ui,primaryHeight:height),image:CGSize(width:image.width,height:image.height)) else { return }
+        if let view=display(image,in:appKitRect(placed.region,primaryHeight:height),photoFrame:appKitRect(placed.photo,primaryHeight:height)) {
+            view.exportSnapshot=snapshot
+            if let b=placementMemory?.background { view.backgroundColour=NSColor(srgbRed:b[0],green:b[1],blue:b[2],alpha:1) }
+        }
+    }
+    func resolveFloating(_ loaded:LoadedReference,snapshot:ExportSnapshot?,epoch:String?) {
+        let settings=reloadDetectionConfig()
+        let imageSize=CGSize(width:loaded.image.width,height:loaded.image.height)
+        func show(_ ui:CGRect) {
+            guard let size=floatingPhotoSize(viewport:ui.size,image:imageSize,settings:settings),size.width>0,size.height>0 else { report("UI working area is too small for floating placement.");return }
+            displayFloating(loaded.image,origin:loaded.origin,filename:loaded.sourceFilename,area:ui,photoSize:size)
+            floatingView?.exportSnapshot=snapshot
+        }
+        if !UserDefaults.standard.bool(forKey:regionKey("automaticBounds")) {
+            if let full=calibratedUI(.full) { show(full);return }
+            if let pane=region,overlayLayout != .full {
+                // A calibrated split pane supplies an approximate full working area.
+                let full=overlayLayout.group==1 ? CGRect(x:pane.minX,y:pane.minY,width:pane.width*2,height:pane.height):CGRect(x:pane.minX,y:pane.minY,width:pane.width,height:pane.height*2)
+                show(full);return
+            }
+            askForCalibration();return
+        }
+        if let ui=cachedUI(epoch:epoch,settings:settings,layout:.full) { show(ui);return }
+        guard currentModule()=="develop",#available(macOS 14.0,*),FeaturePermission.screenCapture.ensure() else { report("Calibrate a UI working area, or open Develop to size the floating photo.");return }
+        startPhotoDetection(imageSize:imageSize,layout:.full) { [weak self] probe in
+            guard let self else { return }
+            if let epoch,self.selectionEpoch() != epoch { self.report("Selection changed during capture; invoke again.");return }
+            guard let ui=probe.uiFrame else { self.askForCalibration(workingAreaTooNarrow:probe.workingAreaTooNarrow);return }
+            self.rememberPlacement(probe,epoch:epoch,settings:settings,layout:.full)
+            show(ui)
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        gestureMonitor=NSEvent.addLocalMonitorForEvents(matching:.magnify) { event in
-            GestureDiagnostics.received += 1
-            guard let view=event.window?.contentView as? ReferenceView else { return event }
-            view.applyMagnification(event);return nil
-        }
         // Carry only calibration and shortcut settings forward; no photo paths or images.
         if !UserDefaults.standard.bool(forKey: "migrated03") {
             if let old = UserDefaults.standard.persistentDomain(forName: "org.local.JPEGReference") {
@@ -117,11 +226,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let child = NSMenu(title: title); item.submenu = child; menu.addItem(item); return child
         }
         menu.addItem(.separator())
+        buildLayoutMenu(menu)
+        menu.addItem(.separator())
         let settings = submenu("Settings")
         preferItem = add("Prefer RAW-embedded JPEG", #selector(changePreference), to: settings)
         preferItem.state = UserDefaults.standard.bool(forKey: "preferEmbedded") ? .on : .off
         autoItem = add("Automatic viewing area", #selector(changeAutomatic), to: settings)
-        autoItem.state = UserDefaults.standard.bool(forKey: "automaticBounds") ? .on : .off
+        autoItem.state = UserDefaults.standard.bool(forKey: regionKey("automaticBounds")) ? .on : .off
         add("Set image region…", #selector(calibrate), to: settings)
         settings.addItem(.separator())
         shortcutItem = add("Keyboard shortcuts…", #selector(changeShortcut), to: settings)
@@ -129,7 +240,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         settings.addItem(.separator())
         add("Edit config file", #selector(openDetectionConfig), to: settings)
         add("Choose ExifTool…", #selector(chooseExifTool), to: settings)
-        add("Clear all region data", #selector(clearAllRegionData), to: settings)
+        add("Clear region setting", #selector(clearAllRegionData), to: settings)
         let developer = submenu("Developer tools")
         developer.addItem(detail); developer.addItem(.separator())
         add("Check selected photo", #selector(checkPhoto), to: developer)
@@ -156,7 +267,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             currentShortcut = (UInt32(prefs.integer(forKey: "key")), UInt32(prefs.integer(forKey: "modifiers")))
         }
         keyLabel=prefs.string(forKey:"keyLabel") ?? (currentShortcut.0 == UInt32(kVK_ANSI_J) ? "J" : "Key \(currentShortcut.0)")
-        if prefs.data(forKey:"regionDisplay") == nil, let previous=region { region=previous }
+        if prefs.data(forKey:regionKey("regionDisplay")) == nil, let previous=region { region=previous }
         updateToggleTitle()
         if !register(currentShortcut) { report("Shortcut unavailable. Choose Change shortcut.") }
         if prefs.object(forKey:"floatingKey") != nil {
@@ -167,7 +278,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         updateToggleTitle()
         moduleTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
             guard let self else { return }
-            self.imageCache.observe(self.selectionEpoch())
+            let epoch=self.selectionEpoch()
+            self.imageCache.observe(epoch)
+            if let memory=self.placementMemory,memory.epoch != epoch || self.currentModule() != "develop" { self.placementMemory=nil }
             self.observeWindowGeometry()
             guard self.panel != nil || self.destination == .overlay else { return }
             if let module = self.currentModule(), module != "develop" { self.hide(); self.report("Overlay dismissed: Lightroom left Develop.") }
@@ -239,7 +352,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if !isLightroom() && !own { saveToast.close(); hide(); calibration?.finish(nil) }
     }
     func invalidateAutomaticGeometry() {
-        lastProbe=nil
+        lastProbe=nil;placementMemory=nil
         Task { await ScreenGeometryCache.shared.reset() }
     }
     func observeWindowGeometry() {
@@ -248,7 +361,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard hasObservedWindow else { return }
         if current == nil && observedWindowFrame == nil { return }
         if !sameWindowGeometry(current,observedWindowFrame) {
-            hide();invalidateAutomaticGeometry()
+            hide()
+            if let current,let previous=observedWindowFrame,abs(current.width-previous.width)<0.5,abs(current.height-previous.height)<0.5 {
+                // Placement memory is window-local and follows movement without capture.
+            } else { invalidateAutomaticGeometry() }
         }
     }
     @objc func spaceChanged() {
@@ -378,35 +494,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                     let extraction = loaded.extraction.map { String(format: "; extraction %.0f ms", $0 * 1000) } ?? ""
                     self.report(loaded.origin.rawValue + (loaded.usedFallback ? " (fallback)" : "") + String(format: " · ready in %.0f ms", elapsed * 1000) + extraction)
                     let snapshot=loaded.embeddedBytes.map { ExportSnapshot(raw:URL(fileURLWithPath:path),bytes:$0,orientation:loaded.cameraOrientation) }
-                    let detected = layout?.imageBounds
-                    let recentArea: CGRect? = {
-                        guard let probe=self.lastProbe, let frame=probe.windowFrame,let current=lightroomWindowFrame() else { return nil }
-                        let previous=CGRect(x:frame.minX,y:CGDisplayBounds(CGMainDisplayID()).height-frame.maxY,width:frame.width,height:frame.height)
-                        return probe.candidate.flatMap { translatedCalibration($0,from:previous,to:current) }
-                    }()
-                    let area = detected ?? recentArea ?? self.region
                     if target == .overlay {
                         guard self.isLightroom(), self.currentModule() == "develop" else { self.report("Overlay cancelled: Develop is no longer active."); return }
                         self.resolveOverlay(loaded.image,snapshot:snapshot,selectionEpoch:epoch)
                     } else if target == .detect {
                         self.startPhotoDetection(imageSize:CGSize(width:loaded.image.width,height:loaded.image.height))
                     } else if target == .window {
-                        if loaded.image.width >= loaded.image.height, self.currentModule()=="develop", UserDefaults.standard.bool(forKey:"automaticBounds"), #available(macOS 14.0,*) {
-                            self.startPhotoDetection(imageSize:CGSize(width:loaded.image.width,height:loaded.image.height)) { [weak self] probe in
-                                guard let self else { return }
-                                if let epoch,self.selectionEpoch() != epoch { self.imageCache.observe(self.selectionEpoch());self.report("Selection changed during capture; invoke again.");return }
-                                guard let photo=probe.photoFrame else { self.report("Cannot size the floating photo automatically. Enlarge Lightroom or calibrate its UI working area.");return }
-                                self.displayFloating(loaded.image,origin:loaded.origin,filename:loaded.sourceFilename,area:probe.candidate,photoSize:photo.size)
-                                self.floatingView?.exportSnapshot=snapshot
-                            }
-                        } else {
-                            var photoSize:CGSize?
-                            if let area,UserDefaults.standard.string(forKey:"regionKind")=="ui" {
-                                photoSize=self.reloadDetectionConfig().placement(ui:area,image:CGSize(width:loaded.image.width,height:loaded.image.height))?.photo.size
-                            }
-                            self.displayFloating(loaded.image, origin: loaded.origin, filename: loaded.sourceFilename, area: area,photoSize:photoSize)
-                            self.floatingView?.exportSnapshot=snapshot
-                        }
+                        self.resolveFloating(loaded, snapshot:snapshot, epoch:epoch)
                     }
                 }
             }
@@ -418,6 +512,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             report("Set image region again for this display layout."); return nil
         }
         let p = OverlayPanel(contentRect: region.insetBy(dx: -1, dy: -1), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        p.animationBehavior=reloadDetectionConfig().overlayAnimation ? .utilityWindow:.none
         p.level = .floating; p.isOpaque = true; p.backgroundColor = .black
         p.hasShadow = false; p.hidesOnDeactivate = false; p.isReleasedWhenClosed = false
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -458,17 +553,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let screen = NSScreen.screens.first(where: { area.map($0.frame.intersects) ?? false }) ?? NSScreen.main ?? NSScreen.screens[0]
             let base = area ?? screen.visibleFrame
             let photo = photoSize ?? fittedSize(image: ratio, inside: base.size)
-            let requested = ratio.height > ratio.width ? photo : CGSize(width: photo.width/2, height: photo.height/2)
+            let requested = photo
             let size = fittedSize(image: requested, inside: CGSize(width: min(requested.width,screen.visibleFrame.width), height: min(requested.height,screen.visibleFrame.height-28)))
             let frame = NSRect(x: min(max(base.minX, screen.visibleFrame.minX), screen.visibleFrame.maxX-size.width),
                                y: min(max(base.midY-size.height/2, screen.visibleFrame.minY), screen.visibleFrame.maxY-size.height-28), width: size.width, height: size.height)
-            let p = OverlayPanel(contentRect: frame, styleMask: [.titled, .closable, .resizable, .nonactivatingPanel], backing: .buffered, defer: false)
+            let p = FloatingPanel(contentRect: frame, styleMask: [.titled, .closable, .resizable, .nonactivatingPanel, .fullSizeContentView], backing: .buffered, defer: false)
             p.level = .floating; p.isFloatingPanel = true; p.hidesOnDeactivate = false
             p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             p.isReleasedWhenClosed = false; p.backgroundColor = .black; p.delegate = self
             p.appearance = NSAppearance(named: .darkAqua)
             let view = ReferenceView(frame: NSRect(origin: .zero, size: size))
             configureImageView(view)
+            view.movesWindowAtFit=true
+            p.acceptsMouseMovedEvents=true
             view.zoomChanged = { [weak self] percentage in
                 self?.floatingZoom=percentage
                 if self?.destination != .window { self?.updateFloatingTitle() }
@@ -476,20 +573,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             view.autoresizingMask = [.width, .height]
             view.refresh = { [weak self] in self?.request(.window) }
             p.contentView = view
-            p.setContentSize(size) // Explicit photo content size; title bar is outside it.
+            p.setFrame(frame,display:false) // Full-size content: chrome overlays, never resizes the photo.
+            p.installChrome()
             lastLayout += "\nFloating requested photo size: \(size); actual content: \(view.bounds.size); outer frame: \(p.frame.size)."
             floating = p; floatingView = view
         } else if let floating {
             // Keep the user's position and approximate size, while adapting to portrait/landscape changes.
-            let box = floating.contentLayoutRect.size
+            let box = floating.contentView?.bounds.size ?? floating.frame.size
             let area = box.width * box.height, aspect = ratio.width / ratio.height
             let desired = CGSize(width: sqrt(area * aspect), height: sqrt(area / aspect))
             let available = floating.screen?.visibleFrame.size ?? CGSize(width: 1200, height: 800)
             let limit = CGSize(width: min(desired.width, available.width * 0.9), height: min(desired.height, available.height * 0.85))
-            floating.setContentSize(fittedSize(image: ratio, inside: limit))
+            floating.setFrame(CGRect(origin:floating.frame.origin,size:fittedSize(image:ratio,inside:limit)),display:true)
         }
-        floating?.contentAspectRatio = ratio
-        floating?.contentMinSize = fittedSize(image: ratio, inside: CGSize(width: 180, height: 180))
+        floating?.aspectRatio = ratio
+        floating?.minSize = fittedSize(image: ratio, inside: CGSize(width: 180, height: 180))
         floatingView?.image = NSImage(cgImage: image, size: ratio)
         floatingTitle=filename + " — " + origin.rawValue + " · Camera Reference"
         updateFloatingTitle()
@@ -505,7 +603,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             guard let view else { return }; self?.saveExtracted(snapshot, from:view)
         }
         view.canSave = { [weak self] in self?.saving == false }
-        view.toolTip="Pinch: zoom. Two-finger scroll: pan. Command-scroll: zoom. Drag: pan. Double-click: reload and Fit. Right-click: Fit / 100% / Save."
+        view.toolTip="Two-finger scroll: pan. Command-scroll: zoom. Drag: pan (floating at Fit: move window). Double-click: reload and Fit. Right-click: Fit / 100% / Save."
     }
     func reloadOverlay() {
         guard panel != nil, currentModule()=="develop" else { return }
@@ -557,9 +655,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     @objc func changeAutomatic() {
-        let enabled = !UserDefaults.standard.bool(forKey: "automaticBounds")
-        UserDefaults.standard.set(enabled, forKey: "automaticBounds"); autoItem.state = enabled ? .on : .off
-        if enabled { hide(); _ = FeaturePermission.screenCapture.ensure() }
+        let enabled = !UserDefaults.standard.bool(forKey: regionKey("automaticBounds"))
+        UserDefaults.standard.set(enabled, forKey: regionKey("automaticBounds")); autoItem.state = enabled ? .on : .off
+        cancelScreenInspection();cancelRequest();hide();invalidateAutomaticGeometry()
+        if enabled { _ = FeaturePermission.screenCapture.ensure() }
         report(enabled ? "Automatic detection enabled. Manual calibration is the fallback." : "Using manual calibration.")
     }
     @objc func inspectViewState() {
@@ -594,7 +693,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         catch { report("Could not open detection.conf: \(error.localizedDescription)");showResult() }
     }
     func reloadDetectionConfig()->DetectionConfig {
-        do { return try detectionSettings.reload() }
+        do {
+            let old=detectionSettings.current
+            let next=try detectionSettings.reload()
+            if old.key != next.key { invalidateAutomaticGeometry() }
+            return next
+        }
         catch {
             let alert=NSAlert();alert.messageText="Detection configuration was not applied"
             alert.informativeText=error.localizedDescription+" The last valid settings will be used."
@@ -609,17 +713,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let proposal=requestedProposal == nil ? nil:lastProbe?.uiFrame
         let selectionKind="ui"
         let controller=CalibrationController();controller.snapRadius=settings.snapDistancePoints; calibration=controller
+        if overlayLayout != .full { controller.instruction="Select the entire \(overlayLayout.label.lowercased()) pane backdrop between panels and divider, including photo margins. ⌥ snaps; Esc cancels." }
         controller.completed = { [weak self] result in
             guard let self else { return }
             self.calibrationTask?.cancel(); self.calibrationTask=nil
             self.calibrationTimer?.invalidate();self.calibrationTimer=nil
             self.calibration=nil
             if let result {
-                self.region=result; self.manualLayoutKey=self.lastProbe?.layoutKey
-                UserDefaults.standard.set(selectionKind,forKey:"regionKind")
-                if useManualOnAccept {
-                    UserDefaults.standard.set(false,forKey:"automaticBounds"); self.autoItem.state = .off
+                guard let window=lightroomWindowFrame(),window.contains(result) else {
+                    self.report("Select the UI backdrop inside the Lightroom window. Previous calibration retained.");return
                 }
+                self.region=result; self.manualLayoutKey=self.lastProbe?.layoutKey
+                UserDefaults.standard.set(selectionKind,forKey:self.regionKey("regionKind"))
+                UserDefaults.standard.set(false,forKey:self.regionKey("automaticBounds")); self.autoItem.state = .off
+                self.invalidateAutomaticGeometry()
                 self.report("Image region saved. Shortcut toggles the reference.")
             }
             else { self.report("Calibration cancelled. Previous region retained.") }
@@ -653,15 +760,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         calibration?.finish(nil);calibrationTask?.cancel();calibrationTask=nil
         calibrationTimer?.invalidate();calibrationTimer=nil
         cancelScreenInspection();cancelRequest();hide();saveToast.close();capturePreview?.close();capturePreview=nil
-        clearRegionPreferences(UserDefaults.standard)
-        imageCache.clear()
+        clearRegionPreferences(UserDefaults.standard,layout:overlayLayout)
+        placementMemory=nil
         acceptedSplitKey=nil;lastProbe=nil;lastImageSize=nil
         lastLayout="No region data. Detection/calibration starts fresh."
         report("Clearing region data…")
         Task { @MainActor [weak self] in
             await ScreenGeometryCache.shared.reset()
             guard let self else { return };self.regionResetting=false
-            self.report("All region data cleared. Shortcut and JPEG preferences retained.")
+            self.report("Region cleared for this layout/pane. Automatic detection preference unchanged.")
         }
     }
     @objc func previewCapture() {
@@ -684,7 +791,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         request(.detect) // Obtain the current JPEG aspect ratio, never a previous photo's.
     }
     func displayManual(_ image:CGImage,in area:CGRect,snapshot:ExportSnapshot?) {
-        if UserDefaults.standard.string(forKey:"regionKind") == "ui" {
+        if UserDefaults.standard.string(forKey:regionKey("regionKind")) == "ui" {
             let settings=reloadDetectionConfig()
             // placement uses top-left coordinates, even though calibration is AppKit.
             let topLeft=appKitRect(area,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
@@ -698,9 +805,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     func resolveOverlay(_ image:CGImage,snapshot:ExportSnapshot?,selectionEpoch expectedEpoch:String? = nil) {
-        guard UserDefaults.standard.bool(forKey:"automaticBounds") else {
+        let settings=reloadDetectionConfig()
+        guard UserDefaults.standard.bool(forKey:regionKey("automaticBounds")) else {
             if let area=region { displayManual(image,in:area,snapshot:snapshot) }
             else { askForCalibration() }; return
+        }
+        if let ui=cachedUI(epoch:expectedEpoch,settings:settings,layout:overlayLayout) {
+            showUI(image,ui:ui,snapshot:snapshot,settings:settings)
+            return
         }
         guard #available(macOS 14.0,*), FeaturePermission.screenCapture.ensure() else {
             report("Automatic detection needs Screen Recording permission. Turn it off to use manual calibration."); return
@@ -708,21 +820,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         startPhotoDetection(imageSize:CGSize(width:image.width,height:image.height)) { [weak self] result in
             guard let self, self.isLightroom(), self.currentModule()=="develop" else { return }
             if let expectedEpoch,self.selectionEpoch() != expectedEpoch { self.imageCache.observe(self.selectionEpoch());self.report("Selection changed during capture; invoke again.");return }
-            if let key=result.layoutKey,key==self.manualLayoutKey,let area=self.region {
-                self.displayManual(image,in:area,snapshot:snapshot); return
-            }
             guard let area=result.candidate else { self.askForCalibration(workingAreaTooNarrow:result.workingAreaTooNarrow); return }
-            if result.split && self.acceptedSplitKey != result.layoutKey {
-                let alert=NSAlert(); alert.messageText="Use the left or upper reference pane?"
-                alert.informativeText="A split layout was found. Confirm this is Reference view; Before/After can have similar dividers."
-                alert.addButton(withTitle:"Use reference pane"); alert.addButton(withTitle:"Calibrate manually…"); alert.addButton(withTitle:"Cancel")
-                NSApp.activate(ignoringOtherApps:true)
-                let choice=alert.runModal()
-                if choice == .alertSecondButtonReturn { self.beginCalibration(); return }
-                guard choice == .alertFirstButtonReturn else { self.report("Overlay cancelled."); return }
-                self.acceptedSplitKey=result.layoutKey
-                NSWorkspace.shared.runningApplications.first(where:isLightroomApp)?.activate(options:[])
-            }
+            self.rememberPlacement(result,epoch:expectedEpoch,settings:settings,layout:self.overlayLayout)
             guard let view=self.display(image,in:area,photoFrame:result.photoFrame) else { return }
             view.exportSnapshot=snapshot
             view.backgroundColour=NSColor(srgbRed:result.background[0],green:result.background[1],blue:result.background[2],alpha:1)
@@ -738,9 +837,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             beginCalibration(useManualOnAccept:true)
         } else { report("Overlay cancelled; calibration was not changed.") }
     }
-    func startPhotoDetection(imageSize:CGSize,previewCapture:Bool=false,completion:((ScreenProbeResult)->Void)? = nil) {
+    func startPhotoDetection(imageSize:CGSize,previewCapture:Bool=false,layout requestedLayout:OverlayLayout? = nil,completion:((ScreenProbeResult)->Void)? = nil) {
         guard #available(macOS 14.0, *), currentModule()=="develop" else { report("Detection cancelled: Develop is no longer active."); return }
         let settings=reloadDetectionConfig()
+        let mode=requestedLayout ?? overlayLayout
+        let seed=mode == overlayLayout && mode != .full ? region:nil
         cancelScreenInspection()
         report("Finding the Lightroom viewing area…")
         detectionCompletion=completion
@@ -756,7 +857,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
         RunLoop.main.add(screenTimeout!,forMode:.common)
         screenTask=Task.detached(priority:.userInitiated) { [weak self] in
-            let result=await inspectScreenLayout(imageSize:imageSize,previewCapture:previewCapture,settings:settings)
+            let result=await inspectScreenLayout(imageSize:imageSize,previewCapture:previewCapture,settings:settings,layout:mode,seed:seed)
             guard !Task.isCancelled else { return }
             await self?.finishScreenInspection(result,id:inspectionID,elapsed:ProcessInfo.processInfo.systemUptime-inspectionStarted)
         }
@@ -794,7 +895,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let date = attributes?[.modificationDate] as? Date
         let age = date.map { "\(max(0, Int(Date().timeIntervalSince($0)))) seconds ago" } ?? "not received"
         let state = (try? String(contentsOf: folder.appendingPathComponent("status.txt"), encoding: .utf8)) ?? "No plugin status. The bridge may not have started."
-        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + lastLayout + "\n\nTiming: " + lastTiming + "\nPinch events received/routed: \(GestureDiagnostics.received)/\(GestureDiagnostics.routed); last delta \(GestureDiagnostics.lastDelta), zoom \(GestureDiagnostics.lastZoom)"
+        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + lastLayout + "\n\nTiming: " + lastTiming
     }
     @objc func showDiagnostics() {
         let saved = lastResult

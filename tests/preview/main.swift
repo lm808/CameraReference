@@ -11,4 +11,18 @@ print("PASS: capture preview has only Fit/100% actions and releases image conten
 
 precondition(view.gestureRecognizers.isEmpty)
 precondition(view.acceptsFirstResponder && view.needsPanelToBecomeKey)
-print("PASS: shared image view uses direct magnification routing and accepts panel focus")
+print("PASS: shared image view has no gesture recognizers and accepts panel focus")
+
+let app=NSApplication.shared
+app.setActivationPolicy(.prohibited)
+let floating=FloatingPanel(contentRect:CGRect(x:0,y:0,width:500,height:400),styleMask:[.titled,.closable,.resizable,.nonactivatingPanel,.fullSizeContentView],backing:.buffered,defer:false)
+let photo=ReferenceView(frame:CGRect(x:0,y:0,width:500,height:400))
+photo.autoresizingMask=[.width,.height];photo.movesWindowAtFit=true
+floating.contentView=photo
+floating.setFrame(CGRect(x:0,y:0,width:500,height:400),display:false)
+floating.installChrome()
+precondition(abs(photo.bounds.width-500)<1 && abs(photo.bounds.height-400)<1,"Full-size photo must fill requested dimensions")
+let before=photo.bounds
+floating.revealChrome(true);floating.revealChrome(false)
+precondition(photo.bounds==before,"Chrome must not resize or shift the photo")
+print("PASS: floating full-size photo geometry and stable hover chrome")

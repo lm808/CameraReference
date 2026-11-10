@@ -53,9 +53,9 @@ func appKitRect(_ rect:CGRect,primaryHeight:CGFloat)->CGRect {
     CGRect(x:rect.minX,y:primaryHeight-rect.maxY,width:rect.width,height:rect.height)
 }
 @available(macOS 14.0, *)
-func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig()) async -> ScreenProbeResult {
+func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,seed:CGRect? = nil) async -> ScreenProbeResult {
     for attempt in 0..<3 {
-        let result=await captureStableLayout(imageSize:imageSize,forCalibration:forCalibration,previewCapture:previewCapture,settings:settings)
+        let result=await captureStableLayout(imageSize:imageSize,forCalibration:forCalibration,previewCapture:previewCapture,settings:settings,layout:layout,seed:seed)
         if !result.geometryChanged || Task.isCancelled { return result }
         await ScreenGeometryCache.shared.reset()
         if attempt<2 { try? await Task.sleep(nanoseconds:250_000_000) }
@@ -63,7 +63,7 @@ func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
     return ScreenProbeResult(candidate:nil,summary:"Lightroom is still moving or resizing. Wait for the transition to finish, then invoke again. Calibration was not changed.",geometryChanged:true)
 }
 @available(macOS 14.0, *)
-func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig()) async -> ScreenProbeResult {
+func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,seed:CGRect? = nil) async -> ScreenProbeResult {
     guard CGPreflightScreenCaptureAccess() else { return ScreenProbeResult(candidate:nil,summary:"Screen Recording permission is required. Use Inspect screen layout again to open permission settings.") }
     let probeStarted=ProcessInfo.processInfo.systemUptime
     let ticket=await ScreenGeometryCache.shared.ticket()
@@ -121,8 +121,21 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
             return ScreenProbeResult(candidate:nil,summary:summary,windowID:window.windowID,windowFrame:window.frame,snapEdges:edges)
         }
         let detectionStarted=ProcessInfo.processInfo.systemUptime
-        guard let (detection,reused)=await ScreenGeometryCache.shared.inspect(raster,key:"crop:\(display.displayID):\(display.frame):\(sourceRect):\(window.windowID):\(window.frame):\(filter.pointPixelScale):\(CGDisplayBounds(CGMainDisplayID()))",ticket:ticket,singlePhoto:true,sideSearchPercent:settings.sideSearchPercent) else {
-            return ScreenProbeResult(candidate:nil,summary:"Window/display geometry was invalidated during capture.",geometryChanged:true)
+        let detection:ViewportDetection
+        let reused:Bool
+        if layout == .full {
+            guard let result=await ScreenGeometryCache.shared.inspect(raster,key:"crop:\(display.displayID):\(display.frame):\(sourceRect):\(window.windowID):\(window.frame):\(filter.pointPixelScale):\(CGDisplayBounds(CGMainDisplayID()))",ticket:ticket,singlePhoto:true,sideSearchPercent:settings.sideSearchPercent) else {
+                return ScreenProbeResult(candidate:nil,summary:"Window/display geometry was invalidated during capture.",geometryChanged:true)
+            }
+            (detection,reused)=result
+        } else {
+            let sx=CGFloat(raster.width)/window.frame.width,sy=CGFloat(raster.height)/window.frame.height
+            let local=seed.map { seed -> CGRect in
+                let top=appKitRect(seed,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
+                return CGRect(x:(top.minX-window.frame.minX)*sx,y:(top.minY-window.frame.minY)*sy,width:top.width*sx,height:top.height*sy)
+            }
+            detection=detectSplitViewport(in:raster,layout:layout,seed:local,sideSearchPercent:settings.sideSearchPercent)
+            reused=false
         }
         let childMode:String
         if #available(macOS 14.2,*) { childMode="included" } else { childMode="system default" }
@@ -151,4 +164,17 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
 
     } catch is CancellationError { return ScreenProbeResult(candidate:nil,summary:"Screen inspection cancelled.") }
     catch { return ScreenProbeResult(candidate:nil,summary:"Screen inspection failed. Check permission, keep Lightroom visible and try again. No capture was saved.") }
+}
+
+// Split-only boundary validation. Full mode never calls this path.
+func detectSplitViewport(in raster:EdgeRaster,layout:OverlayLayout,seed:CGRect?=nil,sideSearchPercent:Double=45)->ViewportDetection {
+    if let seed {
+        let result=detectViewport(in:raster,knownBounds:seed,singlePhoto:true,sideSearchPercent:50)
+        if let found=result.bounds,abs(found.minX-seed.minX)<3,abs(found.minY-seed.minY)<3,abs(found.maxX-seed.maxX)<3,abs(found.maxY-seed.maxY)<3 {
+            return ViewportDetection(bounds:found,verticalDivider:nil,horizontalDivider:nil,background:result.background,summary:"Validated calibrated \(layout.label) pane UI borders.\n"+result.summary)
+        }
+    }
+    let outer=detectViewport(in:raster,singlePhoto:false,sideSearchPercent:sideSearchPercent)
+    let pane=outer.bounds.flatMap { layout.pane(in:$0,vertical:outer.verticalDivider,horizontal:outer.horizontalDivider) }
+    return ViewportDetection(bounds:pane,verticalDivider:nil,horizontalDivider:nil,background:outer.background,summary:outer.summary+"\nExplicit \(layout.label) pane: " + (pane == nil ? "No supported divider; calibrate the chosen pane.":"UI bounds accepted."))
 }

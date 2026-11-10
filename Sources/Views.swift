@@ -1,8 +1,6 @@
 import AppKit
 
-enum GestureDiagnostics { static var received=0;static var routed=0;static var lastDelta:CGFloat=0;static var lastZoom:CGFloat=1 }
-
-final class OverlayPanel: NSPanel {
+class OverlayPanel: NSPanel {
     // The detector already validates the display bounds. AppKit must not shift the
     // borderless overlay away from its exact image coordinates in full-screen Spaces.
     override func constrainFrameRect(_ frameRect:NSRect,to screen:NSScreen?)->NSRect { frameRect }
@@ -31,8 +29,24 @@ final class ReferenceView: NSView, NSMenuItemValidation {
     var allowsReferenceActions=true
     var showIndicator=false
     var interactive=true
+    var movesWindowAtFit=false
     var navigation=ImageNavigation()
     private var lastDrag:CGPoint?
+    private var hoverTracking:NSTrackingArea?
+    override func updateTrackingAreas() {
+        if let hoverTracking { removeTrackingArea(hoverTracking) }
+        if movesWindowAtFit {
+            hoverTracking=NSTrackingArea(rect:.zero,options:[.activeAlways,.inVisibleRect,.mouseMoved,.mouseEnteredAndExited],owner:self)
+            addTrackingArea(hoverTracking!)
+        }
+        super.updateTrackingAreas()
+    }
+    override func mouseMoved(with event:NSEvent) {
+        let p=convert(event.locationInWindow,from:nil)
+        (window as? FloatingPanel)?.revealChrome(p.y>=bounds.maxY-32)
+    }
+    override func mouseEntered(with event:NSEvent) { mouseMoved(with:event) }
+    override func mouseExited(with event:NSEvent) { (window as? FloatingPanel)?.revealChrome(false) }
     private(set) var toast: String?
     private var toastTimer: Timer?
     func showToast(_ message:String, duration:TimeInterval=3) {
@@ -57,19 +71,11 @@ final class ReferenceView: NSView, NSMenuItemValidation {
         }
         needsDisplay=true
     }
-    func applyMagnification(_ event:NSEvent) {
-        guard interactive,let image else { return }
-        GestureDiagnostics.routed += 1
-        GestureDiagnostics.lastDelta=event.magnification
-        navigation.magnify(factor:max(0.01,1+event.magnification),at:convert(event.locationInWindow,from:nil),image:image.size,viewport:viewport)
-        GestureDiagnostics.lastZoom=navigation.zoom
-        needsDisplay=true
-    }
-    override func magnify(with event:NSEvent) { applyMagnification(event) }
     override func mouseDown(with event:NSEvent) {
         guard interactive else { return }
         window?.makeFirstResponder(self)
         if event.clickCount == 2 { lastDrag=nil; fit(); refresh?() }
+        else if movesWindowAtFit && navigation.zoom <= 1.0001 { lastDrag=nil;window?.performDrag(with:event) }
         else { lastDrag=convert(event.locationInWindow,from:nil) }
     }
     override func mouseDragged(with event:NSEvent) {
@@ -184,7 +190,7 @@ final class CapturePreviewController:NSObject,NSWindowDelegate {
         v.autoresizingMask=[.width,.height]
         v.image=NSImage(cgImage:image,size:CGSize(width:image.width,height:image.height))
         v.zoomChanged={ [weak w] percent in w?.title=String(format:"Captured Lightroom — %.1f%% — memory only",percent) }
-        v.toolTip="Exact captured image. Command-scroll or pinch to zoom; drag to pan; double-click to Fit. Close to release."
+        v.toolTip="Exact captured image. Command-scroll to zoom; drag to pan; double-click to Fit. Close to release."
         w.contentView=v;window=w;view=v;w.center()
         NSApp.activate(ignoringOtherApps:true);w.makeKeyAndOrderFront(nil)
     }
@@ -192,4 +198,38 @@ final class CapturePreviewController:NSObject,NSWindowDelegate {
     private func release() { view?.releaseContent();view=nil;window?.contentView=nil;window=nil }
     func close() { window?.close();release() }
     deinit { close() }
+}
+
+private final class ChromeLabel:NSTextField {
+    override func hitTest(_ point:NSPoint)->NSView? { nil }
+}
+// Full-size content keeps the photograph stationary while chrome fades over it.
+final class FloatingPanel:OverlayPanel {
+    private let caption=ChromeLabel(labelWithString:"")
+    private var chromeVisible=false
+    override var title:String { didSet { caption.stringValue=title } }
+    func installChrome() {
+        titleVisibility = .hidden;titlebarAppearsTransparent=true
+        caption.font = .systemFont(ofSize:11,weight:.medium)
+        caption.textColor = .white;caption.backgroundColor=NSColor.black.withAlphaComponent(0.65)
+        caption.drawsBackground=true;caption.lineBreakMode = .byTruncatingMiddle
+        caption.alignment = .center
+        if let contentView {
+            caption.frame=CGRect(x:78,y:contentView.bounds.height-26,width:max(0,contentView.bounds.width-90),height:22)
+            caption.autoresizingMask=[.width,.minYMargin];contentView.addSubview(caption)
+        }
+        caption.alphaValue=0
+        for type in [NSWindow.ButtonType.closeButton,.miniaturizeButton,.zoomButton] { standardWindowButton(type)?.alphaValue=0;standardWindowButton(type)?.isEnabled=false }
+    }
+    func revealChrome(_ visible:Bool) {
+        guard chromeVisible != visible else { return };chromeVisible=visible
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration=0.15
+            caption.animator().alphaValue=visible ? 1:0
+            for type in [NSWindow.ButtonType.closeButton,.miniaturizeButton,.zoomButton] {
+                standardWindowButton(type)?.isEnabled=visible
+                standardWindowButton(type)?.animator().alphaValue=visible ? 1:0
+            }
+        }
+    }
 }

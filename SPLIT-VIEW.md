@@ -25,3 +25,9 @@ The updated plugin includes ViewDiagnostics.lua, exposed through File → Plug-i
 ## Runtime conclusion and next probe
 
 User supplied identical LrApplicationView exports in single-photo, Reference left/right and Reference upper/lower views. getMainViewName, getCurrentViewName and getCurrentView are nil in all three. That API does not expose the desired state on the installed version. 0.9.10 adds a bounded, read-only Accessibility menu/checkmark report to compare those views without automatically selecting menu items. A matching label or available command is not enough: selected/checkmark states must distinguish modes and orientation before enabling placement.
+
+## 0.9.11 — explicit mode, isolated implementation
+
+User chose explicit Full/Side-by-side/Above-and-below menu selection instead of waiting for an SDK getter. All four panes are supported. Full still calls the original singlePhoto detector; split-only detection validates a saved pane rectangle or requires a divider matching the selected orientation. Menu selection does not control Lightroom. Calibration preserves pane coordinates relative to the whole window, with separate keys/preferences for each pane. Fresh split auto detection is opt-in; new split panes start manual. No wipe inference. Raster fixtures exercise all four targets and reject orientation mismatch/single view; native screenshots/acceptance remain outstanding.
+
+The read-only Accessibility investigation run from a temporary test executable on 10 November returned permission unavailable. No TCC reset or extra prompt was issued. Existing in-app Accessibility diagnostics remain the next way to compare panel visibility. Cached placement deliberately does not claim internal-panel change detection.

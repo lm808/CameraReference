@@ -15,3 +15,42 @@ for kind:SplitLayoutKind in [.wipe,.unknown] {
 assert(splitReferencePlacement(viewport:viewport,kind:.separateLeftRight,divider:nil,image:.zero,settings:DetectionConfig()) == nil)
 assert(splitReferencePlacement(viewport:viewport,kind:.separateLeftRight,divider:350,image:CGSize(width:6000,height:4000),settings:DetectionConfig()) == nil)
 print("PASS: split groundwork fits landscape/portrait in left/upper pane; rejects wipe, unknown, missing and undersized panes")
+
+for mode in OverlayLayout.allCases {
+ let pane=mode.pane(in:viewport,vertical:800,horizontal:450)!
+ switch mode {
+ case .full:assert(pane==viewport)
+ case .left:assert(pane==CGRect(x:300,y:100,width:500,height:700))
+ case .right:assert(pane==CGRect(x:800,y:100,width:500,height:700))
+ case .upper:assert(pane==CGRect(x:300,y:100,width:1000,height:350))
+ case .lower:assert(pane==CGRect(x:300,y:450,width:1000,height:350))
+ }
+ if mode != .full { assert(mode.pane(in:viewport,vertical:nil,horizontal:nil)==nil) }
+}
+let config=DetectionConfig()
+let landscape=floatingPhotoSize(viewport:viewport.size,image:CGSize(width:6000,height:4000),settings:config)!
+let portrait=floatingPhotoSize(viewport:viewport.size,image:CGSize(width:4000,height:6000),settings:config)!
+assert(abs(landscape.width-464)<0.001 && abs(landscape.height-309.333333)<0.001)
+assert(abs(portrait.height-664)<0.001 && abs(portrait.width-442.666667)<0.001)
+let window=CGRect(x:120,y:40,width:1300,height:850)
+let memory=PlacementMemory(ui:viewport,window:window,windowID:42,epoch:"A",settingsKey:config.key,layout:.full)
+let moved=window.offsetBy(dx:200,dy:100)
+assert(memory.translated(window:moved,windowID:42,epoch:"A",settingsKey:config.key,layout:.full)==viewport.offsetBy(dx:200,dy:100))
+assert(memory.translated(window:window.insetBy(dx:1,dy:0),windowID:42,epoch:"A",settingsKey:config.key,layout:.full)==nil)
+assert(memory.translated(window:window,windowID:43,epoch:"A",settingsKey:config.key,layout:.full)==nil)
+assert(memory.translated(window:window,windowID:42,epoch:"B",settingsKey:config.key,layout:.full)==nil)
+assert(memory.translated(window:window,windowID:42,epoch:"A",settingsKey:"changed",layout:.full)==nil)
+assert(memory.translated(window:window,windowID:42,epoch:"A",settingsKey:config.key,layout:.left)==nil)
+assert(memory.translated(window:window,windowID:42,epoch:nil,settingsKey:config.key,layout:.full)==nil)
+let file=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("detection.conf")
+let store=DetectionConfigStore(url:file)
+let initial=try store.reload();assert(initial.overlayAnimation == false)
+let count=store.parseCount
+_ = try store.reload();assert(store.parseCount==count)
+try "overlayAnimation = true\nfitInsetPoints = 20\n".write(to:file,atomically:true,encoding:.utf8)
+let changed=try store.reload();assert(changed.overlayAnimation)
+assert(store.current.fitInsetPoints==20 && store.parseCount==count+1)
+try "overlayAnimation = typo".write(to:file,atomically:true,encoding:.utf8)
+do { _ = try store.reload();fatalError("Invalid config accepted") } catch { assert(store.current.overlayAnimation) }
+try FileManager.default.removeItem(at:file.deletingLastPathComponent())
+print("PASS: explicit four-pane selection, half-viewport floating fit for both orientations, placement reuse/invalidation, config caching and animation validation")

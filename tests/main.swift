@@ -322,3 +322,21 @@ assert(referenceFileSignature(raw:signatureRaw,preferEmbedded:true,executable:ni
 try FileManager.default.removeItem(at:signatureRaw)
 assert(referenceFileSignature(raw:signatureRaw,preferEmbedded:true,executable:nil) == nil)
 print("PASS: one-photo RAM reuse, selection/return/restart/stale invalidation, late-load rejection and source/preference revalidation")
+
+let layoutDefaultsName="CameraReference.LayoutTests."+UUID().uuidString
+let layoutDefaults=UserDefaults(suiteName:layoutDefaultsName)!
+for mode in OverlayLayout.allCases {
+    layoutDefaults.set("saved-"+mode.rawValue,forKey:regionPreferenceKey("region",layout:mode))
+    layoutDefaults.set(mode != .left,forKey:regionPreferenceKey("automaticBounds",layout:mode))
+}
+clearRegionPreferences(layoutDefaults,layout:.left)
+assert(layoutDefaults.string(forKey:regionPreferenceKey("region",layout:.left))==nil)
+assert(!layoutDefaults.bool(forKey:regionPreferenceKey("automaticBounds",layout:.left)))
+clearRegionPreferences(layoutDefaults,layout:.right)
+assert(layoutDefaults.bool(forKey:regionPreferenceKey("automaticBounds",layout:.right)))
+for mode:OverlayLayout in [.full,.upper,.lower] {
+    assert(layoutDefaults.string(forKey:regionPreferenceKey("region",layout:mode))=="saved-"+mode.rawValue)
+}
+assert(regionPreferenceKey("region",layout:.full)=="region")
+layoutDefaults.removePersistentDomain(forName:layoutDefaultsName)
+print("PASS: pane calibration isolation; clearing preserves each auto/manual preference and Full legacy keys")

@@ -208,3 +208,20 @@ try! "sideSearchPercent = 30\nfitInsetPoints = 22\n".write(to:oldConfigURL,atomi
 expect(try! oldStore.reload().sideSearchPercent == 30,"Edited interval not reloaded")
 expect(DetectionConfig().key != (try! DetectionConfig.parse("sideSearchPercent = 30")).key,"Manual layout key ignores interval")
 print("PASS: configurable side search, narrow-only failure message, cache invalidation, config migration and reload")
+
+for mode:OverlayLayout in [.left,.right,.upper,.lower] {
+ let raster=fixture(bg:[0,0,0],split:mode.group)
+ let result=detectSplitViewport(in:raster,layout:mode)
+ expect(result.bounds != nil,"Explicit pane missing: \(mode) \(result.summary)")
+ let pane=result.bounds!
+ expect(mode.group==1 ? pane.width<340 && pane.height>500:pane.height<270 && pane.width>650,"Wrong pane dimensions")
+ if mode == .right { expect(pane.minX>440,"Right pane selected left") }
+ if mode == .lower { expect(pane.minY>310,"Lower pane selected upper") }
+ let wrong=detectSplitViewport(in:fixture(bg:[0,0,0],split:mode.group==1 ? 2:1),layout:mode)
+ expect(wrong.bounds==nil,"Wrong divider orientation accepted")
+ let single=detectSplitViewport(in:fixture(bg:[0,0,0]),layout:mode)
+ expect(single.bounds==nil,"Single-photo rectangle accepted as split without calibration")
+ let seeded=detectSplitViewport(in:raster,layout:mode,seed:pane)
+ expect(seeded.bounds != nil,"Calibrated pane validation failed")
+}
+print("PASS: explicit split raster path selects all four panes; wrong orientation/single view fall back; calibrated seeds validate")

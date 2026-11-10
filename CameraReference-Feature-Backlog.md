@@ -3,6 +3,22 @@
 Updated: 10 November 2026.
 Current baseline: 0.9.6 accepted by user as working for most cases; 0.9.7 adds the icon; 0.9.8 is the polish/test build. Historical sections below are retained as development history, not current outstanding requirements. This checklist supersedes their old statuses.
 
+## 0.9.11 — current status (supersedes historical entries below)
+
+- [x] User confirmed 0.9.10 RAM hit: 5 ms load, 451 ms total; manual placement 115 ms. Capture was 219 ms in the automatic sample.
+- [x] Reuse automatic placement for repeated same-photo toggles; translate movement; reject resize, selection, mode/config/display changes. Keep screenshot detection out of the repeated path.
+- [x] Full detector remains isolated; explicit layout/pane menu, icons/checkmarks and independent split calibration/preferences.
+- [x] Split-only detection uses supported dividers or validates calibrated pane UI bounds; uncertain layouts offer manual. All four panes implemented; wipe deferred.
+- [x] Successful calibration disables auto for its pane. Clear region preserves auto/manual preference and other panes.
+- [x] Both orientations use half-width/full-height UI fitting for initial floating size.
+- [x] Hover title/controls; floating drag at/below Fit moves window, zoomed drag pans.
+- [x] Remove pinch code/diagnostics; keep Cmd-scroll and pan. Pinch is no longer a pending feature.
+- [x] Default-off configurable overlay animation; config parsed only after file changes.
+- [ ] Native 0.9.11 acceptance and repeated-toggle timing: new TESTING.md list.
+- [ ] Reliable inexpensive internal panel-change signal. Read-only AX probe in test process reported permission unavailable; no automatic inference or permission reset attempted. Use Clear region after panel changes.
+- [ ] Live Reference/Before–After split validation, including above/below. Main-view getter remains absent; explicit menu selection supplies intended mode.
+- [ ] Later: wipe, Lightroom zoom/pan alignment beyond Fit, crop/lens corrections and broader embedded RAW support.
+
 ## 0.9.10 — current-photo RAM reuse and corrected polish
 
 - [x] User authorised one-current-photo RAM cache, superseding the older between-invocation no-cache requirement. Keeps extracted bytes and decoded image; no disk image cache.
