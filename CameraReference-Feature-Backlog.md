@@ -1,7 +1,40 @@
 # Camera Reference — feature backlog
 
-Updated: 9 November 2026.
-Status: 0.6 has user feedback; 0.7 is built and regression-tested, awaiting live acceptance. Historical sections retain their original status; the latest section supersedes them.
+Updated: 10 November 2026.
+Current baseline: 0.9.6 accepted by user as working for most cases; 0.9.7 adds the icon; 0.9.8 is the polish/test build. Historical sections below are retained as development history, not current outstanding requirements. This checklist supersedes their old statuses.
+
+## Current implementation audit
+
+Checked means implemented with source/regression evidence, not that every native interaction has user acceptance.
+
+- [x] FR-001 standalone/embedded priority, fallback, in-memory CR3 extraction and orientation, cancellation and explicit export safety.
+- [x] FR-002 overlay outline, margin label and menu icon state.
+- [x] FR-003 independent floating reference, refresh and image navigation; 0.9.8 adds hide/show preservation, separate shortcut and revised landscape initial size.
+- [x] FR-004 Develop-only overlay and single-photo automatic bounds; user accepted non-maximised placement in 0.9.4 and general reliability in 0.9.6.
+- [x] FR-005 explicit save of the displayed embedded JPEG with replacement confirmation.
+- [x] FR-006 menu organisation; 0.9.8 promotes automatic detection, merges developer menus, moves status and groups Settings.
+- [x] FR-007 persistent manual calibration, Option snapping and region reset.
+- [x] FR-008 overlay shortcut recorder; separate floating shortcut recorder in 0.9.8.
+- [x] FR-010 screenshot preview, complete-rectangle detection, configurable margins/side bounds/search interval, graceful calibration fallback.
+- [x] Application icon packaged; Launch Services registration refreshed.
+- [x] Stage timing instrumentation: bridge, load/extraction, capture, raster, detector and total to panel.
+- [ ] FR-009 physical trackpad acceptance: pinch/pan were reported broken; 0.9.8 adjusts indirect-touch and responder eligibility. Verify on hardware, including non-key windows. Pan at Fit is intentionally bounded.
+- [ ] Verify icon in Privacy Settings after reopening it; no permission reset performed.
+- [ ] Verify floating shortcut conflicts, hide/show state preservation, landscape size and unchanged portrait behaviour.
+- [x] CPU speed benchmark on both supplied screenshots: fresh detector ~44–71 ms, cached validation ~0.1 ms; see PERFORMANCE.md.
+- [ ] Measure real first/repeated overlay latency; optimise the measured bottleneck without persistent image caches or weaker geometry checks.
+- [ ] Split-view automatic mode: separate left/right or upper/lower panes, left/upper target, Reference and Before/After desired. Defer wipe/divider-over-one-photo layouts. Uncertain detection offers manual calibration.
+- [ ] Establish whether the installed Lightroom SDK exposes the main view type/orientation; do not confuse showView commands or secondary-view getters with a main-view getter.
+- [x] Split geometry groundwork and tests for known separate left/right or upper/lower panes, portrait/landscape, and rejection of wipe/unknown layouts; not enabled in production.
+- [ ] Validate split geometry against actual Reference and Before/After screenshots before enabling it in production.
+- [ ] Later: Lightroom zoom/pan alignment beyond Fit, crop/lens-correction differences and broader embedded RAW support.
+
+## Agreed work order
+
+1. Polish current version and commit a test build.
+2. Audit this backlog (this section).
+3. Measure speed with stage attribution.
+4. Begin split-view groundwork; check evidence before major production changes to conserve quota.
 
 ## Baseline and existing roadmap
 
@@ -76,19 +109,19 @@ This work does not require V3 zoom/pan and must not introduce blending or opacit
 
 ### Acceptance checklist
 
-- [ ] Default Off preserves standalone-first priority.
-- [ ] On requests embedded JpgFromRaw first even when a standalone JPEG exists.
-- [ ] Fallback works in both directions; unavailable sources produce a clear no-reference message.
-- [ ] Preferred available standalone is displayed directly without extraction or copies.
-- [ ] Valid embedded JpgFromRaw decodes and displays entirely in application memory.
-- [ ] No temporary extracted-image files or persistent/inter-session image cache are created.
+- [x] Default Off preserves standalone-first priority.
+- [x] On requests embedded JpgFromRaw first even when a standalone JPEG exists.
+- [x] Fallback works in both directions; unavailable sources produce a clear no-reference message.
+- [x] Preferred available standalone is displayed directly without extraction or copies.
+- [x] Valid embedded JpgFromRaw decodes and displays entirely in application memory.
+- [x] No temporary extracted-image files or persistent/inter-session image cache are created.
 - [ ] No photo paths or image data persist in application logs.
-- [ ] Repeated extraction does not alter original RAW contents or intentionally alter metadata/timestamps.
-- [ ] Dismissal/replacement/cancellation releases extracted data and image resources promptly.
-- [ ] Missing/invalid embedded data, unsupported format, missing tool and process errors are handled gracefully.
-- [ ] Dismissal does not invoke ExifTool; stale asynchronous results cannot reopen a dismissed overlay.
+- [x] Repeated extraction does not alter original RAW contents or intentionally alter metadata/timestamps.
+- [x] Dismissal/replacement/cancellation releases extracted data and image resources promptly.
+- [x] Missing/invalid embedded data, unsupported format, missing tool and process errors are handled gracefully.
+- [x] Dismissal does not invoke ExifTool; stale asynchronous results cannot reopen a dismissed overlay.
 - [ ] Extraction and display latency are recorded without sensitive paths, and repeated use is acceptable for interactive comparison.
-- [ ] Existing standalone matching, overlay toggle and positioning behaviour remain intact.
+- [x] Existing standalone matching, overlay toggle and positioning behaviour remain intact.
 
 ## FR-002 — Subtle indication that the overlay is visible
 
