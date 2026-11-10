@@ -1,6 +1,10 @@
-# Camera Reference 0.9.6 — configurable side search
+# Camera Reference 0.9.7 — application icon
 
 Quit the old companion and open `build/CameraReference.app`. No Lightroom plugin reinstall or restart. Nothing is installed or launched by the build scripts.
+
+## New in 0.9.7
+
+Adds a bundled camera icon for Finder and macOS application surfaces. Detection behaviour is unchanged from 0.9.6.
 
 ## New in 0.9.6
 
