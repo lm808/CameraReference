@@ -78,6 +78,7 @@ for _, scenario in ipairs({'ok', 'dng', 'library', 'none', 'notraw', 'sdkerror',
     end
     if scenario == 'cleanup' then clock = clock + 11; step(); assert(files['response.txt'] == nil) end
     dofile(_PLUGIN.path .. '/Diagnostics.lua')
+    dofile(_PLUGIN.path .. '/ViewDiagnostics.lua'); step()
     dofile(_PLUGIN.path .. '/Shutdown.lua'); step()
     for _, task in ipairs(tasks) do assert(coroutine.status(task) == 'dead', 'Loop did not stop') end
     io = originalIO; os.time = originalTime

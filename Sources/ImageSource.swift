@@ -13,6 +13,7 @@ struct LoadedReference {
     var embeddedBytes: Data? = nil
     var cameraOrientation: UInt32? = nil
     var sourceFilename: String = ""
+    var stages: String = ""
 }
 
 // A cancellation flag is shared with the worker. No photo bytes or paths are retained here.
@@ -176,8 +177,10 @@ func loadReference(raw: URL, preferEmbedded: Bool, executable: URL?, cancellatio
     let start = ProcessInfo.processInfo.systemUptime
     let order: [ImageOrigin] = preferEmbedded ? [.embedded, .standalone] : [.standalone, .embedded]
     var reasons = [String]()
+    var stages=[String]()
     for (index, origin) in order.enumerated() {
         try cancellation.check()
+        let sourceStarted=ProcessInfo.processInfo.systemUptime
         do {
             let image: CGImage
             var extraction: TimeInterval?
@@ -190,7 +193,10 @@ func loadReference(raw: URL, preferEmbedded: Bool, executable: URL?, cancellatio
                 do { jpeg = try matchingJPEG(for: raw) }
                 catch let error as ReferenceError { throw error }
                 catch { throw ReferenceError.message("Cannot read the standalone JPEG folder.") }
+                stages.append(String(format:"JPEG lookup %.0f ms",(ProcessInfo.processInfo.systemUptime-sourceStarted)*1000))
+                let decodeStarted=ProcessInfo.processInfo.systemUptime
                 image = try decodeJPEG(CGImageSourceCreateWithURL(jpeg as CFURL, nil))
+                stages.append(String(format:"Standalone decode %.0f ms",(ProcessInfo.processInfo.systemUptime-decodeStarted)*1000))
                 sourceFilename=jpeg.lastPathComponent
             case .embedded:
                 guard raw.pathExtension.lowercased() == "cr3" else {
@@ -200,12 +206,14 @@ func loadReference(raw: URL, preferEmbedded: Bool, executable: URL?, cancellatio
                 let embedded = try embeddedImage(raw: raw, executable: executable, cancellation: cancellation)
                 image = embedded.image; extraction = embedded.extraction
                 bytes = embedded.bytes; orientation = embedded.orientation
+                stages.append(String(format:"Embedded decode/orientation overhead %.0f ms",(ProcessInfo.processInfo.systemUptime-sourceStarted-embedded.extraction)*1000))
             }
             try cancellation.check()
             return LoadedReference(image: image, origin: origin, elapsed: ProcessInfo.processInfo.systemUptime - start,
-                                   extraction: extraction, usedFallback: index > 0, embeddedBytes: bytes, cameraOrientation: orientation, sourceFilename: sourceFilename)
+                                   extraction: extraction, usedFallback: index > 0, embeddedBytes: bytes, cameraOrientation: orientation, sourceFilename: sourceFilename,stages:stages.joined(separator:"; "))
         } catch {
             try cancellation.check()
+            stages.append(String(format:"%@ attempt failed after %.0f ms",origin.rawValue,(ProcessInfo.processInfo.systemUptime-sourceStarted)*1000))
             reasons.append(error.localizedDescription)
         }
     }

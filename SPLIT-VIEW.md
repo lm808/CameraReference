@@ -15,3 +15,9 @@ Sources inspected:
 - https://community.adobe.com/feature-requests-676/p-sdk-api-to-get-the-current-view-in-library-1557715
 
 Next low-cost check: installed SDK API reference or a read-only plugin capability report, followed by screenshots of the intended Reference/Before-After layouts in both orientations. No undocumented getter or automatic mode-switching is assumed. If no reliable view getter exists, require explicit user split mode plus validated divider evidence; do not silently reinterpret a photo edge as a pane divider. Live wiring waits for that evidence to preserve the working single-photo baseline.
+
+## Installed Lightroom 15.6 inspection — 10 November 2026
+
+Read-only inspection of `/Applications/Adobe Lightroom Classic/Adobe Lightroom Classic.app/Contents/Resources/LrApplicationView.lua` (Lua 5.1 bytecode) found `showView`, `getCurrentModuleName`, `isSecondaryDisplayOn`, `showSecondaryView`, and `getSecondaryViewName`. Supported command names include develop_loupe, develop_before_after_horiz/vert and develop_reference_horiz/vert. No main-view getter name is present in that module's string constants. This is direct installed-code evidence, not a guarantee about every dynamic API export.
+
+The updated plugin includes ViewDiagnostics.lua, exposed through File → Plug-in Extras → Camera Reference view API diagnostics. It enumerates actual LrApplicationView function names, reads the current module and checks getter-name presence without invoking unknown functions. It does not call showView or inspect/edit photos. Runtime export evidence is the next check; reload the repository plugin to see the new command. If no getter is available, investigate Accessibility selected menu/toolbar states while switching layouts manually. Do not enable auto splitting from divider edges alone.

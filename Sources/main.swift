@@ -117,8 +117,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         autoItem.state = UserDefaults.standard.bool(forKey: "automaticBounds") ? .on : .off
         add("Set image region…", #selector(calibrate), to: settings)
         settings.addItem(.separator())
-        shortcutItem = add("Overlay shortcut…", #selector(changeShortcut), to: settings)
-        add("Floating display shortcut…", #selector(changeFloatingShortcut), to: settings)
+        shortcutItem = add("Keyboard shortcuts…", #selector(changeShortcut), to: settings)
+
         settings.addItem(.separator())
         add("Edit config file", #selector(openDetectionConfig), to: settings)
         add("Choose ExifTool…", #selector(chooseExifTool), to: settings)
@@ -330,6 +330,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                     if target == .window { self.floating?.title = self.floatingTitle + " — unchanged; refresh failed" }
                 case .success(let (loaded, layout)):
                     self.lastTiming=String(format:"Bridge %.0f ms; JPEG load/decode %.0f ms",bridgeMS,loaded.elapsed*1000) + (loaded.extraction.map { String(format:" (extraction %.0f ms, included)",$0*1000) } ?? "")
+                    self.lastTiming += "; " + loaded.stages
                     self.lastImageSize = CGSize(width: loaded.image.width, height: loaded.image.height)
                     if let layout { self.lastLayout = layout.summary }
                     let elapsed = ProcessInfo.processInfo.systemUptime - invoked
@@ -391,7 +392,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard !recording, calibration == nil else { return }
         if destination == .window { cancelRequest(); return }
         if let floating {
-            if floating.isVisible { floating.orderOut(nil) } else { floating.orderFrontRegardless() }
+            if floating.isVisible { floating.close() } else { floating.orderFrontRegardless() }
             updateToggleTitle(); return
         }
         request(.window)
@@ -419,7 +420,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             }
             view.autoresizingMask = [.width, .height]
             view.refresh = { [weak self] in self?.request(.window) }
-            p.contentView = view; floating = p; floatingView = view
+            p.contentView = view
+            p.setContentSize(size) // Explicit photo content size; title bar is outside it.
+            lastLayout += "\nFloating requested photo size: \(size); actual content: \(view.bounds.size); outer frame: \(p.frame.size)."
+            floating = p; floatingView = view
         } else if let floating {
             // Keep the user's position and approximate size, while adapting to portrait/landscape changes.
             let box = floating.contentLayoutRect.size
@@ -537,6 +541,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard !regionResetting else { return }
         cancelScreenInspection(); hide(); cancelRequest(); calibration?.finish(nil)
         let settings=reloadDetectionConfig()
+        var selectionKind="final"
+        if proposal == nil {
+            let choice=NSAlert();choice.messageText="What will you select?"
+            choice.informativeText="UI working area applies your configured UI/photo sides and Fit inset. Photo bounds displays the JPEG exactly inside your selection, without adding UI margins."
+            choice.addButton(withTitle:"UI working area");choice.addButton(withTitle:"Photo bounds");choice.addButton(withTitle:"Cancel")
+            let response=choice.runModal()
+            guard response != .alertThirdButtonReturn else { return }
+            selectionKind=response == .alertFirstButtonReturn ? "ui":"photo"
+        }
         let controller=CalibrationController();controller.snapRadius=settings.snapDistancePoints; calibration=controller
         controller.completed = { [weak self] result in
             guard let self else { return }
@@ -545,6 +558,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.calibration=nil
             if let result {
                 self.region=result; self.manualLayoutKey=self.lastProbe?.layoutKey
+                UserDefaults.standard.set(selectionKind,forKey:"regionKind")
                 if useManualOnAccept {
                     UserDefaults.standard.set(false,forKey:"automaticBounds"); self.autoItem.state = .off
                 }
@@ -610,9 +624,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard FeaturePermission.screenCapture.ensure() else { return }
         request(.detect) // Obtain the current JPEG aspect ratio, never a previous photo's.
     }
+    func displayManual(_ image:CGImage,in area:CGRect,snapshot:ExportSnapshot?) {
+        if UserDefaults.standard.string(forKey:"regionKind") == "ui" {
+            let settings=reloadDetectionConfig()
+            // placement uses top-left coordinates, even though calibration is AppKit.
+            let topLeft=appKitRect(area,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
+            guard let placed=settings.placement(ui:topLeft,image:CGSize(width:image.width,height:image.height)) else { report("Calibration is too small for the configured Fit inset.");return }
+            let region=appKitRect(placed.region,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
+            let photo=appKitRect(placed.photo,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
+            display(image,in:region,photoFrame:photo)?.exportSnapshot=snapshot
+        } else { display(image,in:area)?.exportSnapshot=snapshot }
+    }
     func resolveOverlay(_ image:CGImage,snapshot:ExportSnapshot?) {
         guard UserDefaults.standard.bool(forKey:"automaticBounds") else {
-            if let area=region { display(image,in:area)?.exportSnapshot=snapshot }
+            if let area=region { displayManual(image,in:area,snapshot:snapshot) }
             else { askForCalibration() }; return
         }
         guard #available(macOS 14.0,*), FeaturePermission.screenCapture.ensure() else {
@@ -621,7 +646,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         startPhotoDetection(imageSize:CGSize(width:image.width,height:image.height)) { [weak self] result in
             guard let self, self.isLightroom(), self.currentModule()=="develop" else { return }
             if let key=result.layoutKey,key==self.manualLayoutKey,let area=self.region {
-                self.display(image,in:area)?.exportSnapshot=snapshot; return
+                self.displayManual(image,in:area,snapshot:snapshot); return
             }
             guard let area=result.candidate else { self.askForCalibration(workingAreaTooNarrow:result.workingAreaTooNarrow); return }
             if result.split && self.acceptedSplitKey != result.layoutKey {
@@ -718,47 +743,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         hide(); NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert(); alert.messageText = "Camera Reference"; alert.informativeText = lastResult + "\n\n" + lastTiming; alert.runModal()
     }
-    @objc func changeShortcut() { editShortcut(floatingTarget:false) }
-    @objc func changeFloatingShortcut() { editShortcut(floatingTarget:true) }
-    func editShortcut(floatingTarget:Bool) {
-        hide(); calibration?.finish(nil); recording=true
-        let original=floatingTarget ? floatingShortcut:currentShortcut
-        // Suspend the global shortcut while recording so its keystroke reaches the recorder.
-        if floatingTarget {
-            if let floatingHotKey { UnregisterEventHotKey(floatingHotKey); self.floatingHotKey=nil }
-        } else if let hotKey { UnregisterEventHotKey(hotKey); self.hotKey=nil }
-        defer { recording=false; updateToggleTitle() }
+    @objc func changeShortcut() {
+        hide();calibration?.finish(nil);recording=true
+        let oldOverlay=currentShortcut,oldFloating=floatingShortcut
+        if let hotKey { UnregisterEventHotKey(hotKey);self.hotKey=nil }
+        if let floatingHotKey { UnregisterEventHotKey(floatingHotKey);self.floatingHotKey=nil }
+        defer { recording=false;updateToggleTitle() }
+        let overlay=ShortcutRecorder(shortcut:oldOverlay,label:keyLabel)
+        let floating=ShortcutRecorder(shortcut:oldFloating,label:floatingKeyLabel)
+        floating.defaultShortcut=(UInt32(kVK_ANSI_F),UInt32(controlKey|optionKey|cmdKey));floating.defaultLabel="F"
+        overlay.setAccessibilityLabel("Overlay shortcut");floating.setAccessibilityLabel("Floating display shortcut")
+        let help=NSTextField(wrappingLabelWithString:"Click either shortcut to record it. Both shortcuts must be different.")
+        overlay.help=help;floating.help=help
+        let views:[NSView]=[NSTextField(labelWithString:"Overlay"),overlay,NSButton(title:"Default overlay",target:overlay,action:#selector(ShortcutRecorder.useDefault)),NSTextField(labelWithString:"Floating display"),floating,NSButton(title:"Default floating",target:floating,action:#selector(ShortcutRecorder.useDefault)),help]
+        let stack=NSStackView(views:views);stack.orientation = .vertical;stack.spacing=10;stack.frame=CGRect(x:0,y:0,width:360,height:280)
+        help.widthAnchor.constraint(equalToConstant:350).isActive=true
+        let alert=NSAlert();alert.messageText="Keyboard shortcuts";alert.accessoryView=stack
+        alert.addButton(withTitle:"Save");alert.addButton(withTitle:"Cancel")
         NSApp.activate(ignoringOtherApps:true)
-        let alert=NSAlert(); alert.messageText=floatingTarget ? "Floating Display Shortcut":"Overlay Shortcut"
-        alert.informativeText=floatingTarget ? "Show or hide the independent floating display. Click the shortcut to change it." : "Show or hide the camera reference over Lightroom. Click the shortcut to change it."
-        let recorder=ShortcutRecorder(shortcut:original,label:floatingTarget ? floatingKeyLabel:keyLabel)
-        recorder.defaultShortcut=floatingTarget ? (UInt32(kVK_ANSI_F),UInt32(controlKey|optionKey|cmdKey)): (UInt32(kVK_ANSI_J),UInt32(controlKey|optionKey|cmdKey))
-        recorder.defaultLabel=floatingTarget ? "F":"J"
-        recorder.setAccessibilityLabel(alert.messageText)
-        let help=NSTextField(wrappingLabelWithString:"Click the shortcut field, then press a new combination.")
-        recorder.help=help
-        let reset=NSButton(title:"Use Default",target:recorder,action:#selector(ShortcutRecorder.useDefault))
-        let stack=NSStackView(views:[recorder,reset,help]); stack.orientation = .vertical; stack.alignment = .centerX; stack.spacing=12
-        stack.frame=CGRect(x:0,y:0,width:340,height:120)
-        recorder.widthAnchor.constraint(equalToConstant:240).isActive=true
-        help.widthAnchor.constraint(equalToConstant:330).isActive=true
-        alert.accessoryView=stack; alert.addButton(withTitle:"Save"); alert.addButton(withTitle:"Cancel")
         while true {
-            if alert.runModal() != .alertFirstButtonReturn {
-                if !register(original,floatingTarget:floatingTarget) { report("Previous shortcut is unavailable. Choose another shortcut.") }; break
+            guard alert.runModal() == .alertFirstButtonReturn else {
+                let a=register(oldOverlay),b=register(oldFloating,floatingTarget:true)
+                if !a || !b { report("A previous shortcut is unavailable; reopen Keyboard shortcuts.") };return
             }
-            if register(recorder.candidate,floatingTarget:floatingTarget) {
+            guard overlay.candidate != floating.candidate else { help.stringValue="Choose two different shortcuts.";continue }
+            let a=register(overlay.candidate)
+            let b=a && register(floating.candidate,floatingTarget:true)
+            if a && b {
+                keyLabel=overlay.keyLabel;floatingKeyLabel=floating.keyLabel
                 let prefs=UserDefaults.standard
-                if floatingTarget {
-                    floatingKeyLabel=recorder.keyLabel
-                    prefs.set(floatingShortcut.0,forKey:"floatingKey");prefs.set(floatingShortcut.1,forKey:"floatingModifiers");prefs.set(floatingKeyLabel,forKey:"floatingKeyLabel")
-                } else {
-                    keyLabel=recorder.keyLabel
-                    prefs.set(currentShortcut.0,forKey:"key");prefs.set(currentShortcut.1,forKey:"modifiers");prefs.set(keyLabel,forKey:"keyLabel")
-                }
-                report("Shortcut saved."); break
+                prefs.set(currentShortcut.0,forKey:"key");prefs.set(currentShortcut.1,forKey:"modifiers");prefs.set(keyLabel,forKey:"keyLabel")
+                prefs.set(floatingShortcut.0,forKey:"floatingKey");prefs.set(floatingShortcut.1,forKey:"floatingModifiers");prefs.set(floatingKeyLabel,forKey:"floatingKeyLabel")
+                report("Shortcuts saved.");return
             }
-            help.stringValue="That shortcut is unavailable. Choose another, or Cancel."
+            if let hotKey { UnregisterEventHotKey(hotKey);self.hotKey=nil }
+            if let floatingHotKey { UnregisterEventHotKey(floatingHotKey);self.floatingHotKey=nil }
+            help.stringValue="A shortcut is unavailable. Choose another combination or Cancel."
         }
     }
     @objc func cancel() { calibration?.finish(nil); hide(); report("Ready.") }

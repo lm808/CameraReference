@@ -1,6 +1,18 @@
-# Camera Reference 0.9.8 — menus, floating display and timing
+# Camera Reference 0.9.9 — acceptance fixes and view API investigation
 
 Quit the old companion and open `build/CameraReference.app`. No Lightroom plugin reinstall or restart. Nothing is installed or launched by the build scripts.
+
+## New in 0.9.9
+
+Hiding the floating display now closes/releases it; showing again loads the current Lightroom selection. An open floating display still retains its photo until reload. Initial sizing explicitly sets the photo content size, with requested/content/outer-frame dimensions in diagnostics. Both shortcut recorders now share one Keyboard shortcuts dialog.
+
+Pinch uses an AppKit magnification gesture recognizer; pan handling is unchanged. Physical pinch acceptance remains required. Native permission requests are retried on explicit feature use instead of being suppressed forever by an old preference; macOS controls permission-list membership and may still require manual intervention.
+
+Manual setup asks whether the selection is UI working area (applies current Fit inset and UI/photo side choices) or Photo bounds (exact selected rectangle). Older calibrations preserve their previous interpretation; recalibrate to use UI-aware placement.
+
+JPEG lookup no longer prefetches file properties for every entry in the RAW folder, only matching candidates. Timings distinguish lookup, failed source attempts, standalone decode and embedded decode/orientation overhead. No image cache or resolution reduction is introduced.
+
+Optional updated plugin menu: File → Plug-in Extras → Camera Reference view API diagnostics. Reload the plugin from this repository to expose it; this is a read-only capability report and does not change views. The companion remains compatible with the current bridge. Split auto mode is not enabled yet.
 
 ## New in 0.9.8
 

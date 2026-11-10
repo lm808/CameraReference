@@ -277,3 +277,15 @@ assert(!overlayPlacementIsAcceptable(requested:.zero,actual:.zero))
 let negativeOverlay = requestedOverlay.offsetBy(dx:-2000,dy:-1000)
 assert(overlayPlacementIsAcceptable(requested:negativeOverlay,actual:roundedOverlay.offsetBy(dx:-2000,dy:-1000)))
 print("PASS: overlay rounding accepted independently of capture stability; displaced/resized panels rejected")
+
+// Manual UI selection uses the same top-left Fit geometry, then returns to AppKit.
+let manualUI=CGRect(x:100,y:200,width:900,height:600)
+let manualSettings=try! DetectionConfig.parse("left=photo\nright=ui\ntop=ui\nbottom=photo\nfitInsetPoints=20")
+let manualTop=appKitRect(manualUI,primaryHeight:1000)
+let manualPlacement=manualSettings.placement(ui:manualTop,image:CGSize(width:6000,height:4000))!
+let manualRegion=appKitRect(manualPlacement.region,primaryHeight:1000)
+let manualPhoto=appKitRect(manualPlacement.photo,primaryHeight:1000)
+assert(manualRegion.maxY == manualUI.maxY && manualRegion.maxX == manualUI.maxX)
+assert(manualRegion.minX == manualPhoto.minX && manualRegion.minY == manualPhoto.minY)
+assert(manualUI.contains(manualPhoto))
+print("PASS: manual UI calibration preserves asymmetric side semantics through screen-coordinate conversion")

@@ -8,3 +8,7 @@ precondition(menu.items.count==2 && menu.items[0].title=="Fit" && menu.items[1].
 view.releaseContent()
 precondition(view.image==nil && view.exportSnapshot==nil && view.menu(for:event)==nil)
 print("PASS: capture preview has only Fit/100% actions and releases image content")
+
+precondition(view.gestureRecognizers.contains { $0 is NSMagnificationGestureRecognizer })
+precondition(view.acceptsFirstResponder && view.needsPanelToBecomeKey)
+print("PASS: shared image view installs native magnification recognizer and accepts panel focus")

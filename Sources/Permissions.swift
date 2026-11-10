@@ -8,9 +8,8 @@ enum FeaturePermission {
     var name: String { self == .accessibility ? "Accessibility" : "Screen Recording" }
     @discardableResult func ensure() -> Bool {
         if granted { return true }
-        let key="requestedPermission."+name
-        if !UserDefaults.standard.bool(forKey:key) {
-            UserDefaults.standard.set(true,forKey:key)
+        // Retry the native request on explicit feature use, including after a rebuild.
+        do {
             if self == .accessibility {
                 _ = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String:true] as CFDictionary)
             } else { _ = CGRequestScreenCaptureAccess() }

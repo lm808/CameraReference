@@ -3,6 +3,21 @@
 Updated: 10 November 2026.
 Current baseline: 0.9.6 accepted by user as working for most cases; 0.9.7 adds the icon; 0.9.8 is the polish/test build. Historical sections below are retained as development history, not current outstanding requirements. This checklist supersedes their old statuses.
 
+## 0.9.9 acceptance follow-up
+
+User passed 0.9.8 menus, pan, privacy icon, window/full-screen/resize/narrow placement and calibration persistence. Their detailed results remain in TESTING.md.
+
+- [x] Corrected floating lifetime: closing/hiding releases it; reopening loads the current selection. Open-window selection remains independent.
+- [x] Both shortcuts now share one dialog; duplicate/conflict handling and rollback remain.
+- [x] Explicit content sizing and requested/actual/outer-frame diagnostics for floating photo size.
+- [x] Manual calibration distinguishes UI viewport (configured Fit/sides) from exact photo bounds; old calibrations preserved.
+- [x] Replaced pinch responder handling with native magnification recognizer; physical verification still pending.
+- [x] Native permission request retried on explicit use; OS-list appearance cannot be guaranteed by the app.
+- [x] Removed whole-folder property prefetch in JPEG lookup; added failed-source/lookup/decode timing. Live speedup not yet measured.
+- [x] Inspected installed Lightroom 15.6 LrApplicationView bytecode constants; no main-view getter evident. Added read-only runtime function-export report to plugin.
+- [ ] Run runtime View API diagnostics and establish reliable main-view identity via SDK or Accessibility before enabling split auto placement.
+- [ ] Complete 0.9.9 focused retest, particularly pinch and manual sizing.
+
 ## Current implementation audit
 
 Checked means implemented with source/regression evidence, not that every native interaction has user acceptance.

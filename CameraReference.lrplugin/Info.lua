@@ -9,6 +9,7 @@ return {
     LrExportMenuItems = {
         { title = 'Start / restart Camera Reference bridge', file = 'Start.lua' },
         { title = 'Camera Reference bridge diagnostics', file = 'Diagnostics.lua' },
+        { title = 'Camera Reference view API diagnostics', file = 'ViewDiagnostics.lua' },
     },
     LrShutdownPlugin = 'Shutdown.lua',
     VERSION = { major=0, minor=4, revision=0, build=4 },

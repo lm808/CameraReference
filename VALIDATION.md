@@ -57,3 +57,7 @@ Full regression suite, app build, signature and Info.plist checks passed. Additi
 ## 0.9.8
 
 App build, full regression suite, signature and plist checks passed. Native acceptance is pending for the second shortcut, focus/indirect-touch routing changes, landscape initial sizing and Privacy Settings icon. Launch Services registration was refreshed successfully without resetting TCC permissions or launching the app. Timing instrumentation records stage durations without paths or image data; timings are to panel ordering, not proof of completed screen rendering. Single-photo detection remains unchanged.
+
+## 0.9.9
+
+Full regression suite passed after acceptance fixes. Targeted follow-ups also pass: manual UI coordinate conversion with asymmetric UI/photo sides; installation of native magnification recognizer; read-only plugin capability-report execution with SDK stand-ins. App build, signature and plist checks pass. No physical pinch, shortcut dialog, native permission-list or sizing acceptance is claimed. User 0.9.8 test notes are preserved verbatim under a new 0.9.9 retest list. Installed Lightroom version 15.6 and its LrApplicationView bytecode constants were inspected read-only; a runtime export report is supplied to verify the lack of a main-view getter before designing split integration.

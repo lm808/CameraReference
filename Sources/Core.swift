@@ -31,7 +31,7 @@ func matchingJPEG(for raw: URL) throws -> URL {
         throw ReferenceError.message("Original photograph is offline or unreadable.")
     }
     let stem = raw.deletingPathExtension().lastPathComponent
-    let files = try FileManager.default.contentsOfDirectory(at: raw.deletingLastPathComponent(), includingPropertiesForKeys: [.isRegularFileKey])
+    let files = try FileManager.default.contentsOfDirectory(at: raw.deletingLastPathComponent(), includingPropertiesForKeys: nil)
     let matches = files.filter {
         $0.deletingPathExtension().lastPathComponent == stem && ["jpg", "jpeg"].contains($0.pathExtension.lowercased())
     }.filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
