@@ -6,7 +6,7 @@ Use this single Git working tree. Edit only the relevant source/tests; do not co
 - Commit each coherent change with its rationale and validation. Inspect git diff before committing.
 - build/ and compiler caches are excluded. Run ./build.sh and ./test.sh on macOS with command-line tools installed.
 - Do not create routine ZIP releases. Build the app in place on the user's Mac when a test build is requested; do not launch/install it or control Lightroom without authorisation.
-- Keep existing plugin compatibility; split-view development is deferred.
+- Keep existing plugin compatibility. Split-view groundwork is now authorised; keep production single-photo behaviour stable until view identity and native divider evidence are verified.
 - The repository is now on the user's Mac at ~/Documents/Codex/CameraReference. Build in this working tree; build products remain excluded from Git.
 
 # Open display defects
@@ -32,3 +32,7 @@ User confirmed 0.9.4 fixes non-maximised placement. The new 900×702 pt failure 
 ## Configurable side interval (0.9.6)
 
 sideSearchPercent defaults to 45 and accepts 5–50 percent from each side. The config store appends it to existing files when absent. Both viewport cache and manual-layout keys account for the interval. On unsupported rectangles, a bounded second search reaching the centre can identify a valid viewport outside the configured range and set workingAreaTooNarrow; its bounds are discarded. The automatic overlay fallback offers the user's exact narrow-area message and Calibrate manually…/Cancel. Generic detection failures are not relabelled as narrow.
+
+## 0.9.8 follow-up
+
+User accepted 0.9.6 for most cases. Polish build committed separately; native shortcut, trackpad and privacy-icon checks pending. Current audited backlog supersedes historical statuses. PERFORMANCE.md records CPU benchmarks and the remaining live timing gap. SPLIT-VIEW.md and test-only SplitLayout.swift start the authorised split-view work without changing production detection.

@@ -15,3 +15,5 @@ xcrun swiftc -swift-version 5 -module-cache-path build/module-cache Sources/Inte
 ./build/preview-tests
 xcrun swiftc -swift-version 5 -module-cache-path build/module-cache Sources/DetectionConfig.swift Sources/Snapping.swift Sources/ViewportDetector.swift Sources/PhotoDetector.swift Sources/ScreenProbe.swift tests/capture/main.swift -o build/capture-tests
 ./build/capture-tests
+xcrun swiftc -swift-version 5 -module-cache-path build/module-cache Sources/DetectionConfig.swift Sources/SplitLayout.swift tests/split/main.swift -o build/split-tests
+./build/split-tests
