@@ -9,6 +9,6 @@ view.releaseContent()
 precondition(view.image==nil && view.exportSnapshot==nil && view.menu(for:event)==nil)
 print("PASS: capture preview has only Fit/100% actions and releases image content")
 
-precondition(view.gestureRecognizers.contains { $0 is NSMagnificationGestureRecognizer })
+precondition(view.gestureRecognizers.isEmpty)
 precondition(view.acceptsFirstResponder && view.needsPanelToBecomeKey)
-print("PASS: shared image view installs native magnification recognizer and accepts panel focus")
+print("PASS: shared image view uses direct magnification routing and accepts panel focus")

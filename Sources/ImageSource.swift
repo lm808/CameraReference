@@ -219,3 +219,38 @@ func loadReference(raw: URL, preferEmbedded: Bool, executable: URL?, cancellatio
     }
     throw ReferenceError.message("No camera JPEG reference is available.\n" + reasons.joined(separator: "\n"))
 }
+
+// One selection's image only; independent windows may still own their displayed image.
+// No bytes or cache keys are written to disk.
+final class SelectionImageCache {
+    private let lock=NSLock()
+    private var epoch:String?
+    private var entry:(key:String,value:LoadedReference)?
+    func observe(_ next:String?) {
+        lock.lock();defer { lock.unlock() }
+        if next == nil || next != epoch { entry=nil }
+        epoch=next
+    }
+    func clear() { lock.lock();entry=nil;lock.unlock() }
+    func value(key:String,epoch expected:String)->LoadedReference? {
+        lock.lock();defer { lock.unlock() }
+        guard epoch == expected,entry?.key == key else { return nil }
+        return entry?.value
+    }
+    func insert(_ value:LoadedReference,key:String,epoch expected:String) {
+        lock.lock();defer { lock.unlock() }
+        guard epoch == expected else { return }
+        entry=(key,value)
+    }
+}
+func referenceFileSignature(raw:URL,preferEmbedded:Bool,executable:URL?)->String? {
+    func stamp(_ url:URL)->String? {
+        guard let a=try? FileManager.default.attributesOfItem(atPath:url.path),
+              let date=a[.modificationDate] as? Date,let size=a[.size] as? NSNumber else { return nil }
+        return "\(url.path):\(date.timeIntervalSince1970):\(size):\(a[.systemFileNumber] ?? "")"
+    }
+    guard let rawStamp=stamp(raw),let directoryStamp=stamp(raw.deletingLastPathComponent()) else { return nil }
+    let jpeg=(try? matchingJPEG(for:raw)).flatMap(stamp) ?? "no-unambiguous-jpeg"
+    let tool=executable.flatMap(stamp) ?? "no-tool"
+    return "\(preferEmbedded):\(rawStamp):\(directoryStamp):\(jpeg):\(tool)"
+}

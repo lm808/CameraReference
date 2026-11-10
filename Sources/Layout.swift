@@ -107,3 +107,39 @@ func translatedCalibration(_ rect:CGRect,from saved:CGRect,to current:CGRect)->C
     guard abs(saved.width-current.width)<1,abs(saved.height-current.height)<1 else { return nil }
     return rect.offsetBy(dx:current.minX-saved.minX,dy:current.minY-saved.minY)
 }
+
+// Bounded, read-only menu-state report for view identification research.
+// Do not traverse photo controls or log window titles / filenames.
+func probeLightroomViewState() -> String {
+    guard AXIsProcessTrusted() else { return "Accessibility permission is required for view-state inspection." }
+    guard let app=NSWorkspace.shared.runningApplications.first(where:isLightroomApp) else { return "Lightroom is not running." }
+    let application=AXUIElementCreateApplication(app.processIdentifier)
+    AXUIElementSetMessagingTimeout(application,0.08)
+    func read(_ element:AXUIElement,_ key:String)->CFTypeRef? {
+        var value:CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element,key as CFString,&value) == .success else { return nil }
+        return value
+    }
+    guard let raw=read(application,kAXMenuBarAttribute),CFGetTypeID(raw)==AXUIElementGetTypeID() else { return "Lightroom exposes no accessible menu bar." }
+    let menu=unsafeBitCast(raw,to:AXUIElement.self)
+    guard let topMenus=read(menu,kAXChildrenAttribute) as? [AXUIElement],
+          let viewMenu=topMenus.first(where:{ (read($0,kAXTitleAttribute) as? String)=="View" }) else {
+        return "No accessible English View menu was exposed. No view identity inferred."
+    }
+    var queue=[(viewMenu,0)],index=0,lines=[String]()
+    let deadline=ProcessInfo.processInfo.systemUptime+3
+    let words=["reference","before","after","side by side","top","bottom","loupe","split"]
+    while index<queue.count,index<500,ProcessInfo.processInfo.systemUptime<deadline {
+        let (element,depth)=queue[index];index+=1
+        if let title=read(element,kAXTitleAttribute) as? String,
+           words.contains(where:{title.lowercased().contains($0)}) {
+            let mark=read(element,"AXMenuItemMarkChar") as? String ?? "none"
+            let selected=(read(element,kAXSelectedAttribute) as? NSNumber)?.stringValue ?? "unavailable"
+            lines.append("\(title): mark=\(mark), selected=\(selected)")
+        }
+        if depth<8,let children=read(element,kAXChildrenAttribute) as? [AXUIElement] {
+            queue.append(contentsOf:children.prefix(100).map{($0,depth+1)})
+        }
+    }
+    return "Read-only Lightroom menu view-state sample. No menu was opened or activated.\n" + (lines.isEmpty ? "No matching view labels exposed. This does not identify the current view." : lines.joined(separator:"\n")) + "\nCompare separate samples in single, Reference and Before/After views. Menu availability alone is not proof of selection."
+}

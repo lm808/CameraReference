@@ -36,3 +36,7 @@ sideSearchPercent defaults to 45 and accepts 5–50 percent from each side. The 
 ## 0.9.8 follow-up
 
 User accepted 0.9.6 for most cases. Polish build committed separately; native shortcut, trackpad and privacy-icon checks pending. Current audited backlog supersedes historical statuses. PERFORMANCE.md records CPU benchmarks and the remaining live timing gap. SPLIT-VIEW.md and test-only SplitLayout.swift start the authorised split-view work without changing production detection.
+
+## Current-photo RAM cache authorisation (0.9.10)
+
+The user explicitly authorised retaining extracted bytes plus decoded image in RAM while staying on the same selected photo, superseding earlier no-between-invocation caching. One slot is keyed by bridge session/selection revision, source preference and file metadata. Independent open windows retain their own displayed image. Bridge 0.5 uses installed LrApplication.addActivePhotoChangeObserver(functionContext, observer, callback), guarded because it is undocumented, plus polling; failure disables cache reuse. Observer callbacks increment revision even when a selection returns between polls. Missing/stale selection state or a response whose epoch no longer matches cannot hit the cache. Older bridge protocol remains compatible; the new selection metadata is separate from its existing response. Native observer and physical pinch acceptance still pending. Future discussion alone is not permission to work: wait for an explicit go.

@@ -1,5 +1,7 @@
 import AppKit
 
+enum GestureDiagnostics { static var received=0;static var routed=0;static var lastDelta:CGFloat=0;static var lastZoom:CGFloat=1 }
+
 final class OverlayPanel: NSPanel {
     // The detector already validates the display bounds. AppKit must not shift the
     // borderless overlay away from its exact image coordinates in full-screen Spaces.
@@ -13,8 +15,7 @@ final class ReferenceView: NSView, NSMenuItemValidation {
         super.init(frame:frame)
         allowedTouchTypes = [.indirect]
         wantsRestingTouches = false
-        let pinch=NSMagnificationGestureRecognizer(target:self,action:#selector(handlePinch(_:)))
-        addGestureRecognizer(pinch)
+
     }
     required init?(coder:NSCoder) { fatalError("init(coder:) has not been implemented") }
     override var acceptsFirstResponder:Bool { true }
@@ -56,14 +57,15 @@ final class ReferenceView: NSView, NSMenuItemValidation {
         }
         needsDisplay=true
     }
-    @objc private func handlePinch(_ gesture:NSMagnificationGestureRecognizer) {
+    func applyMagnification(_ event:NSEvent) {
         guard interactive,let image else { return }
-        if gesture.state == .began { pinchZoom=navigation.zoom }
-        let target=max(0.05,pinchZoom*(1+gesture.magnification))
-        navigation.magnify(factor:target/navigation.zoom,at:gesture.location(in:self),image:image.size,viewport:viewport)
+        GestureDiagnostics.routed += 1
+        GestureDiagnostics.lastDelta=event.magnification
+        navigation.magnify(factor:max(0.01,1+event.magnification),at:convert(event.locationInWindow,from:nil),image:image.size,viewport:viewport)
+        GestureDiagnostics.lastZoom=navigation.zoom
         needsDisplay=true
     }
-    private var pinchZoom:CGFloat=1
+    override func magnify(with event:NSEvent) { applyMagnification(event) }
     override func mouseDown(with event:NSEvent) {
         guard interactive else { return }
         window?.makeFirstResponder(self)

@@ -3,6 +3,8 @@ local Paths = import 'LrPathUtils'
 local Files = import 'LrFileUtils'
 local Application = import 'LrApplication'
 local View = import 'LrApplicationView'
+local UUID = import 'LrUUID'
+local FunctionContext = import 'LrFunctionContext'
 local folder = Paths.child(Paths.getStandardFilePath('home'),
     'Library/Application Support/CameraReference')
 local function read(path)
@@ -24,12 +26,13 @@ local generation = {}
 _G.cameraReferenceGeneration = generation
 _G.cameraReferenceRunning = true
 _G.cameraReferenceFolder = folder
-_G.cameraReferenceStatus = 'Starting bridge 0.4.0'
+_G.cameraReferenceStatus = 'Starting bridge 0.5.0'
 Tasks.startAsyncTask(function()
     local ok, err = Tasks.pcall(function()
+      FunctionContext.callWithContext("CameraReferenceSelection", function(context)
         local created, why = Files.createAllDirectories(folder)
         if not created then error('Cannot create bridge folder: ' .. tostring(why)) end
-        _G.cameraReferenceStatus = 'Running 0.4.0'
+        _G.cameraReferenceStatus = 'Running 0.5.0'
         write('status.txt', _G.cameraReferenceStatus)
         local request = Paths.child(folder, 'request.txt')
         Files.delete(Paths.child(folder, 'response.txt')) -- Remove any reply left by an earlier crashed session.
@@ -37,8 +40,44 @@ Tasks.startAsyncTask(function()
         local heartbeatTime = nil
         local lastModule = nil
         local responseTime = nil
+        local session = UUID.generateUUID()
+        local revision, selectedKey, selectionEpoch = 0, nil, nil
+        local selectionTime = nil
+        -- Installed Lightroom 15.6 exposes (functionContext, observer, callback).
+        -- This API is not documented: guard it and disable caching if unavailable.
+        local observerReady = false
+        if type(Application.addActivePhotoChangeObserver) == 'function' then
+            observerReady = Tasks.pcall(function()
+                Application.addActivePhotoChangeObserver(context, generation, function()
+                    if _G.cameraReferenceGeneration == generation then
+                        revision = revision + 1; selectionTime = nil
+                    end
+                end)
+            end)
+        end
+        local function sampleSelection()
+            local ok, key = Tasks.pcall(function()
+                local catalog = Application.activeCatalog()
+                local photo = catalog:getTargetPhoto()
+                if not photo then return 'none' end
+                local catalogKey = catalog.getPath and catalog:getPath() or ''
+                return tostring(catalogKey) .. ':' .. tostring(photo.localIdentifier or photo:getRawMetadata('path'))
+            end)
+            if not ok then key = nil end
+            if not ok or key ~= selectedKey then
+                revision = revision + 1; selectedKey = key
+            end
+            selectionEpoch = (ok and observerReady) and (session .. ':' .. tostring(revision)) or nil
+            if selectionEpoch and (selectionTime ~= os.time() or selectionEpoch ~= _G.cameraReferenceSelectionEpoch) then
+                write('selection.txt', selectionEpoch .. '\nEND\n')
+                selectionTime = os.time()
+            elseif not selectionEpoch then Files.delete(Paths.child(folder, 'selection.txt')) end
+            _G.cameraReferenceSelectionEpoch = selectionEpoch
+            return selectionEpoch
+        end
         while _G.cameraReferenceRunning and _G.cameraReferenceGeneration == generation do
             local now = os.time()
+            sampleSelection()
             local currentModule = View.getCurrentModuleName()
             if now ~= heartbeatTime or currentModule ~= lastModule then
                 write('heartbeat.txt', tostring(now) .. '\n' .. tostring(currentModule) .. '\nEND\n')
@@ -53,6 +92,7 @@ Tasks.startAsyncTask(function()
             if message then token, mode = message:match('^([%x%-]+)\n([a-z]+)$') end
             if token and token ~= last and #token == 36 and (mode == 'overlay' or mode == 'window' or mode == 'check') then
                 last = token
+                local responseEpoch = sampleSelection()
                 local success, payload = Tasks.pcall(function()
                     if mode ~= 'window' and View.getCurrentModuleName() ~= 'develop' then
                         return 'ERR\n' .. hex('Select a photograph in Develop.')
@@ -68,11 +108,19 @@ Tasks.startAsyncTask(function()
                     return 'OK\n' .. hex(path)
                 end)
                 if not success then payload = 'ERR\n' .. hex('Lightroom could not read the selected photograph.') end
+                local currentEpoch = sampleSelection()
+                if responseEpoch and responseEpoch ~= currentEpoch then
+                    payload = 'ERR\n' .. hex('Selection changed while reading the photograph. Invoke again.')
+                end
+                if responseEpoch and responseEpoch == currentEpoch then
+                    write('response-selection.txt', token .. '\n' .. responseEpoch .. '\nEND\n')
+                else Files.delete(Paths.child(folder, 'response-selection.txt')) end
                 write('response.txt', token .. '\n' .. payload .. '\nEND\n')
                 responseTime = now
             end
             Tasks.sleep(0.15)
         end
+      end)
     end)
     if not ok and _G.cameraReferenceGeneration == generation then
         _G.cameraReferenceRunning = false

@@ -13,6 +13,7 @@ struct ScreenProbeResult {
     var background:[Double] = [0,0,0]
     var snapEdges:[SnapEdge] = []
     var photoFrame:CGRect? = nil
+    var uiFrame:CGRect? = nil
     var previewImage:CGImage? = nil
 }
 struct EdgeRaster {
@@ -127,13 +128,14 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         if #available(macOS 14.2,*) { childMode="included" } else { childMode="system default" }
         let timing=String(format:"Stage timing: enumerate %.0f ms; stability/config %.0f ms; capture %.0f ms; raster %.0f ms; detector %.0f ms.\n",(enumerationEnded-probeStarted)*1000,(captureStarted-enumerationEnded)*1000,(captureEnded-captureStarted)*1000,(detectionStarted-captureEnded)*1000,(ProcessInfo.processInfo.systemUptime-detectionStarted)*1000)
         let header=timing+"Capture mode: display-bound window filter, explicit crop.\nDisplay frame (top-left): \(display.frame).\nSource crop (display-local): \(sourceRect).\nSide search: left 0…\(settings.sideSearchPercent)%, right \(100-settings.sideSearchPercent)…100%.\nAnalysis raster: \(raster.width) × \(raster.height).\nChild windows: \(childMode).\nUI-boundary detection (no OCR; no image saved).\nWindow: \(Int(window.frame.width)) × \(Int(window.frame.height)) pt.\nWindow origin (top-left): \(window.frame.origin).\nFilter content rect: \(filter.contentRect).\nPrimary display: \(CGDisplayBounds(CGMainDisplayID())).\nCapture: \(image.width) × \(image.height) pixels.\n"
-        var candidate:CGRect?,photoFrame:CGRect?
+        var candidate:CGRect?,photoFrame:CGRect?,uiFrame:CGRect?
         var key:String?
         var placementSummary=""
         if let viewport=detection.bounds {
             let sx=window.frame.width/CGFloat(raster.width),sy=window.frame.height/CGFloat(raster.height)
             let ui=CGRect(x:window.frame.minX+viewport.minX*sx,y:window.frame.minY+viewport.minY*sy,width:viewport.width*sx,height:viewport.height*sy)
             func screen(_ r:CGRect)->CGRect { appKitRect(r,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height) }
+            uiFrame=screen(ui)
             if let placed=settings.placement(ui:ui,image:imageSize) {
                 candidate=screen(placed.region);photoFrame=screen(placed.photo)
                 placementSummary="\nSides L/R/T/B: \(settings.left.rawValue)/\(settings.right.rawValue)/\(settings.top.rawValue)/\(settings.bottom.rawValue). Fit inset: \(settings.fitInsetPoints) pt. Calculated photo: \(placed.photo)."
@@ -145,7 +147,7 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
             key="\(window.windowID):\(window.frame.size):\(viewport):\(settings.key):\(imageSize)"
         }
         return ScreenProbeResult(candidate:candidate,summary:header+(reused ? "Reused viewport; border samples unchanged.\n" : "Searched for UI borders.\n")+detection.summary+placementSummary+"\nFinal overlay region (AppKit): \(candidate.map{String(describing:$0)} ?? "none").\nPhoto frame (AppKit): \(photoFrame.map{String(describing:$0)} ?? "none").",
-            windowID:window.windowID,workingAreaTooNarrow:detection.workingAreaTooNarrow,windowFrame:window.frame,layoutKey:key,split:false,background:detection.background,photoFrame:photoFrame)
+            windowID:window.windowID,workingAreaTooNarrow:detection.workingAreaTooNarrow,windowFrame:window.frame,layoutKey:key,split:false,background:detection.background,photoFrame:photoFrame,uiFrame:uiFrame)
 
     } catch is CancellationError { return ScreenProbeResult(candidate:nil,summary:"Screen inspection cancelled.") }
     catch { return ScreenProbeResult(candidate:nil,summary:"Screen inspection failed. Check permission, keep Lightroom visible and try again. No capture was saved.") }

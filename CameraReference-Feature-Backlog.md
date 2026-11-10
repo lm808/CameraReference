@@ -3,6 +3,18 @@
 Updated: 10 November 2026.
 Current baseline: 0.9.6 accepted by user as working for most cases; 0.9.7 adds the icon; 0.9.8 is the polish/test build. Historical sections below are retained as development history, not current outstanding requirements. This checklist supersedes their old statuses.
 
+## 0.9.10 — current-photo RAM reuse and corrected polish
+
+- [x] User authorised one-current-photo RAM cache, superseding the older between-invocation no-cache requirement. Keeps extracted bytes and decoded image; no disk image cache.
+- [x] Bridge 0.5 selection observer plus polling, opaque revision handshake, stale/restart handling and guarded no-cache fallback. Tests cover A→B→A and two events between polls.
+- [x] File/preference revalidation and stale-load rejection. Live speedup and native observer acceptance pending.
+- [x] Shortcut dialog uses compact aligned rows, each with Use Default.
+- [x] Landscape floating photo derives from detected Lightroom photo size, not desktop; portrait preserved.
+- [x] Manual calibration is always UI backdrop, with clear instructions and configured side/inset placement. Old non-UI calibration requires reselection.
+- [x] SDK runtime exports checked in all three user layouts: no main-view getter. Added read-only AX menu/checkmark probe.
+- [ ] Native pinch remains unresolved until direct event-routing counters are tested. Do not claim fixed from compilation.
+- [ ] Live RAM hit/invalidation, shortcut layout, floating size and manual calibration acceptance; see TESTING.md.
+
 ## 0.9.9 acceptance follow-up
 
 User passed 0.9.8 menus, pan, privacy icon, window/full-screen/resize/narrow placement and calibration persistence. Their detailed results remain in TESTING.md.

@@ -1,9 +1,10 @@
 -- Cooperative SDK stand-ins; actual Lightroom loading remains a manual test.
 local root = assert(arg[1], 'Pass project root')
 local token = '11111111-1111-1111-1111-111111111111'
-for _, scenario in ipairs({'ok', 'dng', 'library', 'none', 'notraw', 'sdkerror', 'writeerror', 'pending', 'restart', 'windowlibrary', 'modulechange', 'cleanup'}) do
+for _, scenario in ipairs({'ok', 'dng', 'library', 'none', 'notraw', 'sdkerror', 'writeerror', 'pending', 'restart', 'windowlibrary', 'modulechange', 'cleanup', 'selection', 'noobserver', 'observererror'}) do
     local files, tasks, responses = {}, {}, 0
     local currentModule = (scenario == 'library' or scenario == 'windowlibrary') and 'library' or 'develop'
+    local selectionCallback
     local clock = 1000
     local originalTime = os.time; os.time = function() return clock end
     local message = token .. '\n' .. (scenario == 'windowlibrary' and 'window' or 'overlay')
@@ -24,13 +25,19 @@ for _, scenario in ipairs({'ok', 'dng', 'library', 'none', 'notraw', 'sdkerror',
         end, close = function() return true end }
     end }
     local modules = {
+        LrFunctionContext = { callWithContext = function(_,f) f({}) end },
+        LrUUID = { generateUUID = function() return "session-" .. scenario end },
         LrTasks = { pcall = pcall, startAsyncTask = function(f) tasks[#tasks+1] = coroutine.create(f) end,
             sleep = function() coroutine.yield() end },
         LrPathUtils = { child = function(a,b) return a .. '/' .. b end, getStandardFilePath = function() return '/test' end },
         LrFileUtils = { createAllDirectories = function() return true end, delete = function(path) files[path:match('[^/]+$')] = nil end },
         LrDialogs = {message = function() end},
         LrApplicationView = { getCurrentModuleName = function() return currentModule end },
-        LrApplication = { activeCatalog = function() return { getTargetPhoto = function()
+        LrApplication = { addActivePhotoChangeObserver=function(context,observer,callback)
+            if scenario == "observererror" then error("Unavailable observer") end
+            assert(type(context)=="table" and type(observer)=="table" and type(callback)=="function")
+            selectionCallback=callback
+        end, activeCatalog = function() return { getTargetPhoto = function()
             if scenario == 'sdkerror' then error('SDK failed') end
             if scenario == 'none' then return nil end
             return {getRawMetadata = function(_, key)
@@ -39,6 +46,7 @@ for _, scenario in ipairs({'ok', 'dng', 'library', 'none', 'notraw', 'sdkerror',
             end}
         end } end }
     }
+    if scenario == "noobserver" then modules.LrApplication.addActivePhotoChangeObserver=nil end
     import = function(name) return assert(modules[name], name) end
     local function step()
         local n = #tasks
@@ -69,7 +77,7 @@ for _, scenario in ipairs({'ok', 'dng', 'library', 'none', 'notraw', 'sdkerror',
         assert(responses == 1, 'Expected exactly one response')
         assert(files['response.txt']:find(token,1,true) == 1)
         assert(files['response.txt']:sub(-5) == '\nEND\n')
-        local success = scenario == 'ok' or scenario == 'dng' or scenario == 'pending' or scenario == 'restart' or scenario == 'windowlibrary' or scenario == 'modulechange' or scenario == 'cleanup'
+        local success = scenario == 'ok' or scenario == 'dng' or scenario == 'pending' or scenario == 'restart' or scenario == 'windowlibrary' or scenario == 'modulechange' or scenario == 'cleanup' or scenario == 'selection' or scenario == 'noobserver' or scenario == 'observererror'
         assert(files['response.txt']:find(success and '\nOK\n' or '\nERR\n',1,true))
     end
     if scenario == 'modulechange' then
@@ -77,6 +85,17 @@ for _, scenario in ipairs({'ok', 'dng', 'library', 'none', 'notraw', 'sdkerror',
         assert(files['heartbeat.txt']:find('\nlibrary\n',1,true), 'Module not reported immediately')
     end
     if scenario == 'cleanup' then clock = clock + 11; step(); assert(files['response.txt'] == nil) end
+    if scenario == 'selection' then
+        assert(files['selection.txt'] and files['response-selection.txt'])
+        assert(files['response-selection.txt']:find(token,1,true)==1)
+        local epoch=files['selection.txt']
+        selectionCallback(); selectionCallback() -- A -> B -> A between polling ticks.
+        step()
+        assert(files['selection.txt'] ~= epoch, 'Quick selection return reused old epoch')
+        assert(not files['selection.txt']:find('/假期',1,true), 'Selection state leaked photo path')
+    elseif scenario == 'noobserver' or scenario == 'observererror' then
+        assert(files['selection.txt'] == nil and files['response-selection.txt'] == nil, 'Cache enabled without selection observer')
+    end
     dofile(_PLUGIN.path .. '/Diagnostics.lua')
     dofile(_PLUGIN.path .. '/ViewDiagnostics.lua'); step()
     dofile(_PLUGIN.path .. '/Shutdown.lua'); step()

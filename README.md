@@ -1,6 +1,18 @@
-# Camera Reference 0.9.9 — acceptance fixes and view API investigation
+# Camera Reference 0.9.10 — current-photo RAM cache and focused fixes
 
-Quit the old companion and open `build/CameraReference.app`. No Lightroom plugin reinstall or restart. Nothing is installed or launched by the build scripts.
+Quit the old companion and open `build/CameraReference.app`. For RAM reuse, reload the updated `CameraReference.lrplugin` (bridge 0.5.0) and run File → Plug-in Extras → Start / restart Camera Reference bridge. Older bridges remain compatible but disable caching. Nothing is installed or launched by the build scripts.
+
+## New in 0.9.10
+
+The current selected photo's extracted JPEG bytes and decoded image are retained in one RAM-only slot. Repeated overlay/floating invocations revalidate the selected photo and source files, then reuse the image. Selection changes (including switching away and back), bridge restart/stale heartbeat, source preference/file changes and quitting invalidate reuse. Nothing is written as an image cache. An already-open floating display still owns its independent image until closed/reloaded.
+
+Bridge 0.5 uses a guarded active-photo observer found in installed Lightroom 15.6 plus selection polling. It publishes only an opaque session/revision, not photo names/paths, in selection state. If the undocumented observer cannot register, caching stays disabled. Diagnostics report RAM cache hit/miss/unavailable. Full live acceptance is still required.
+
+Shortcut settings now use two compact aligned rows. New manual calibration always selects the full photo viewport backdrop between the panels, including margins; configured side bounds/inset are applied afterwards. Older photo/final-region calibrations require reselecting the UI area instead of being silently reinterpreted.
+
+Landscape floating size now derives from a fresh detected Lightroom photo rectangle, at half its width and height, rather than the full desktop. Portrait behaviour is preserved. If detection cannot establish the photo size, automatic floating placement asks for a usable area instead of guessing. Manual UI calibration also supplies the fitting area.
+
+Pinch events are routed directly through an app-local monitor to the image view; counters and last delta/zoom in Bridge diagnostics distinguish absent events from routing failure. Physical pinch remains unverified. Developer tools → Inspect Lightroom view state… performs bounded read-only Accessibility menu/checkmark inspection for split-view research. No Lightroom view is changed and split placement remains disabled.
 
 ## New in 0.9.9
 
@@ -97,7 +109,7 @@ The supplied 2048-pixel-wide screenshot has viewing-area top/bottom near y95/y95
 
 ## Detection and calibration
 
-Enable Development testing → **Automatic viewing area (experimental)** for automatic overlay placement. Developer tools → **Find viewing area** now loads the current selected photo's JPEG for its oriented aspect ratio, then previews the configured region. It does not reuse a previous photo's aspect ratio. This can perform an in-memory extraction. No screenshot or extracted-image cache is written.
+Enable Settings → **Automatic viewing area** for automatic overlay placement. Developer tools → **Find viewing area** now loads the current selected photo's JPEG for its oriented aspect ratio, then previews the configured region. It does not reuse a previous photo's aspect ratio. This can perform an in-memory extraction. No screenshot or extracted-image cache is written.
 
 Preview: Return accepts, drag adjusts, Escape cancels. A manual correction is retained for the same detected layout, settings and aspect ratio. Clear all region data before comparing automatic placement with new settings if you previously accepted a manual correction.
 
@@ -120,7 +132,7 @@ The floating window uses the most recent detected area when its window geometry 
 
 ## JPEG sources and export
 
-**Prefer RAW-embedded JPEG** defaults Off. Both source-priority directions retain fallback. CR3 JpgFromRaw extraction is read-only, memory-only and on demand, without an extracted-image cache. Standalone JPEG pairing supports other RAW extensions too.
+**Prefer RAW-embedded JPEG** defaults Off. Both source-priority directions retain fallback. CR3 JpgFromRaw extraction is read-only, memory-only and on demand, with the current-photo RAM slot described above and no disk image cache. Standalone JPEG pairing supports other RAW extensions too.
 
 Right-click **Save extracted JPEG…** is enabled only for an embedded reference in that view. It explicitly writes `<stem>_JpgFromRaw.jpg` beside its RAW, confirms replacement and briefly displays success. No second extraction is made. RAW/catalogue/Develop settings are never modified. Save failures can leave an incomplete export; normal extraction writes no JPEG file.
 
