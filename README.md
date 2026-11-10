@@ -1,6 +1,14 @@
-# Camera Reference 0.9.7 — application icon
+# Camera Reference 0.9.8 — menus, floating display and timing
 
 Quit the old companion and open `build/CameraReference.app`. No Lightroom plugin reinstall or restart. Nothing is installed or launched by the build scripts.
+
+## New in 0.9.8
+
+Automatic viewing area is now in Settings. Developer tools contains all diagnostics and the status line. Settings groups display/source choices, two shortcut recorders, and configuration/maintenance. Edit config file opens the existing settings file.
+
+Show/Hide floating display preserves the current photo and zoom when hidden. Its default shortcut is Control–Option–Command–F, configurable separately from the overlay shortcut. Landscape initial sizing is half the width and height of a Fit photo on the current display's available desktop area; portrait sizing retains the accepted behaviour. Image views accept indirect touch events and keyboard focus in nonactivating panels; physical trackpad acceptance remains required. Panning only moves a zoomed image that exceeds its viewport.
+
+Bridge diagnostics and Show last result / timing now expose bridge, JPEG loading/extraction, capture, raster, detector and total-to-panel times. Timings contain no file paths or pixels. The bundled icon has been re-registered with Launch Services; Privacy Settings icon visibility still needs checking after reopening System Settings.
 
 ## New in 0.9.7
 

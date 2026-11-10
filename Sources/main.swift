@@ -44,6 +44,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var detail: NSMenuItem!
     var shortcutItem: NSMenuItem!
     var panel: OverlayPanel?
+    var floatingHotKey: EventHotKeyRef?
+    var floatingShortcut=(UInt32(kVK_ANSI_F),UInt32(controlKey | optionKey | cmdKey))
+    var floatingKeyLabel="F"
+    var floatingMenuItem:NSMenuItem!
     var hotKey: EventHotKeyRef?
     var handler: EventHandlerRef?
     var pending: String?
@@ -99,9 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         menu.addItem(NSMenuItem(title: versionTitle, action: nil, keyEquivalent: ""))
         menu.addItem(.separator())
         detail = NSMenuItem(title: "Ready — first test: Check selected photo", action: nil, keyEquivalent: "")
-        menu.addItem(detail)
-        menu.addItem(.separator())
-        add("Open floating reference window", #selector(openFloating), to: menu)
+        floatingMenuItem = add("Show floating display", #selector(openFloating), to: menu)
         toggleItem = add("Show overlay", #selector(menuToggle), to: menu)
         func submenu(_ title: String) -> NSMenu {
             let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
@@ -111,28 +113,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let settings = submenu("Settings")
         preferItem = add("Prefer RAW-embedded JPEG", #selector(changePreference), to: settings)
         preferItem.state = UserDefaults.standard.bool(forKey: "preferEmbedded") ? .on : .off
-        shortcutItem = add("Change shortcut…", #selector(changeShortcut), to: settings)
-        add("Set image region…", #selector(calibrate), to: settings)
-        add("Open detection configuration…", #selector(openDetectionConfig), to: settings)
-        add("Clear all region data", #selector(clearAllRegionData), to: settings)
-        add("Choose ExifTool…", #selector(chooseExifTool), to: settings)
-        let testing = submenu("Development testing")
-        add("Check selected photo", #selector(checkPhoto), to: testing)
-        add("Show last result / timing…", #selector(showResult), to: testing)
-        autoItem = add("Automatic viewing area (experimental)", #selector(changeAutomatic), to: testing)
+        autoItem = add("Automatic viewing area", #selector(changeAutomatic), to: settings)
         autoItem.state = UserDefaults.standard.bool(forKey: "automaticBounds") ? .on : .off
+        add("Set image region…", #selector(calibrate), to: settings)
+        settings.addItem(.separator())
+        shortcutItem = add("Overlay shortcut…", #selector(changeShortcut), to: settings)
+        add("Floating display shortcut…", #selector(changeFloatingShortcut), to: settings)
+        settings.addItem(.separator())
+        add("Edit config file", #selector(openDetectionConfig), to: settings)
+        add("Choose ExifTool…", #selector(chooseExifTool), to: settings)
+        add("Clear all region data", #selector(clearAllRegionData), to: settings)
         let developer = submenu("Developer tools")
+        developer.addItem(detail); developer.addItem(.separator())
+        add("Check selected photo", #selector(checkPhoto), to: developer)
+        add("Show last result / timing…", #selector(showResult), to: developer)
         add("Inspect Accessibility layout…", #selector(inspectLayout), to: developer)
         add("Preview captured Lightroom window…", #selector(previewCapture), to: developer)
-        add("Find viewing area (experimental)…", #selector(inspectScreen), to: developer)
+        add("Find viewing area…", #selector(inspectScreen), to: developer)
         add("Bridge diagnostics…", #selector(showDiagnostics), to: developer)
         menu.addItem(.separator())
         add("Quit Camera Reference", #selector(quit), to: menu)
         status.menu = menu
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        InstallEventHandler(GetApplicationEventTarget(), { _, _, context in
+        InstallEventHandler(GetApplicationEventTarget(), { _, event, context in
             guard let context else { return OSStatus(eventNotHandledErr) }
-            Unmanaged<AppDelegate>.fromOpaque(context).takeUnretainedValue().toggle()
+            var identifier=EventHotKeyID()
+            guard let event, GetEventParameter(event,EventParamName(kEventParamDirectObject),EventParamType(typeEventHotKeyID),nil,MemoryLayout<EventHotKeyID>.size,nil,&identifier) == noErr else { return OSStatus(eventNotHandledErr) }
+            let owner=Unmanaged<AppDelegate>.fromOpaque(context).takeUnretainedValue()
+            if identifier.id == 2 { owner.openFloating() } else { owner.toggle() }
             return noErr
         }, 1, &spec, Unmanaged.passUnretained(self).toOpaque(), &handler)
         let prefs = UserDefaults.standard
@@ -143,6 +151,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if prefs.data(forKey:"regionDisplay") == nil, let previous=region { region=previous }
         updateToggleTitle()
         if !register(currentShortcut) { report("Shortcut unavailable. Choose Change shortcut.") }
+        if prefs.object(forKey:"floatingKey") != nil {
+            floatingShortcut=(UInt32(prefs.integer(forKey:"floatingKey")),UInt32(prefs.integer(forKey:"floatingModifiers")))
+            floatingKeyLabel=prefs.string(forKey:"floatingKeyLabel") ?? "F"
+        }
+        if !register(floatingShortcut,floatingTarget:true) { report("Floating display shortcut unavailable.") }
+        updateToggleTitle()
         moduleTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
             guard let self else { return }
             self.observeWindowGeometry()
@@ -157,12 +171,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     @discardableResult func add(_ title: String, _ action: Selector, to menu: NSMenu) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: ""); item.target = self; menu.addItem(item); return item
     }
-    func register(_ shortcut: (UInt32, UInt32)) -> Bool {
+    func register(_ shortcut: (UInt32, UInt32), floatingTarget:Bool=false) -> Bool {
         var replacement: EventHotKeyRef?
-        let result = RegisterEventHotKey(shortcut.0, shortcut.1, EventHotKeyID(signature: 0x43524546, id: 1), GetApplicationEventTarget(), OptionBits(kEventHotKeyExclusive), &replacement)
+        let result = RegisterEventHotKey(shortcut.0, shortcut.1, EventHotKeyID(signature: 0x43524546, id: floatingTarget ? 2:1), GetApplicationEventTarget(), OptionBits(kEventHotKeyExclusive), &replacement)
         guard result == noErr else { return false }
-        if let hotKey { UnregisterEventHotKey(hotKey) }
-        hotKey = replacement; currentShortcut = shortcut
+        if floatingTarget {
+            if let floatingHotKey { UnregisterEventHotKey(floatingHotKey) }
+            floatingHotKey=replacement; floatingShortcut=shortcut
+        } else {
+            if let hotKey { UnregisterEventHotKey(hotKey) }
+            hotKey = replacement; currentShortcut = shortcut
+        }
         return true
     }
     func isLightroom() -> Bool {
@@ -170,6 +189,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         return app?.bundleIdentifier?.hasPrefix("com.adobe.LightroomClassic") == true || app?.localizedName == "Adobe Lightroom Classic"
     }
     var lastResult = "No check yet."
+    var lastTiming="No timing sample yet."
+    var invocationStart:TimeInterval?
     func report(_ text: String) {
         lastResult = text; detail.title = String(text.prefix(100)); status.button?.toolTip = text
     }
@@ -235,6 +256,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     func updateToggleTitle() {
+        floatingMenuItem?.title=(floating?.isVisible == true ? "Hide floating display" : "Show floating display") + "   " + shortcutText(key:floatingKeyLabel,modifiers:floatingShortcut.1)
         let active=panel != nil || destination == .overlay || detectionCompletion != nil
         toggleItem?.title=(active ? "Hide overlay" : "Show overlay") + "   " + shortcutText(key:keyLabel,modifiers:currentShortcut.1)
     }
@@ -260,6 +282,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         pending = token; destination = target; cancellation = work
         updateToggleTitle()
         let invoked = ProcessInfo.processInfo.systemUptime
+        invocationStart=invoked
         do { try (token + "\n" + (target == .detect ? "check" : target.rawValue)).write(to: folder.appendingPathComponent("request.txt"), atomically: true, encoding: .utf8) }
         catch { cancelRequest(); report("Cannot write the bridge request."); return }
         let deadline = Date().addingTimeInterval(5)
@@ -284,6 +307,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if target == .window { floating?.title = floatingTitle + " — unchanged; refresh failed" }
     }
     func load(_ path: String, token: String, target: Destination, work: Cancellation, invoked: TimeInterval) {
+        let loadStarted=ProcessInfo.processInfo.systemUptime
+        let bridgeMS=(loadStarted-invoked)*1000
         let prefer = UserDefaults.standard.bool(forKey: "preferEmbedded")
         let executable = findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool"))
         let automatic = false // Screen detection runs after loading, outside the UI thread.
@@ -304,6 +329,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                     self.report(error.localizedDescription)
                     if target == .window { self.floating?.title = self.floatingTitle + " — unchanged; refresh failed" }
                 case .success(let (loaded, layout)):
+                    self.lastTiming=String(format:"Bridge %.0f ms; JPEG load/decode %.0f ms",bridgeMS,loaded.elapsed*1000) + (loaded.extraction.map { String(format:" (extraction %.0f ms, included)",$0*1000) } ?? "")
                     self.lastImageSize = CGSize(width: loaded.image.width, height: loaded.image.height)
                     if let layout { self.lastLayout = layout.summary }
                     let elapsed = ProcessInfo.processInfo.systemUptime - invoked
@@ -358,10 +384,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         lastLayout += "\nOverlay content bounds: \(view.bounds). Photo viewport (view): \(view.imageViewport!). Panel visible: \(p.isVisible). Display scale: \(p.backingScaleFactor)."
         guard p.isVisible else { hide();report("Overlay panel did not become visible; see geometry diagnostics.");return nil }
         updateIcon()
+        if let started=invocationStart { lastTiming += String(format:"; total to panel shown %.0f ms",(ProcessInfo.processInfo.systemUptime-started)*1000) }
         return view
     }
     @objc func openFloating() {
-        if let floating { floating.orderFrontRegardless(); return } // Opening an existing window never refreshes it.
+        guard !recording, calibration == nil else { return }
+        if destination == .window { cancelRequest(); return }
+        if let floating {
+            if floating.isVisible { floating.orderOut(nil) } else { floating.orderFrontRegardless() }
+            updateToggleTitle(); return
+        }
         request(.window)
     }
     func displayFloating(_ image: CGImage, origin: ImageOrigin, filename:String, area: NSRect?) {
@@ -369,12 +401,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if floating == nil {
             let screen = NSScreen.screens.first(where: { area.map($0.frame.intersects) ?? false }) ?? NSScreen.main ?? NSScreen.screens[0]
             let base = area ?? screen.visibleFrame
-            let photo = fittedSize(image: ratio, inside: base.size)
+            let photo = fittedSize(image: ratio, inside: (ratio.height > ratio.width ? base : screen.visibleFrame).size)
             let requested = ratio.height > ratio.width ? photo : CGSize(width: photo.width/2, height: photo.height/2)
             let size = fittedSize(image: requested, inside: CGSize(width: min(requested.width,screen.visibleFrame.width), height: min(requested.height,screen.visibleFrame.height-28)))
             let frame = NSRect(x: min(max(base.minX, screen.visibleFrame.minX), screen.visibleFrame.maxX-size.width),
                                y: min(max(base.midY-size.height/2, screen.visibleFrame.minY), screen.visibleFrame.maxY-size.height-28), width: size.width, height: size.height)
-            let p = NSPanel(contentRect: frame, styleMask: [.titled, .closable, .resizable, .nonactivatingPanel], backing: .buffered, defer: false)
+            let p = OverlayPanel(contentRect: frame, styleMask: [.titled, .closable, .resizable, .nonactivatingPanel], backing: .buffered, defer: false)
             p.level = .floating; p.isFloatingPanel = true; p.hidesOnDeactivate = false
             p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             p.isReleasedWhenClosed = false; p.backgroundColor = .black; p.delegate = self
@@ -467,7 +499,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let enabled = !UserDefaults.standard.bool(forKey: "automaticBounds")
         UserDefaults.standard.set(enabled, forKey: "automaticBounds"); autoItem.state = enabled ? .on : .off
         if enabled { hide(); _ = FeaturePermission.screenCapture.ensure() }
-        report(enabled ? "Experimental detection enabled. Manual calibration is the fallback." : "Using manual calibration.")
+        report(enabled ? "Automatic detection enabled. Manual calibration is the fallback." : "Using manual calibration.")
     }
     @objc func inspectLayout() {
         hide(); guard FeaturePermission.accessibility.ensure() else { return }
@@ -625,6 +657,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         report("Finding the Lightroom viewing area…")
         detectionCompletion=completion
         let inspectionID=UUID(); screenInspectionID=inspectionID
+        let inspectionStarted=ProcessInfo.processInfo.systemUptime
         updateToggleTitle()
         screenTimeout=Timer(timeInterval:12,repeats:false) { [weak self] _ in
             guard let self,self.screenInspectionID==inspectionID else { return }
@@ -637,7 +670,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         screenTask=Task.detached(priority:.userInitiated) { [weak self] in
             let result=await inspectScreenLayout(imageSize:imageSize,previewCapture:previewCapture,settings:settings)
             guard !Task.isCancelled else { return }
-            await self?.finishScreenInspection(result,id:inspectionID)
+            await self?.finishScreenInspection(result,id:inspectionID,elapsed:ProcessInfo.processInfo.systemUptime-inspectionStarted)
         }
     }
     func cancelScreenInspection() {
@@ -647,8 +680,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         updateToggleTitle()
         if wasRunning { report("Screen inspection cancelled.") }
     }
-    @MainActor func finishScreenInspection(_ result:ScreenProbeResult,id:UUID) {
+    @MainActor func finishScreenInspection(_ result:ScreenProbeResult,id:UUID,elapsed:TimeInterval) {
         guard screenInspectionID==id else { return }
+        lastTiming += String(format:"; capture and detection %.0f ms",elapsed*1000)
         let callback=detectionCompletion
         screenInspectionID=nil; screenTask=nil; screenTimeout?.invalidate(); screenTimeout=nil; detectionCompletion=nil
         updateToggleTitle()
@@ -672,7 +706,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let date = attributes?[.modificationDate] as? Date
         let age = date.map { "\(max(0, Int(Date().timeIntervalSince($0)))) seconds ago" } ?? "not received"
         let state = (try? String(contentsOf: folder.appendingPathComponent("status.txt"), encoding: .utf8)) ?? "No plugin status. The bridge may not have started."
-        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + lastLayout
+        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + lastLayout + "\n\nTiming: " + lastTiming
     }
     @objc func showDiagnostics() {
         let saved = lastResult
@@ -682,18 +716,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     @objc func showResult() {
         hide(); NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert(); alert.messageText = "Camera Reference"; alert.informativeText = lastResult; alert.runModal()
+        let alert = NSAlert(); alert.messageText = "Camera Reference"; alert.informativeText = lastResult + "\n\n" + lastTiming; alert.runModal()
     }
-    @objc func changeShortcut() {
+    @objc func changeShortcut() { editShortcut(floatingTarget:false) }
+    @objc func changeFloatingShortcut() { editShortcut(floatingTarget:true) }
+    func editShortcut(floatingTarget:Bool) {
         hide(); calibration?.finish(nil); recording=true
-        let original=currentShortcut
+        let original=floatingTarget ? floatingShortcut:currentShortcut
         // Suspend the global shortcut while recording so its keystroke reaches the recorder.
-        if let hotKey { UnregisterEventHotKey(hotKey); self.hotKey=nil }
+        if floatingTarget {
+            if let floatingHotKey { UnregisterEventHotKey(floatingHotKey); self.floatingHotKey=nil }
+        } else if let hotKey { UnregisterEventHotKey(hotKey); self.hotKey=nil }
         defer { recording=false; updateToggleTitle() }
         NSApp.activate(ignoringOtherApps:true)
-        let alert=NSAlert(); alert.messageText="Keyboard Shortcut"
-        alert.informativeText="Show or hide the camera reference over Lightroom. Click the shortcut to change it."
-        let recorder=ShortcutRecorder(shortcut:currentShortcut,label:keyLabel)
+        let alert=NSAlert(); alert.messageText=floatingTarget ? "Floating Display Shortcut":"Overlay Shortcut"
+        alert.informativeText=floatingTarget ? "Show or hide the independent floating display. Click the shortcut to change it." : "Show or hide the camera reference over Lightroom. Click the shortcut to change it."
+        let recorder=ShortcutRecorder(shortcut:original,label:floatingTarget ? floatingKeyLabel:keyLabel)
+        recorder.defaultShortcut=floatingTarget ? (UInt32(kVK_ANSI_F),UInt32(controlKey|optionKey|cmdKey)): (UInt32(kVK_ANSI_J),UInt32(controlKey|optionKey|cmdKey))
+        recorder.defaultLabel=floatingTarget ? "F":"J"
+        recorder.setAccessibilityLabel(alert.messageText)
         let help=NSTextField(wrappingLabelWithString:"Click the shortcut field, then press a new combination.")
         recorder.help=help
         let reset=NSButton(title:"Use Default",target:recorder,action:#selector(ShortcutRecorder.useDefault))
@@ -704,13 +745,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         alert.accessoryView=stack; alert.addButton(withTitle:"Save"); alert.addButton(withTitle:"Cancel")
         while true {
             if alert.runModal() != .alertFirstButtonReturn {
-                if !register(original) { report("Previous shortcut is unavailable. Choose another shortcut.") }; break
+                if !register(original,floatingTarget:floatingTarget) { report("Previous shortcut is unavailable. Choose another shortcut.") }; break
             }
-            if register(recorder.candidate) {
-                keyLabel=recorder.keyLabel
-                UserDefaults.standard.set(currentShortcut.0,forKey:"key"); UserDefaults.standard.set(currentShortcut.1,forKey:"modifiers")
-                UserDefaults.standard.set(keyLabel,forKey:"keyLabel")
-                report("Shortcut saved: " + shortcutText(key:keyLabel,modifiers:currentShortcut.1)); break
+            if register(recorder.candidate,floatingTarget:floatingTarget) {
+                let prefs=UserDefaults.standard
+                if floatingTarget {
+                    floatingKeyLabel=recorder.keyLabel
+                    prefs.set(floatingShortcut.0,forKey:"floatingKey");prefs.set(floatingShortcut.1,forKey:"floatingModifiers");prefs.set(floatingKeyLabel,forKey:"floatingKeyLabel")
+                } else {
+                    keyLabel=recorder.keyLabel
+                    prefs.set(currentShortcut.0,forKey:"key");prefs.set(currentShortcut.1,forKey:"modifiers");prefs.set(keyLabel,forKey:"keyLabel")
+                }
+                report("Shortcut saved."); break
             }
             help.stringValue="That shortcut is unavailable. Choose another, or Cancel."
         }

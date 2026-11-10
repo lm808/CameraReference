@@ -4,11 +4,19 @@ final class OverlayPanel: NSPanel {
     // The detector already validates the display bounds. AppKit must not shift the
     // borderless overlay away from its exact image coordinates in full-screen Spaces.
     override func constrainFrameRect(_ frameRect:NSRect,to screen:NSScreen?)->NSRect { frameRect }
-    override var canBecomeKey: Bool { false }
+    override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 }
 // The same image view handles gestures, drawing, refresh and export for both windows.
 final class ReferenceView: NSView, NSMenuItemValidation {
+    override init(frame:NSRect) {
+        super.init(frame:frame)
+        allowedTouchTypes = [.indirect]
+        wantsRestingTouches = false
+    }
+    required init?(coder:NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override var acceptsFirstResponder:Bool { true }
+    override var needsPanelToBecomeKey:Bool { true }
     var image: NSImage? { didSet { navigation.reset(); clearToast(); needsDisplay=true } }
     var exportSnapshot: ExportSnapshot?
     var save: ((ExportSnapshot) -> Void)?
@@ -53,6 +61,7 @@ final class ReferenceView: NSView, NSMenuItemValidation {
     }
     override func mouseDown(with event:NSEvent) {
         guard interactive else { return }
+        window?.makeFirstResponder(self)
         if event.clickCount == 2 { lastDrag=nil; fit(); refresh?() }
         else { lastDrag=convert(event.locationInWindow,from:nil) }
     }

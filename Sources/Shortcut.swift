@@ -11,6 +11,8 @@ func shortcutText(key: String, modifiers: UInt32) -> String {
 final class ShortcutRecorder: NSButton {
     var candidate: (UInt32,UInt32)
     var keyLabel: String
+    var defaultShortcut=(UInt32(kVK_ANSI_J),UInt32(controlKey|optionKey|cmdKey))
+    var defaultLabel="J"
     var capturing=false
     var help: NSTextField?
     init(shortcut: (UInt32,UInt32), label:String) {
@@ -29,7 +31,7 @@ final class ShortcutRecorder: NSButton {
         help?.stringValue="Press Command or Control plus a key. Escape stops recording."
     }
     @objc func useDefault() {
-        candidate=(UInt32(kVK_ANSI_J),UInt32(controlKey|optionKey|cmdKey)); keyLabel="J"; capturing=false; updateTitle()
+        candidate=defaultShortcut; keyLabel=defaultLabel; capturing=false; updateTitle()
         help?.stringValue="Choose Save to apply this shortcut."
     }
     override func performKeyEquivalent(with event:NSEvent) -> Bool {
