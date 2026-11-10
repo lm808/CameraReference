@@ -1,6 +1,18 @@
-# Camera Reference 0.9.11 — fast toggling and explicit split panes
+# Camera Reference 0.9.12 — menu, floating chrome and overlay behaviour
 
 Quit the old companion and open `build/CameraReference.app`. For RAM reuse, reload the updated `CameraReference.lrplugin` (bridge 0.5.0) and run File → Plug-in Extras → Start / restart Camera Reference bridge. Older bridges remain compatible but disable caching. Nothing is installed or launched by the build scripts.
+
+## New in 0.9.12
+
+The layout section is hidden in manual mode and shown only for Automatic viewing area. Diagram icons use fixed template bitmaps. Existing manual calibration and photo sizing are unchanged; selecting a detection layout while in auto mode keeps automatic detection enabled.
+
+The floating title and controls reveal when hovering anywhere over the photograph, on a consistent full-width background. Dragging the title bar moves the window at any zoom; dragging the zoomed photo pans it. At Fit, the whole picture remains draggable. Chrome overlays the picture without resizing it.
+
+Overlay animation is always disabled. The config option was removed; valid legacy `overlayAnimation = true/false` entries are accepted and ignored, and new config files omit it. App deactivation no longer dismisses the overlay. It uses normal window level and periodically reconciles ordering directly above Lightroom, allowing other normal windows above Lightroom to cover it. This cross-application behaviour requires live acceptance, especially fullscreen/Spaces and dialogs.
+
+A background UI-boundary check runs at most every 1.5 seconds while Lightroom is active in Develop with an automatic placement cache. It uses the existing capture/detector, keeping capture out of repeated-toggle foreground requests. Changed or unvalidated bounds invalidate placement and dismiss any stale overlay; the next invocation redetects. Foreground requests cancel background work. This adds periodic capture/CPU work while active, and detection is delayed rather than instantaneous. No check runs in manual mode, in another foreground app, or without cached bounds. Clear region remains the immediate fallback and does not change the auto preference. The user confirmed clearing already worked in 0.9.11; the new work is detecting changes without clearing.
+
+See the new TESTING.md checklist. Bridge 0.5.0 is unchanged. Native ordering, hover interactions, background panel checks and speed/idle-cost acceptance remain outstanding.
 
 ## New in 0.9.11
 

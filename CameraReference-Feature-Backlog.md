@@ -3,6 +3,18 @@
 Updated: 10 November 2026.
 Current baseline: 0.9.6 accepted by user as working for most cases; 0.9.7 adds the icon; 0.9.8 is the polish/test build. Historical sections below are retained as development history, not current outstanding requirements. This checklist supersedes their old statuses.
 
+## 0.9.12 — current status
+
+- [x] Preserve user-confirmed 0.9.11 floating sizing, manual placement, selection/resize invalidation and 178–184 ms repeated toggles as regression targets.
+- [x] Hide layout controls in manual mode; fixed bitmap diagram icons; auto layout selection stays automatic.
+- [x] Unified floating chrome revealed anywhere over photo; title-bar drag moves window even while zoomed.
+- [x] Disable overlay animation unconditionally; tolerate valid legacy config option.
+- [x] Stop dismissing overlay solely on app switch; normal-level ordering above Lightroom instead of global floating level.
+- [x] Background periodic boundary validation, cancelled by foreground work. Identical AX show/hide samples supplied by user offer no useful panel-state signal.
+- [ ] Live 0.9.12 acceptance: icons, hover/drag, cross-app ordering/Spaces, automatic panel invalidation, repeated speed and idle cost. New TESTING.md list preserves previous results.
+- [ ] Reliable event-driven panel tracking without periodic capture remains research; this release polls while Lightroom is active.
+- [ ] Continue split auto validation after these interaction corrections; Full detector remains unchanged.
+
 ## 0.9.11 — current status (supersedes historical entries below)
 
 - [x] User confirmed 0.9.10 RAM hit: 5 ms load, 451 ms total; manual placement 115 ms. Capture was 219 ms in the automatic sample.

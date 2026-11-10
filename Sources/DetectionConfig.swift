@@ -4,7 +4,6 @@ import CoreGraphics
 struct DetectionConfig: Equatable {
     enum Bound:String { case ui,photo }
     var left=Bound.ui,right=Bound.ui,top=Bound.photo,bottom=Bound.photo
-    var overlayAnimation=false
     var fitInsetPoints:CGFloat=18
     var sideSearchPercent:Double=45
     var verticalSnapFraction:CGFloat=0.25,horizontalSnapFraction:CGFloat=0.25
@@ -15,8 +14,6 @@ struct DetectionConfig: Equatable {
     static let template="""
     # Camera Reference detection settings. Save as plain text.
     # Reloaded only when this file changes. No restart required.
-    # Overlay appearance/disappearance animation (true or false).
-    overlayAnimation = false
     # Each side: ui or photo. Photo bounds are calculated, not edge-detected.
     left = ui
     right = ui
@@ -47,7 +44,7 @@ struct DetectionConfig: Equatable {
             let k=parts[0],v=parts[1]
             if k == "overlayAnimation" {
                 guard v == "true" || v == "false" else { throw invalid(index+1) }
-                c.overlayAnimation = v == "true";continue
+                continue // Legacy 0.9.11 option: accepted but animation is always disabled.
             }
             if ["left","right","top","bottom"].contains(k) {
                 guard let b=Bound(rawValue:v) else { throw invalid(index+1) }
@@ -93,11 +90,7 @@ final class DetectionConfigStore {
             try FileManager.default.createDirectory(at:url.deletingLastPathComponent(),withIntermediateDirectories:true)
             try DetectionConfig.template.write(to:url,atomically:true,encoding:.utf8)
         } else {
-            var text=try String(contentsOf:url,encoding:.utf8)
-            if !text.components(separatedBy:.newlines).contains(where:{ $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces)=="overlayAnimation" }) {
-                text += "\n# Overlay appearance/disappearance animation.\noverlayAnimation = false\n"
-                try text.write(to:url,atomically:true,encoding:.utf8)
-            }
+            let text=try String(contentsOf:url,encoding:.utf8)
             let hasInterval=text.components(separatedBy:.newlines).contains {
                 $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces) == "sideSearchPercent"
             }

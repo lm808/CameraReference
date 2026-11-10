@@ -44,13 +44,23 @@ assert(memory.translated(window:window,windowID:42,epoch:"A",settingsKey:config.
 assert(memory.translated(window:window,windowID:42,epoch:nil,settingsKey:config.key,layout:.full)==nil)
 let file=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("detection.conf")
 let store=DetectionConfigStore(url:file)
-let initial=try store.reload();assert(initial.overlayAnimation == false)
+_ = try store.reload();assert(!DetectionConfig.template.contains("overlayAnimation"))
 let count=store.parseCount
 _ = try store.reload();assert(store.parseCount==count)
 try "overlayAnimation = true\nfitInsetPoints = 20\n".write(to:file,atomically:true,encoding:.utf8)
-let changed=try store.reload();assert(changed.overlayAnimation)
+_ = try store.reload()
 assert(store.current.fitInsetPoints==20 && store.parseCount==count+1)
 try "overlayAnimation = typo".write(to:file,atomically:true,encoding:.utf8)
-do { _ = try store.reload();fatalError("Invalid config accepted") } catch { assert(store.current.overlayAnimation) }
+do { _ = try store.reload();fatalError("Invalid config accepted") } catch { assert(store.current.fitInsetPoints==20) }
 try FileManager.default.removeItem(at:file.deletingLastPathComponent())
 print("PASS: explicit four-pane selection, half-viewport floating fit for both orientations, placement reuse/invalidation, config caching and animation validation")
+
+assert(!panelBoundsChanged(previous:viewport,current:viewport))
+assert(panelBoundsChanged(previous:viewport,current:viewport.insetBy(dx:40,dy:0)))
+assert(panelBoundsChanged(previous:viewport,current:nil))
+assert(!overlayNeedsOrdering(order:[9,5,4,3],overlay:5,lightroom:4))
+assert(overlayNeedsOrdering(order:[5,9,4,3],overlay:5,lightroom:4))
+assert(overlayNeedsOrdering(order:[9,4,5,3],overlay:5,lightroom:4))
+assert(overlayNeedsOrdering(order:[9,4,3],overlay:5,lightroom:4))
+assert(!overlayNeedsOrdering(order:[9,5,3],overlay:5,lightroom:4))
+print("PASS: panel changes invalidate placement; overlay ordering preserves windows above Lightroom")

@@ -1,43 +1,116 @@
+# Camera Reference 0.9.12 — fresh acceptance list
+
+Quit 0.9.11, open `build/CameraReference.app`, and confirm **0.9.12**. Bridge remains **0.5.0**, with no plugin update needed. Mark `[x]` or `[x ]` for pass. Your complete 0.9.11 results are preserved below.
+
+## Menu and manual behaviour
+
+- [ ] With Automatic viewing area **off**, the Full / Side-by-side / Above-and-below section (including its extra separator) is hidden. Manual calibration still respects the selected backdrop's position relative to Lightroom, without choosing a layout.
+- [ ] With Automatic viewing area **on**, that section appears immediately below Show overlay. Full and the split layouts/panes have visible, distinct diagrams and correct checkmarks. Choosing another detection method keeps auto on.
+- [ ] Successful calibration switches to manual; cancellation preserves settings. Clear region preserves the auto/manual preference. Full placement, portrait/landscape floating size and moving Lightroom remain correct.
+
+## Cached placement and internal panels
+
+- [ ] Start in Full auto mode with a fresh detection. Repeated same-photo toggles still report RAM/placement cache hits and skip foreground capture. Record timing below; compare with 0.9.11's 178–184 ms.
+- [ ] Hide/show or resize a Lightroom internal panel, with Lightroom active. Wait about **2 seconds**, then invoke. Cached placement should have been invalidated and the overlay should detect the new area. Check Bridge diagnostics for the background-check result.
+- [ ] Change a panel while the overlay is visible: the boundary check should dismiss the now-stale overlay; the next invocation should redetect. Changing focus alone must not dismiss it.
+- [ ] Clear region still forces fresh detection immediately, without changing auto/manual preference. This was already working in 0.9.11; test as a regression, not an alleged previous failure.
+- [ ] No background captures in manual mode, with another app active, or without a valid placement cache. No configuration dialogs or repeated messages while idle. Report unwanted invalidations, idle CPU/battery impact or repeated-toggle slowdown.
+
+Repeated timing:
+
+## Floating title bar and navigation
+
+- [ ] Hover anywhere over the picture: title and controls appear together over one full-width background. Leave the window: they fade away. Photo size/position stays unchanged.
+- [ ] Zoom in with Cmd-scroll. Drag the title bar to move the window; drag the photo to pan it. At Fit, dragging anywhere moves the window. Close control works.
+- [ ] Cmd-scroll zoom and two-finger pan work; pinch remains removed. Floating initial portrait/landscape sizing and reload behaviour remain accepted.
+
+## Overlay ordering and animation
+
+- [ ] Show overlay, then click another application: overlay remains present over Lightroom, but the other app's windows cover it naturally. Clicking Lightroom restores it above Lightroom without another invocation.
+- [ ] Repeat using Cmd-Tab, overlapping windows, an open floating display, and a Lightroom dialog. Overlay must not repeatedly jump above the foreground app/dialog or steal focus.
+- [ ] Move/resize Lightroom, minimise/restore it, and test macOS fullscreen/Spaces. No orphan overlay on another desktop; invoke again where geometry/Space changes intentionally dismiss it.
+- [ ] Overlay appears/disappears without pop/fade animation. Existing `overlayAnimation = true` or `false` lines cause no config error and cannot enable animation. Newly generated config omits the option; other config edits still reload normally.
+
+Known limits: background UI checks are periodic, not instantaneous (about 1.5 seconds plus capture time), and only run with Lightroom active. Rapid toggling can postpone a check because foreground requests cancel background work. Clear region is the immediate fallback. Cross-application window ordering and native hover behaviour need this live acceptance; unit tests cannot prove them.
+
+---
+
+## 0.9.11 results (preserved)
+
 # Camera Reference 0.9.11 — new acceptance list
 
 Quit 0.9.10, then open `build/CameraReference.app`; confirm **0.9.11** in the menu. Keep bridge **0.5.0** running (no plugin changes this release). Start in Lightroom Develop at Fit. Mark `[x]` or `[x ]` for pass; add notes/diagnostics below failures. Earlier results are preserved below.
 
 ## 1. Full mode and speed — test first
 
-- [ ] Full is available in its own section immediately below Show overlay. Side-by-side and Above-and-below have diagrams, pane submenus and correct checkmarks.
-- [ ] In Full, existing automatic placement still aligns landscape and portrait photos in maximised and non-maximised windows. No split setting changes Full's saved calibration or auto/manual preference.
-- [ ] With Automatic viewing area enabled, clear the region, show/hide/show the same photo. First show detects; repeated show reports **RAM cache hit** and **placement cache hit; capture skipped**. Record first and repeated timings below.
-- [ ] Move Lightroom without resizing: next overlay follows it and retains the placement cache hit. Resize it: the next show captures/redetects and aligns correctly.
-- [ ] Switch to another photo (also away and back): no stale image or stale placement is reused. Restarting the bridge also prevents old reuse.
-- [ ] Toggle repeatedly: no default spring/pop animation. Set `overlayAnimation = true`, save, and check the opt-in behaviour; restore `false` afterwards. Config edits take effect without restart.
-- [ ] Hide/show an internal panel, then **Clear region setting**: Automatic viewing area stays enabled and next show redetects. **Known limitation:** internal panels are not yet monitored, so clear after panel/layout changes even on the same photo.
+- [Diagrams not shown. These options should be hidden in manual mode and only show in automode.] Full is available in its own section immediately below Show overlay. Side-by-side and Above-and-below have diagrams, pane submenus and correct checkmarks.
+- [As discussed, manual mode does its own thing. Currently I think it behaves correctly in any mode, as long as the overlay respects its selected relative position with LrC. In automode, the full setting should be protected while we work on the split views, since I want to keep using the app.] In Full, existing automatic placement still aligns landscape and portrait photos in maximised and non-maximised windows. No split setting changes Full's saved calibration or auto/manual preference.
+- [x ] With Automatic viewing area enabled, clear the region, show/hide/show the same photo. First show detects; repeated show reports **RAM cache hit** and **placement cache hit; capture skipped**. Record first and repeated timings below.
+- [ x] Move Lightroom without resizing: next overlay follows it and retains the placement cache hit. Resize it: the next show captures/redetects and aligns correctly.
+- [x ] Switch to another photo (also away and back): no stale image or stale placement is reused. Restarting the bridge also prevents old reuse.
+- [ I think now the animation is not there regardless of the setting, or only slight difference but I cannot tell. The springing pop effect is not there but might be a fading. However I am happy with no animation. The experience is better. Remove this option. Make sure there is no animation.] Toggle repeatedly: no default spring/pop animation. Set `overlayAnimation = true`, save, and check the opt-in behaviour; restore `false` afterwards. Config edits take effect without restart.
+- [ does not redetect. the overlay size is wrong if panels are changed.] Hide/show an internal panel, then **Clear region setting**: Automatic viewing area stays enabled and next show redetects. **Known limitation:** internal panels are not yet monitored, so clear after panel/layout changes even on the same photo.
 
 First timing:
+Timing: Bridge 179 ms; JPEG load/decode 849 ms (extraction 294 ms, included); Embedded decode/orientation overhead 556 ms; RAM cache miss; capture and detection 321 ms; total to panel shown 1364 ms
+
+Bridge 179 ms; JPEG load/decode 849 ms (extraction 294 ms, included); Embedded decode/orientation overhead 556 ms; RAM cache miss; capture and detection 321 ms; total to panel shown 1364 ms
 
 Repeated timing:
+Timing: Bridge 151 ms; JPEG load/decode 6 ms; RAM cache hit; source files revalidated; placement cache hit; capture skipped; total to panel shown 178 ms
+
+Bridge 151 ms; JPEG load/decode 6 ms; RAM cache hit; source files revalidated; placement cache hit; capture skipped; total to panel shown 178 ms
+
+Timing: Bridge 152 ms; JPEG load/decode 6 ms; RAM cache hit; source files revalidated; placement cache hit; capture skipped; total to panel shown 184 ms
+
+Bridge 152 ms; JPEG load/decode 6 ms; RAM cache hit; source files revalidated; placement cache hit; capture skipped; total to panel shown 184 ms
 
 ## 2. Calibration and explicit split panes
 
-- [ ] Successful Full calibration turns Automatic viewing area off. Cancelling calibration leaves previous region and preference unchanged.
-- [ ] In manual mode, Clear region setting keeps auto off; next show asks for calibration. In auto mode, clearing keeps auto on and forces detection. Other layouts/panes retain their saved calibration.
-- [ ] In Lightroom's side-by-side Reference view, select Side-by-side → Left. Calibrate the **entire left pane backdrop**, including margins, between panels and divider. Overlay fits there and follows window movement.
-- [ ] Repeat for Right. Left/Right calibrations and preferences stay independent; switching back to Full restores Full behaviour.
-- [ ] Repeat Upper and Lower in Lightroom's above-and-below layout. Photo fitting uses the selected pane, not the entire window.
-- [ ] After split manual calibration, enable Automatic viewing area: the calibrated pane can seed boundary validation. Clear it in auto mode to try fresh divider detection. Unsupported/ambiguous cases offer manual calibration, not a guessed Full overlay.
-- [ ] Deliberately select the wrong split orientation while Lightroom shows the other orientation (clear region first): fallback asks for calibration. Return to matching modes afterwards. Wipe is unsupported.
+- [x ] Successful Full calibration turns Automatic viewing area off. Cancelling calibration leaves previous region and preference unchanged.
+- [x ] In manual mode, Clear region setting keeps auto off; next show asks for calibration. In auto mode, clearing keeps auto on and forces detection. Other layouts/panes retain their saved calibration.
+- [See above ] In Lightroom's side-by-side Reference view, select Side-by-side → Left. Calibrate the **entire left pane backdrop**, including margins, between panels and divider. Overlay fits there and follows window movement.
+- [Currently manual mode actually doesn't care whether full or split is selected ] Repeat for Right. Left/Right calibrations and preferences stay independent; switching back to Full restores Full behaviour.
+- [ See above] Repeat Upper and Lower in Lightroom's above-and-below layout. Photo fitting uses the selected pane, not the entire window.
+- [See above. Get logic correct then we work on this. ] After split manual calibration, enable Automatic viewing area: the calibrated pane can seed boundary validation. Clear it in auto mode to try fresh divider detection. Unsupported/ambiguous cases offer manual calibration, not a guessed Full overlay.
+- [? ] Deliberately select the wrong split orientation while Lightroom shows the other orientation (clear region first): fallback asks for calibration. Return to matching modes afterwards. Wipe is unsupported.
 
 ## 3. Floating photo and trackpad
 
-- [ ] With a known Full UI area, open a landscape floating photo: its size is close to the same photo at Fit in one side-by-side Lightroom pane (half the UI width, full UI height, usual inset).
-- [ ] Repeat with a portrait photo. It uses the same half-width/full-height calculation, not the old portrait exception. Close/reopen between initial-size checks.
-- [ ] The title and close controls fade in at the top edge and out away from it. The photograph does not shift or resize; the visible close button works.
-- [ ] At Fit, dragging anywhere in the floating photo moves the window. Cmd-scroll above Fit then drag: pans the photo instead. Fit restores window dragging. Overlay dragging never moves its window.
-- [ ] Cmd-scroll zoom and two-finger pan still work. Pinching no longer zooms, and pinch counters are absent from diagnostics.
-- [ ] Manually resize/move the floating display, reload a photo, and verify usable aspect ratio/position; hiding and reopening still loads the current Lightroom selection.
+- [x ] With a known Full UI area, open a landscape floating photo: its size is close to the same photo at Fit in one side-by-side Lightroom pane (half the UI width, full UI height, usual inset).
+- [x ] Repeat with a portrait photo. It uses the same half-width/full-height calculation, not the old portrait exception. Close/reopen between initial-size checks.
+- [As discussed ] The title and close controls fade in at the top edge and out away from it. The photograph does not shift or resize; the visible close button works.
+- [Almost. At fit everything behaves as expected. However at zoomed, if I want to move the float I would naturally go for the title bar of the window, however even when it appears and I drag on it, I still pan the photo] At Fit, dragging anywhere in the floating photo moves the window. Cmd-scroll above Fit then drag: pans the photo instead. Fit restores window dragging. Overlay dragging never moves its window.
+- [Will check next time ] Cmd-scroll zoom and two-finger pan still work. Pinching no longer zooms, and pinch counters are absent from diagnostics.
+- [x ] Manually resize/move the floating display, reload a photo, and verify usable aspect ratio/position; hiding and reopening still loads the current Lightroom selection.
 
 ## Optional investigation
 
 - [ ] Developer tools → Inspect Accessibility layout…: collect before/after samples with one internal panel hidden/shown. This is read-only research, not automatic panel-change tracking. Existing view-state diagnostics can also be compared. Do not grant extra permission just for the core speed test.
+
+Show panel
+Main window: x=0, y=30, 2560 × 1349 pt
+Focused window matches main: true.
+No JPEG aspect ratio available; load a reference first.
+Inspected 8 elements.
+AXButton: 3, AXCheckBox: 1, AXGroup: 1, AXImage: 1, AXStaticText: 1, AXWindow: 1
+Large central image candidates: 0; matching candidates: 0.
+AXImage: x=81, y=36, 18 × 18 pt; too small, does not cover window centre
+No unambiguous image bounds accepted. Using manual calibration.
+
+No timing sample yet.
+
+Hide panel
+Main window: x=0, y=30, 2560 × 1349 pt
+Focused window matches main: true.
+No JPEG aspect ratio available; load a reference first.
+Inspected 8 elements.
+AXButton: 3, AXCheckBox: 1, AXGroup: 1, AXImage: 1, AXStaticText: 1, AXWindow: 1
+Large central image candidates: 0; matching candidates: 0.
+AXImage: x=81, y=36, 18 × 18 pt; too small, does not cover window centre
+No unambiguous image bounds accepted. Using manual calibration.
+
+No timing sample yet.
 
 ---
 

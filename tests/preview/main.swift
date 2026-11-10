@@ -26,3 +26,18 @@ let before=photo.bounds
 floating.revealChrome(true);floating.revealChrome(false)
 precondition(photo.bounds==before,"Chrome must not resize or shift the photo")
 print("PASS: floating full-size photo geometry and stable hover chrome")
+
+precondition(floatingDragMovesWindow(zoom:1,inTitleBar:false))
+precondition(!floatingDragMovesWindow(zoom:2,inTitleBar:false))
+precondition(floatingDragMovesWindow(zoom:2,inTitleBar:true))
+var masks=Set<Data>()
+for layout in OverlayLayout.allCases {
+    let icon=layoutMenuIcon(layout)
+    precondition(icon.isTemplate && icon.size==CGSize(width:22,height:16))
+    let cg=icon.cgImage(forProposedRect:nil,context:nil,hints:nil)!
+    let data=cg.dataProvider!.data! as Data
+    precondition(data.contains(where:{$0 != 0}),"Empty menu diagram")
+    masks.insert(data)
+}
+precondition(masks.count==5,"Pane diagrams must be distinct")
+print("PASS: five nonempty distinct menu diagrams and title-bar drag at any zoom")

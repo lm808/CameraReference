@@ -48,6 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var overlayLayout:OverlayLayout = OverlayLayout(rawValue:UserDefaults.standard.string(forKey:"overlayLayout") ?? "full") ?? .full
     var layoutItems=[OverlayLayout:NSMenuItem]()
     var layoutGroups=[Int:NSMenuItem]()
+    var layoutSeparator:NSMenuItem?
     var placementMemory:PlacementMemory?
     func regionKey(_ key:String,layout:OverlayLayout? = nil)->String {
         regionPreferenceKey(key,layout:layout ?? overlayLayout)
@@ -92,44 +93,82 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             }
         }
     }
-    func layoutIcon(_ layout:OverlayLayout)->NSImage {
-        let image=NSImage(size:NSSize(width:22,height:16),flipped:false) { rect in
-            NSColor.labelColor.setStroke()
-            let outer=rect.insetBy(dx:1,dy:1);NSBezierPath(rect:outer).stroke()
-            if layout == .full { NSColor.labelColor.withAlphaComponent(0.25).setFill();outer.insetBy(dx:2,dy:2).fill() }
-            else {
-                let leftRight=layout.group==1
-                let path=NSBezierPath()
-                path.move(to:leftRight ? CGPoint(x:11,y:1):CGPoint(x:1,y:8))
-                path.line(to:leftRight ? CGPoint(x:11,y:15):CGPoint(x:21,y:8));path.stroke()
-                let fill:CGRect
-                switch layout {
-                case .left:fill=CGRect(x:3,y:3,width:6,height:10)
-                case .right:fill=CGRect(x:13,y:3,width:6,height:10)
-                case .upper:fill=CGRect(x:3,y:10,width:16,height:3)
-                default:fill=CGRect(x:3,y:3,width:16,height:3)
-                }
-                NSColor.labelColor.withAlphaComponent(0.35).setFill();fill.fill()
-            }
-            return true
+    var panelCheckTask:Task<Void,Never>?
+    var panelCheckID:UUID?
+    var nextPanelCheck:TimeInterval=0
+    var panelCheckStatus="Panel boundaries not yet checked in background."
+    func cancelPanelCheck() { panelCheckTask?.cancel();panelCheckTask=nil;panelCheckID=nil }
+    func checkPanelBoundariesIfDue() {
+        guard #available(macOS 14.0,*),ProcessInfo.processInfo.systemUptime>=nextPanelCheck,
+              panelCheckTask==nil,screenTask==nil,pending==nil,calibration==nil,!recording,!regionResetting,
+              isLightroom(),currentModule()=="develop",UserDefaults.standard.bool(forKey:regionKey("automaticBounds")),
+              let memory=placementMemory,memory.layout==overlayLayout,let imageSize=lastImageSize,
+              selectionEpoch()==memory.epoch else { return }
+        nextPanelCheck=ProcessInfo.processInfo.systemUptime+1.5
+        let id=UUID();panelCheckID=id
+        let settings=detectionSettings.current
+        let seed=overlayLayout == .full ? nil:region
+        panelCheckTask=Task.detached(priority:.utility) { [weak self] in
+            let result=await inspectScreenLayout(imageSize:imageSize,settings:settings,layout:memory.layout,seed:seed)
+            guard !Task.isCancelled else { return }
+            await self?.finishPanelCheck(result,id:id,memory:memory)
         }
-        image.isTemplate=true;return image
     }
+    @MainActor func finishPanelCheck(_ result:ScreenProbeResult,id:UUID,memory:PlacementMemory) {
+        guard panelCheckID==id else { return };panelCheckID=nil;panelCheckTask=nil
+        guard isLightroom(),pending==nil,screenTask==nil,calibration==nil,
+              placementMemory?.epoch==memory.epoch,selectionEpoch()==memory.epoch,
+              overlayLayout==memory.layout,detectionSettings.current.key==memory.settingsKey,
+              let current=currentCaptureWindowFrame(memory.windowID),sameWindowGeometry(current,result.windowFrame) else { return }
+        let window=appKitRect(current,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
+        let expected=memory.translated(window:window,windowID:memory.windowID,epoch:memory.epoch,settingsKey:memory.settingsKey,layout:memory.layout)
+        if panelBoundsChanged(previous:expected,current:result.uiFrame) {
+            panelCheckStatus="Background check: UI boundaries changed or could not be validated; placement invalidated."
+            invalidateAutomaticGeometry()
+            if panel != nil { hide();report("Lightroom viewing area changed. Invoke again to place the overlay.") }
+        } else { panelCheckStatus="Background check: UI boundaries unchanged. Repeated toggle can skip capture." }
+    }
+    @discardableResult func orderOverlayAboveLightroom()->Bool {
+        guard let panel else { return false }
+        guard let owner=NSWorkspace.shared.runningApplications.first(where:isLightroomApp),
+              let rows=CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements],kCGNullWindowID) as? [[String:Any]] else { return false }
+        let windows=rows.filter { ($0[kCGWindowLayer as String] as? NSNumber)?.intValue==0 }
+        let lightroom=windows.filter {
+            guard ($0[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==owner.processIdentifier,
+                  let dict=$0[kCGWindowBounds as String] as? [String:Any],let frame=CGRect(dictionaryRepresentation:dict as CFDictionary) else { return false }
+            return frame.width>600 && frame.height>400
+        }.max { a,b in
+            func area(_ item:[String:Any])->CGFloat {
+                guard let d=item[kCGWindowBounds as String] as? [String:Any],let f=CGRect(dictionaryRepresentation:d as CFDictionary) else { return 0 };return f.width*f.height
+            }
+            return area(a)<area(b)
+        }
+        guard let number=(lightroom?[kCGWindowNumber as String] as? NSNumber)?.intValue else { return false }
+        let order=windows.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.intValue }
+        if overlayNeedsOrdering(order:order,overlay:panel.windowNumber,lightroom:number) { panel.order(.above,relativeTo:number) }
+        return true
+    }
+
     func buildLayoutMenu(_ menu:NSMenu) {
+        layoutSeparator=NSMenuItem.separator();menu.addItem(layoutSeparator!)
         let full=add("Full",#selector(selectLayout(_:)),to:menu)
-        full.representedObject=OverlayLayout.full.rawValue;full.image=layoutIcon(.full);layoutItems[.full]=full
+        full.representedObject=OverlayLayout.full.rawValue;full.image=layoutMenuIcon(.full);layoutItems[.full]=full
         for (title,modes) in [("Side-by-side",[OverlayLayout.left,.right]),("Above-and-below",[OverlayLayout.upper,.lower])] {
             let parent=NSMenuItem(title:title,action:nil,keyEquivalent:"")
-            parent.image=layoutIcon(modes[0]);let child=NSMenu(title:title);parent.submenu=child;menu.addItem(parent)
+            parent.image=layoutMenuIcon(modes[0]);let child=NSMenu(title:title);parent.submenu=child;menu.addItem(parent)
             layoutGroups[modes[0].group]=parent
             for mode in modes {
                 let item=add(mode.label,#selector(selectLayout(_:)),to:child)
-                item.representedObject=mode.rawValue;item.image=layoutIcon(mode);layoutItems[mode]=item
+                item.representedObject=mode.rawValue;item.image=layoutMenuIcon(mode);layoutItems[mode]=item
             }
         }
         updateLayoutMenu()
     }
     func updateLayoutMenu() {
+        let hidden = !UserDefaults.standard.bool(forKey:regionKey("automaticBounds"))
+        layoutSeparator?.isHidden=hidden
+        layoutItems[.full]?.isHidden=hidden
+        for item in layoutGroups.values { item.isHidden=hidden }
         for (mode,item) in layoutItems { item.state=mode==overlayLayout ? .on:.off }
         for (group,item) in layoutGroups { item.state=group==overlayLayout.group ? .on:.off }
     }
@@ -137,6 +176,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard let raw=sender.representedObject as? String,let mode=OverlayLayout(rawValue:raw),mode != overlayLayout else { return }
         cancelScreenInspection();cancelRequest();hide();calibration?.finish(nil)
         overlayLayout=mode;UserDefaults.standard.set(mode.rawValue,forKey:"overlayLayout")
+        UserDefaults.standard.set(true,forKey:regionKey("automaticBounds"))
         invalidateAutomaticGeometry();updateLayoutMenu()
         autoItem.state=UserDefaults.standard.bool(forKey:regionKey("automaticBounds")) ? .on:.off
         report(mode == .full ? "Full layout selected.":"\(mode.label) pane selected. Calibrate its entire UI backdrop, including photo margins.")
@@ -225,7 +265,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
             let child = NSMenu(title: title); item.submenu = child; menu.addItem(item); return child
         }
-        menu.addItem(.separator())
         buildLayoutMenu(menu)
         menu.addItem(.separator())
         let settings = submenu("Settings")
@@ -282,6 +321,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.imageCache.observe(epoch)
             if let memory=self.placementMemory,memory.epoch != epoch || self.currentModule() != "develop" { self.placementMemory=nil }
             self.observeWindowGeometry()
+            if self.panel != nil { _ = self.orderOverlayAboveLightroom() }
+            self.checkPanelBoundariesIfDue()
             guard self.panel != nil || self.destination == .overlay else { return }
             if let module = self.currentModule(), module != "develop" { self.hide(); self.report("Overlay dismissed: Lightroom left Develop.") }
             else if self.panel != nil && self.currentModule() == nil { self.hide(); self.report("Overlay dismissed: bridge status is unavailable.") }
@@ -349,9 +390,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     @objc func frontAppChanged() {
         let own=NSWorkspace.shared.frontmostApplication?.processIdentifier == ProcessInfo.processInfo.processIdentifier
-        if !isLightroom() && !own { saveToast.close(); hide(); calibration?.finish(nil) }
+        if !isLightroom() { cancelPanelCheck() }
+        if !isLightroom() && !own { saveToast.close(); calibration?.finish(nil) }
+        _ = orderOverlayAboveLightroom()
     }
     func invalidateAutomaticGeometry() {
+        cancelPanelCheck()
         lastProbe=nil;placementMemory=nil
         Task { await ScreenGeometryCache.shared.reset() }
     }
@@ -385,7 +429,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let active=panel != nil || destination == .overlay || detectionCompletion != nil
         toggleItem?.title=(active ? "Hide overlay" : "Show overlay") + "   " + shortcutText(key:keyLabel,modifiers:currentShortcut.1)
     }
-    func menuNeedsUpdate(_ menu:NSMenu) { updateToggleTitle() }
+    func menuNeedsUpdate(_ menu:NSMenu) { updateToggleTitle();updateLayoutMenu() }
     @objc func menuToggle() { toggle() }
     func toggle() {
         if recording || calibration != nil { return }
@@ -402,6 +446,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     @objc func checkPhoto() { request(.check) }
     func request(_ target: Destination) {
         guard !regionResetting else { return }
+        cancelPanelCheck();nextPanelCheck=ProcessInfo.processInfo.systemUptime+1.5
         cancelScreenInspection(); cancelRequest()
         let token = UUID().uuidString, work = Cancellation()
         pending = token; destination = target; cancellation = work
@@ -512,8 +557,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             report("Set image region again for this display layout."); return nil
         }
         let p = OverlayPanel(contentRect: region.insetBy(dx: -1, dy: -1), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        p.animationBehavior=reloadDetectionConfig().overlayAnimation ? .utilityWindow:.none
-        p.level = .floating; p.isOpaque = true; p.backgroundColor = .black
+        p.animationBehavior = .none
+        p.level = .normal; p.isOpaque = true; p.backgroundColor = .black
         p.hasShadow = false; p.hidesOnDeactivate = false; p.isReleasedWhenClosed = false
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         let view = ReferenceView(frame: NSRect(origin: .zero, size: p.frame.size))
@@ -522,7 +567,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         configureImageView(view)
         view.refresh = { [weak self] in self?.reloadOverlay() }
         view.image = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
-        p.contentView = view; panel = p; p.orderFrontRegardless()
+        p.contentView = view; panel = p;
+        guard orderOverlayAboveLightroom() else { hide();report("Lightroom window unavailable; invoke again when it is visible.");return nil }
         let requested=region.insetBy(dx:-1,dy:-1)
         p.setFrame(requested,display:true)
         lastLayout += "\nOverlay panel requested (AppKit): \(requested). Actual: \(p.frame)."
@@ -708,6 +754,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     @objc func calibrate() { beginCalibration() }
     func beginCalibration(proposal requestedProposal:CGRect? = nil, useManualOnAccept:Bool = false) {
         guard !regionResetting else { return }
+        cancelPanelCheck()
         cancelScreenInspection(); hide(); cancelRequest(); calibration?.finish(nil)
         let settings=reloadDetectionConfig()
         let proposal=requestedProposal == nil ? nil:lastProbe?.uiFrame
@@ -759,6 +806,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard !regionResetting else { return };regionResetting=true
         calibration?.finish(nil);calibrationTask?.cancel();calibrationTask=nil
         calibrationTimer?.invalidate();calibrationTimer=nil
+        cancelPanelCheck()
         cancelScreenInspection();cancelRequest();hide();saveToast.close();capturePreview?.close();capturePreview=nil
         clearRegionPreferences(UserDefaults.standard,layout:overlayLayout)
         placementMemory=nil
@@ -839,6 +887,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     func startPhotoDetection(imageSize:CGSize,previewCapture:Bool=false,layout requestedLayout:OverlayLayout? = nil,completion:((ScreenProbeResult)->Void)? = nil) {
         guard #available(macOS 14.0, *), currentModule()=="develop" else { report("Detection cancelled: Develop is no longer active."); return }
+        cancelPanelCheck()
         let settings=reloadDetectionConfig()
         let mode=requestedLayout ?? overlayLayout
         let seed=mode == overlayLayout && mode != .full ? region:nil
@@ -895,7 +944,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let date = attributes?[.modificationDate] as? Date
         let age = date.map { "\(max(0, Int(Date().timeIntervalSince($0)))) seconds ago" } ?? "not received"
         let state = (try? String(contentsOf: folder.appendingPathComponent("status.txt"), encoding: .utf8)) ?? "No plugin status. The bridge may not have started."
-        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + lastLayout + "\n\nTiming: " + lastTiming
+        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + lastLayout + "\n" + panelCheckStatus + "\n\nTiming: " + lastTiming
     }
     @objc func showDiagnostics() {
         let saved = lastResult
@@ -956,7 +1005,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     @objc func cancel() { calibration?.finish(nil); hide(); report("Ready.") }
-    @objc func quit() { imageCache.clear(); calibration?.finish(nil); cancelScreenInspection(); hide(); cancelRequest(); floating?.close(); NSApp.terminate(nil) }
+    @objc func quit() { cancelPanelCheck();imageCache.clear(); calibration?.finish(nil); cancelScreenInspection(); hide(); cancelRequest(); floating?.close(); NSApp.terminate(nil) }
 
 }
 let app = NSApplication.shared

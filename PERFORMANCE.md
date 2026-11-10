@@ -30,3 +30,7 @@ User measurements: first embedded total 821 ms (bridge 56, load 409 including ex
 ## 0.9.11 — skip capture on repeated toggles
 
 User 0.9.10 sample: bridge 195 ms, RAM load 5 ms, capture/detection 219 ms, total 451 ms. Manual sample: bridge 84 ms, RAM load 5 ms, total 115 ms. These are different bridge latencies, not a controlled benchmark. 0.9.11 reuses the detected UI area only with matching selection epoch, window identity/size, layout and config; movement translates it. File metadata revalidation and bridge round-trip remain. Config metadata is checked without rereading unchanged text. No measured 0.9.11 latency claim yet. Internal panel changes require clearing the region until an inexpensive reliable signal is established.
+
+## 0.9.12
+
+User 0.9.11 first sample: bridge179 ms, load849 ms (extract294, decode/orientation556), capture321, total1364. Repeats: total178/184 ms, bridge151/152, RAM load6; capture skipped. These confirm repeated-path improvement but first-load cost varies. New panel checks run off the invocation path at most every1.5 seconds while Lightroom is active and automatic placement is cached, and are cancelled on foreground work. This trades periodic idle capture/CPU cost for automatic panel-change detection; speed and power acceptance must be measured. No 0.9.12 timing claim yet.

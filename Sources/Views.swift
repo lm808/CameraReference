@@ -42,11 +42,12 @@ final class ReferenceView: NSView, NSMenuItemValidation {
         super.updateTrackingAreas()
     }
     override func mouseMoved(with event:NSEvent) {
-        let p=convert(event.locationInWindow,from:nil)
-        (window as? FloatingPanel)?.revealChrome(p.y>=bounds.maxY-32)
+        (window as? FloatingPanel)?.revealChrome(true)
     }
     override func mouseEntered(with event:NSEvent) { mouseMoved(with:event) }
-    override func mouseExited(with event:NSEvent) { (window as? FloatingPanel)?.revealChrome(false) }
+    override func mouseExited(with event:NSEvent) {
+        if let window,!window.frame.contains(NSEvent.mouseLocation) { (window as? FloatingPanel)?.revealChrome(false) }
+    }
     private(set) var toast: String?
     private var toastTimer: Timer?
     func showToast(_ message:String, duration:TimeInterval=3) {
@@ -74,8 +75,11 @@ final class ReferenceView: NSView, NSMenuItemValidation {
     override func mouseDown(with event:NSEvent) {
         guard interactive else { return }
         window?.makeFirstResponder(self)
+        if movesWindowAtFit && floatingDragMovesWindow(zoom:navigation.zoom,inTitleBar:convert(event.locationInWindow,from:nil).y>=bounds.maxY-32) {
+            if event.clickCount==1 { lastDrag=nil;window?.performDrag(with:event);return }
+            if convert(event.locationInWindow,from:nil).y>=bounds.maxY-32 { return }
+        }
         if event.clickCount == 2 { lastDrag=nil; fit(); refresh?() }
-        else if movesWindowAtFit && navigation.zoom <= 1.0001 { lastDrag=nil;window?.performDrag(with:event) }
         else { lastDrag=convert(event.locationInWindow,from:nil) }
     }
     override func mouseDragged(with event:NSEvent) {
@@ -203,33 +207,63 @@ final class CapturePreviewController:NSObject,NSWindowDelegate {
 private final class ChromeLabel:NSTextField {
     override func hitTest(_ point:NSPoint)->NSView? { nil }
 }
+private final class FloatingChrome:NSView {
+    override func draw(_ dirtyRect:NSRect) { NSColor.black.withAlphaComponent(0.72).setFill();bounds.fill() }
+    override func mouseDown(with event:NSEvent) { if event.clickCount==1 { window?.performDrag(with:event) } }
+    override func acceptsFirstMouse(for event:NSEvent?)->Bool { true }
+}
+func floatingDragMovesWindow(zoom:CGFloat,inTitleBar:Bool)->Bool { inTitleBar || zoom <= 1.0001 }
 // Full-size content keeps the photograph stationary while chrome fades over it.
 final class FloatingPanel:OverlayPanel {
+    private let chrome=FloatingChrome()
     private let caption=ChromeLabel(labelWithString:"")
     private var chromeVisible=false
     override var title:String { didSet { caption.stringValue=title } }
     func installChrome() {
         titleVisibility = .hidden;titlebarAppearsTransparent=true
         caption.font = .systemFont(ofSize:11,weight:.medium)
-        caption.textColor = .white;caption.backgroundColor=NSColor.black.withAlphaComponent(0.65)
-        caption.drawsBackground=true;caption.lineBreakMode = .byTruncatingMiddle
+        caption.textColor = .white
+        caption.drawsBackground=false;caption.lineBreakMode = .byTruncatingMiddle
         caption.alignment = .center
         if let contentView {
-            caption.frame=CGRect(x:78,y:contentView.bounds.height-26,width:max(0,contentView.bounds.width-90),height:22)
-            caption.autoresizingMask=[.width,.minYMargin];contentView.addSubview(caption)
+            chrome.frame=CGRect(x:0,y:contentView.bounds.height-32,width:contentView.bounds.width,height:32)
+            chrome.autoresizingMask=[.width,.minYMargin];contentView.addSubview(chrome)
+            caption.frame=CGRect(x:78,y:5,width:max(0,contentView.bounds.width-90),height:22)
+            caption.autoresizingMask=[.width];chrome.addSubview(caption)
         }
-        caption.alphaValue=0
+        chrome.alphaValue=0
         for type in [NSWindow.ButtonType.closeButton,.miniaturizeButton,.zoomButton] { standardWindowButton(type)?.alphaValue=0;standardWindowButton(type)?.isEnabled=false }
     }
     func revealChrome(_ visible:Bool) {
         guard chromeVisible != visible else { return };chromeVisible=visible
         NSAnimationContext.runAnimationGroup { context in
             context.duration=0.15
-            caption.animator().alphaValue=visible ? 1:0
+            chrome.animator().alphaValue=visible ? 1:0
             for type in [NSWindow.ButtonType.closeButton,.miniaturizeButton,.zoomButton] {
                 standardWindowButton(type)?.isEnabled=visible
                 standardWindowButton(type)?.animator().alphaValue=visible ? 1:0
             }
         }
     }
+}
+
+// Eager, opaque alpha mask: independent of menu appearance and lazy drawing contexts.
+func layoutMenuIcon(_ layout:OverlayLayout)->NSImage {
+    let scale:CGFloat=2
+    let context=CGContext(data:nil,width:44,height:32,bitsPerComponent:8,bytesPerRow:176,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue)!
+    context.scaleBy(x:scale,y:scale);context.setStrokeColor(NSColor.black.cgColor);context.setFillColor(NSColor.black.cgColor);context.setLineWidth(1)
+    context.stroke(CGRect(x:1.5,y:1.5,width:19,height:13))
+    if layout == .full { context.fill(CGRect(x:4,y:4,width:14,height:8)) }
+    else {
+        if layout.group==1 { context.move(to:CGPoint(x:11,y:2));context.addLine(to:CGPoint(x:11,y:14)) }
+        else { context.move(to:CGPoint(x:2,y:8));context.addLine(to:CGPoint(x:20,y:8)) }
+        context.strokePath()
+        switch layout {
+        case .left:context.fill(CGRect(x:4,y:4,width:5,height:8))
+        case .right:context.fill(CGRect(x:13,y:4,width:5,height:8))
+        case .upper:context.fill(CGRect(x:4,y:10,width:14,height:2))
+        default:context.fill(CGRect(x:4,y:4,width:14,height:2))
+        }
+    }
+    let image=NSImage(cgImage:context.makeImage()!,size:CGSize(width:22,height:16));image.isTemplate=true;return image
 }
