@@ -1,28 +1,37 @@
-# 0.9.6 focused acceptance test
+# 0.9.8 acceptance checklist
 
-Quit the old companion and open build/CameraReference.app. No plugin reinstall or restart needed. Keep your working configuration and use single-photo Develop at Fit.
+Quit the previous companion and open build/CameraReference.app. Confirm Camera Reference 0.9.8 at the top of its menu. No Lightroom plugin reinstall is needed. Keep your working configuration; use single-photo Develop at Fit for overlay checks. Unchecked items below require live user verification, even where automated tests passed.
 
-1. Start on the built-in display in the normal Lightroom window. Invoke/dismiss the overlay; it should remain visible despite fractional frame rounding. It should retain the alignment accepted in 0.9.
-2. Enter macOS full screen, let the transition finish, then invoke. Check both horizontal and vertical alignment.
-3. Exit full screen and invoke again. Resize smaller, invoke, then restore the original size and invoke. Recovery should not require restarting Lightroom or clearing region data. If a visible overlay is dismissed when the window moves/resizes, that is intentional.
-4. A window too small for reliable detection can still offer manual calibration. Cancel that prompt to continue testing automatic mode. A transition in progress should instead ask you to wait and invoke again.
+## Priority 1 — current polish
 
-If any overlay is offset, open Developer tools → Bridge diagnostics immediately after invoking it, and send the full report (including requested and actual panel frames). Do not run Find viewing area first, because that would replace the overlay-placement report.
+- [ ] Menus: Automatic viewing area is in Settings with no experimental label. Development testing is gone; its commands and grey status line are in Developer tools. Settings has separators between display/source choices, shortcuts and configuration/maintenance. Edit config file opens the existing file.
+- [ ] Floating toggle: Show floating display opens the selected photo. Zoom/pan it, then Hide and Show: the same photo, position and zoom should return without reloading. Select another Lightroom photo while hidden and verify it still retains the old photo until Reload or double-click.
+- [ ] Floating size: close the floating window before checking initial size. A landscape photo should start at half the width and half the height of that photo fitted to the current display's available desktop area. The title bar is not part of the image dimensions. Portrait initial sizing should retain the previously accepted behaviour. Report if the desktop-based landscape size differs from the intended full-screen Lightroom-photo reference size.
+- [ ] Shortcuts: overlay shortcut still toggles the overlay. Default floating shortcut Control–Option–Command–F toggles the floating display independently. Change each through its own Settings recorder; test Save, Cancel, Use Default and an unavailable/conflicting combination. Quit/reopen and verify both saved shortcuts persist.
+- [ ] Trackpad: test both overlay and floating display. With the pointer over the image, pinch to zoom; once zoomed beyond Fit, use two-finger scrolling to pan. Test before and after clicking the image, including when Lightroom remains the active app. At Fit, bounded panning intentionally has no effect. Report which view/gesture/focus state fails. Command-scroll and click-drag should still work; double-click should reload and reset Fit.
+- [ ] Privacy icon: quit and reopen System Settings, then inspect the existing Camera Reference entry under the relevant privacy permission. Check whether the camera icon appears. No permissions were reset; do not remove/re-add the entry merely for this test. Report the pane and icon shown if still missing.
 
-No need to repeat all side combinations or snapping tests. Full-screen/Spaces behaviour cannot be confirmed by the automated geometry tests alone.
+## Priority 2 — speed evidence
 
-If placement fails, the status must retain the failure message rather than say “Reference shown”. Repeat on the external display if available. Diagnostics now include actual view coordinates and panel visibility; visibility alone does not prove the panel is unobscured in the intended Space.
+- [ ] Invoke the overlay on a selected photo and immediately copy Developer tools → Bridge diagnostics. Record whether this was the first invocation after launching the companion and whether the source was standalone or embedded.
+- [ ] Dismiss and invoke again on the same photo, without resizing Lightroom or changing its layout. Copy diagnostics again. A third sample is useful if timings vary greatly.
+- [ ] If convenient, compare standalone-first and embedded-first on a photo with both available, recording the actual selected source/fallback rather than assuming the preference succeeded. Restore your usual preference afterwards.
 
-## Small-window regression
+Do not run Find viewing area or Preview captured Lightroom window before copying the overlay report: another inspection can replace the relevant sample. Send the full report, including Stage timing and Timing. These distinguish bridge, JPEG loading/extraction, enumeration, stability/configuration, capture, raster and detector time. Extraction is included in JPEG loading, so do not add it twice. Total-to-panel measures ordering the window, not completed GPU presentation. CPU benchmark results in PERFORMANCE.md do not establish the live bottleneck.
 
-Confirm 0.9.6 at the top of the companion menu. Enable Automatic viewing area if a previous cancelled calibration left it off. Use the small Lightroom window from the report, entirely on one display. Invoke repeatedly and check that the photograph aligns and does not overlap the right controls. Resize larger and smaller and repeat.
+## Priority 3 — regression checks
 
-If detection fails, choose Calibrate then Escape: Automatic viewing area should remain enabled and the next shortcut should try detection again. Also check the initial Cancel button. Accepting a new region should switch to manual mode. Send Bridge diagnostics immediately after an incorrect overlay; the capture mode should say display-bound window filter, explicit crop.
+- [ ] Normal/non-maximised window: invoke/dismiss; photo alignment should remain correct and not overlap Lightroom controls. Repeat on the external display if available, keeping the window wholly on one display.
+- [ ] Full screen: enter, let the transition finish, invoke, then exit and invoke again. Check horizontal/vertical alignment.
+- [ ] Resize: smaller, larger, then original size. Recovery should not require restarting Lightroom or clearing region data. Dismissal while the window moves/resizes is intentional.
+- [ ] Narrow viewport: repeat the previously supplied 900 × 702 pt layout with sideSearchPercent = 45. The reference should fit the central viewport.
+- [ ] Graceful interval failure: through Edit config file, set sideSearchPercent = 30 and invoke in that narrow layout. Expect “Working area too narrow for automatic placement—enlarge it or calibrate manually.” with Calibrate manually… and Cancel, and no overlay. Cancel/retry must preserve automatic mode. Also choose Calibrate manually… then Escape and check the same. Restore 45; detection should work on the next invocation without restart or cache reset.
+- [ ] Successful manual calibration still switches to manual mode; re-enable Automatic viewing area afterwards if desired. A cancelled calibration preserves the previous region.
+- [ ] Invalid configuration values retain the last valid settings and explain the error. Restore a valid file after this check.
+- [ ] Genuine placement failures retain the failure message, never a misleading “Reference shown”.
 
-## Narrow viewport regression
+If an overlay is offset, copy Bridge diagnostics immediately and include a screenshot with the overlay and one after dismissing it, without resizing/moving Lightroom. Panel visible=true alone does not prove correct alignment or visibility in the intended Space. No need to repeat every side combination or snapping test unless a regression appears.
 
-With Automatic viewing area enabled, repeat the supplied 900 × 702 pt window in single-photo Develop at Fit. The reference should appear in the central viewport between the wide side panels. Check alignment, then enlarge the window and invoke again. Cancel remains safe if another layout cannot be detected.
+## Split view — groundwork only, not enabled in 0.9.8
 
-## Configurable search interval
-
-Open the detection configuration and set sideSearchPercent = 30. In the supplied 900×702 pt layout, invoke the overlay: the narrow-working-area message should offer Calibrate manually… and Cancel, with no overlay. Cancel and retry; automatic mode remains enabled. Restore 45 and invoke again: detection should work without restarting or clearing region data. Accepting a manual calibration still switches to manual mode. Invalid values outside 5–50 retain the last valid settings.
+Do not expect automatic Reference/Before-After pane placement from this build. Geometry tests cover known left/upper panes, but live layout identification and divider evidence are still pending. Later evidence should identify separate left/right versus upper/lower layouts, Reference versus Before/After, and wipe layouts that must be rejected. See SPLIT-VIEW.md. No split-view acceptance is claimed here.
