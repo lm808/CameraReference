@@ -11,7 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var floatingTitle="Camera Reference"
     private var versionTitle: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
-        return "Camera Reference \(version)"
+        return "Camera Reference \(Bundle.main.object(forInfoDictionaryKey:"CameraReferenceReleaseName") as? String ?? version)"
     }
     var floatingZoom:Double=0
     var calibrationTask:Task<Void,Never>?
@@ -44,6 +44,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var detail: NSMenuItem!
     var shortcutItem: NSMenuItem!
     var panel: OverlayPanel?
+    var overlayHost:HostWindowSnapshot?
+    var overlayEpoch:String?
+    var overlaySuspended=false
+    var overlayResumeAfter:TimeInterval=0
+    var workspaceOverview=false
+    func suspendOverlay() {
+        guard let panel else { return }
+        cancelPanelCheck();overlaySuspended=true
+        overlayResumeAfter=ProcessInfo.processInfo.systemUptime+0.4
+        panel.orderOut(nil)
+    }
+    func reconcileOverlayHost() {
+        guard let panel,let saved=overlayHost else { return }
+        let current=hostWindowSnapshot(saved.id)
+        if let current,!NSScreen.screens.contains(where:{$0.frame.contains(current.frame)}) { cancelPanelCheck() }
+        switch overlayHostAction(saved:saved.frame,current:current?.frame,onScreen:current?.onScreen ?? false,overview:workspaceOverview) {
+        case .discard:hide();invalidateAutomaticGeometry()
+        case .suspend:suspendOverlay()
+        case .translate(let delta):
+            if overlaySuspended {
+                guard ProcessInfo.processInfo.systemUptime>=overlayResumeAfter else { return }
+                if let overlayEpoch,selectionEpoch() != overlayEpoch { hide();return }
+                guard currentModule()=="develop" else { hide();return }
+            }
+            panel.setFrameOrigin(CGPoint(x:panel.frame.minX+delta.x,y:panel.frame.minY+delta.y))
+            overlayHost=current
+            if overlaySuspended { overlaySuspended=false;_ = orderOverlayAboveLightroom(initial:true) }
+        }
+    }
     let imageCache=SelectionImageCache()
     var overlayLayout:OverlayLayout = OverlayLayout(rawValue:UserDefaults.standard.string(forKey:"overlayLayout") ?? "full") ?? .full
     var layoutItems=[OverlayLayout:NSMenuItem]()
@@ -101,9 +130,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func checkPanelBoundariesIfDue() {
         guard #available(macOS 14.0,*),ProcessInfo.processInfo.systemUptime>=nextPanelCheck,
               panelCheckTask==nil,screenTask==nil,pending==nil,calibration==nil,!recording,!regionResetting,
-              isLightroom(),currentModule()=="develop",UserDefaults.standard.bool(forKey:regionKey("automaticBounds")),
+              !workspaceOverview,!overlaySuspended,isLightroom(),currentModule()=="develop",UserDefaults.standard.bool(forKey:regionKey("automaticBounds")),
               let memory=placementMemory,memory.layout==overlayLayout,let imageSize=lastImageSize,
               selectionEpoch()==memory.epoch else { return }
+        guard let host=hostWindowSnapshot(memory.windowID),host.onScreen,
+              NSScreen.screens.contains(where:{$0.frame.contains(host.frame)}) else {
+            cancelPanelCheck();panelCheckStatus="Background check paused: Lightroom is off-screen or spans displays.";return
+        }
         let old=detectionSettings.current
         if let updated=try? detectionSettings.reload(),updated.key != old.key { invalidateAutomaticGeometry();return }
         let interval=detectionSettings.current.panelCheckIntervalSeconds
@@ -121,11 +154,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     @MainActor func finishPanelCheck(_ result:ScreenProbeResult,id:UUID,memory:PlacementMemory,elapsed:TimeInterval) {
         guard panelCheckID==id else { return };panelCheckID=nil;panelCheckTask=nil
-        guard isLightroom(),pending==nil,screenTask==nil,calibration==nil,
+        guard !workspaceOverview,!overlaySuspended,isLightroom(),pending==nil,screenTask==nil,calibration==nil,
               placementMemory?.epoch==memory.epoch,selectionEpoch()==memory.epoch,
               overlayLayout==memory.layout,detectionSettings.current.key==memory.settingsKey,
               let current=currentCaptureWindowFrame(memory.windowID),sameWindowGeometry(current,result.windowFrame) else { return }
         let window=appKitRect(current,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
+        guard NSScreen.screens.contains(where:{$0.frame.contains(window)}) else {
+            panelCheckStatus="Background check paused: Lightroom is off-screen or spans displays.";return
+        }
         let expected=memory.translated(window:window,windowID:memory.windowID,epoch:memory.epoch,settingsKey:memory.settingsKey,layout:memory.layout)
         if panelBoundsChanged(previous:expected,current:result.uiFrame,tolerance:4) {
             let reason=result.uiFrame == nil ? "UI boundaries could not be validated":"UI boundaries changed"
@@ -136,7 +172,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         panelCheckStatus += String(format:" 1280px check: %.0f ms elapsed.",elapsed*1000)
     }
     @discardableResult func orderOverlayAboveLightroom(initial:Bool=false)->Bool {
-        guard let panel else { return false }
+        guard let panel,!workspaceOverview,!overlaySuspended else { return false }
         guard let owner=NSWorkspace.shared.runningApplications.first(where:isLightroomApp),
               let rows=CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements],kCGNullWindowID) as? [[String:Any]] else { return false }
         let windows=rows.filter { ($0[kCGWindowLayer as String] as? NSNumber)?.intValue==0 }
@@ -151,8 +187,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             return area(a)<area(b)
         }
         guard let number=(lightroom?[kCGWindowNumber as String] as? NSNumber)?.intValue else { return false }
+        if initial && overlayHost == nil { overlayHost=hostWindowSnapshot(CGWindowID(number));overlayEpoch=selectionEpoch() }
+        guard overlayHost?.id==CGWindowID(number) else { return false }
         let order=windows.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.intValue }
-        if !initial && !order.contains(panel.windowNumber) { return true }
+        if !initial && !order.contains(panel.windowNumber) { suspendOverlay();return true }
         if overlayNeedsOrdering(order:order,overlay:panel.windowNumber,lightroom:number) { panel.order(.above,relativeTo:number) }
         return true
     }
@@ -203,7 +241,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard let memory=placementMemory,let current=lightroomWindowFrame(),
               let cg=currentCaptureWindowFrame(memory.windowID),sameWindowGeometry(current,appKitRect(cg,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)),
               let ui=memory.translated(window:current,windowID:memory.windowID,epoch:epoch,settingsKey:settings.key,layout:layout),
-              NSScreen.screens.contains(where:{$0.frame.contains(ui)}) else { return nil }
+              NSScreen.screens.contains(where:{$0.frame.intersects(ui)}) else { return nil }
         lastTiming += "; placement cache hit; capture skipped"
         lastLayout="Reused \(layout.label) UI bounds (AppKit): \(ui). Window size unchanged; position translated. Clear region setting after internal panel changes."
         return ui
@@ -329,6 +367,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let epoch=self.selectionEpoch()
             self.imageCache.observe(epoch)
             if let memory=self.placementMemory,memory.epoch != epoch || self.currentModule() != "develop" { self.placementMemory=nil }
+            self.workspaceOverview=(self.panel != nil || self.placementMemory != nil) && workspaceOverviewIsVisible()
             self.observeWindowGeometry()
             if self.panel != nil { _ = self.orderOverlayAboveLightroom() }
             self.checkPanelBoundariesIfDue()
@@ -383,7 +422,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func hide() {
         if destination == .overlay { cancelRequest() }
         (panel?.contentView as? ReferenceView)?.releaseContent()
-        panel?.orderOut(nil); panel = nil; updateIcon()
+        panel?.orderOut(nil); panel = nil;overlayHost=nil;overlayEpoch=nil;overlaySuspended=false;updateIcon()
     }
     func currentModule() -> String? {
         let url = folder.appendingPathComponent("heartbeat.txt")
@@ -411,20 +450,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func observeWindowGeometry() {
         let current=lightroomWindowFrame()
         defer { observedWindowFrame=current;hasObservedWindow=true }
+        if panel != nil { reconcileOverlayHost();return }
         guard hasObservedWindow else { return }
         if current == nil && observedWindowFrame == nil { return }
         if !sameWindowGeometry(current,observedWindowFrame) {
             if let current,let previous=observedWindowFrame,abs(current.width-previous.width)<0.5,abs(current.height-previous.height)<0.5 {
                 if let panel {
                     let moved=panel.frame.offsetBy(dx:current.minX-previous.minX,dy:current.minY-previous.minY)
-                    if NSScreen.screens.contains(where:{$0.frame.contains(moved)}) { panel.setFrame(moved,display:true,animate:false) }
-                    else { hide() }
+                    panel.setFrame(moved,display:true,animate:false)
                 }
             } else { hide();invalidateAutomaticGeometry() }
         }
     }
     @objc func spaceChanged() {
-        hide();cancelScreenInspection();invalidateAutomaticGeometry()
+        suspendOverlay();cancelScreenInspection();lastProbe=nil
+        Task { await ScreenGeometryCache.shared.reset() }
         hasObservedWindow=false
     }
     @objc func displaysChanged() {
@@ -564,7 +604,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     func display(_ image: CGImage, in region: NSRect, photoFrame: NSRect? = nil) -> ReferenceView? {
-        guard NSScreen.screens.contains(where: { $0.frame.contains(region) }) else {
+        guard NSScreen.screens.contains(where: { $0.frame.intersects(region) }) else {
             lastLayout += "\nOverlay rejected: region \(region) is outside current displays \(NSScreen.screens.map { $0.frame })."
             report("Set image region again for this display layout."); return nil
         }
@@ -745,10 +785,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 NSWorkspace.shared.activateFileViewerSelecting([detectionSettings.url]);return
             }
             NSWorkspace.shared.open([detectionSettings.url],withApplicationAt:editor,configuration:NSWorkspace.OpenConfiguration()) { [weak self] _,error in
-                if error != nil { DispatchQueue.main.async { self?.report("Could not open TextEdit. Edit detection.conf as plain text in Application Support/Camera Reference.");self?.showResult() } }
+                if error != nil { DispatchQueue.main.async { self?.report("Could not open TextEdit. Edit config.conf as plain text in Application Support/Camera Reference.");self?.showResult() } }
             }
         }
-        catch { report("Could not open detection.conf: \(error.localizedDescription)");showResult() }
+        catch { report("Could not open config.conf: \(error.localizedDescription)");showResult() }
     }
     func reloadDetectionConfig()->DetectionConfig {
         do {

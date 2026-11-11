@@ -143,3 +143,41 @@ func probeLightroomViewState() -> String {
     }
     return "Read-only Lightroom menu view-state sample. No menu was opened or activated.\n" + (lines.isEmpty ? "No matching view labels exposed. This does not identify the current view." : lines.joined(separator:"\n")) + "\nCompare separate samples in single, Reference and Before/After views. Menu availability alone is not proof of selection."
 }
+
+struct HostWindowSnapshot {
+    let id:CGWindowID
+    let frame:CGRect
+    let onScreen:Bool
+}
+func hostWindowSnapshot(_ id:CGWindowID)->HostWindowSnapshot? {
+    guard let rows=CGWindowListCopyWindowInfo(.optionIncludingWindow,id) as? [[String:Any]],
+          let row=rows.first(where:{($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value==id}),
+          let data=row[kCGWindowBounds as String] as? [String:Any],let frame=CGRect(dictionaryRepresentation:data as CFDictionary) else { return nil }
+    let appKit=CGRect(x:frame.minX,y:CGDisplayBounds(CGMainDisplayID()).height-frame.maxY,width:frame.width,height:frame.height)
+    return HostWindowSnapshot(id:id,frame:appKit,onScreen:(row[kCGWindowIsOnscreen as String] as? NSNumber)?.boolValue ?? false)
+}
+// Public window-list metadata only. Dock's screen-sized presentation surfaces
+// cover Mission Control/Exposé (and Launchpad); ordinary Dock strips do not.
+// Native .transient suppression remains the primary overview behaviour.
+func workspaceOverviewIsVisible()->Bool {
+    guard let dock=NSWorkspace.shared.runningApplications.first(where:{$0.bundleIdentifier=="com.apple.dock"}),
+          let rows=CGWindowListCopyWindowInfo(.optionOnScreenOnly,kCGNullWindowID) as? [[String:Any]] else { return false }
+    let screens=NSScreen.screens.map { CGRect(x:$0.frame.minX,y:CGDisplayBounds(CGMainDisplayID()).height-$0.frame.maxY,width:$0.frame.width,height:$0.frame.height) }
+    return rows.contains { row in
+        guard (row[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==dock.processIdentifier,
+              let d=row[kCGWindowBounds as String] as? [String:Any],let frame=CGRect(dictionaryRepresentation:d as CFDictionary) else { return false }
+        return screens.contains { screen in
+            let overlap=frame.intersection(screen)
+            return !overlap.isNull && overlap.width*overlap.height>screen.width*screen.height*0.65
+        }
+    }
+}
+
+enum OverlayHostAction:Equatable { case suspend,discard,translate(CGPoint) }
+func overlayHostAction(saved:CGRect,current:CGRect?,onScreen:Bool,overview:Bool)->OverlayHostAction {
+    if overview { return .suspend }
+    guard let current else { return .discard }
+    if !onScreen { return .suspend }
+    guard abs(saved.width-current.width)<0.5,abs(saved.height-current.height)<0.5 else { return .discard }
+    return .translate(CGPoint(x:current.minX-saved.minX,y:current.minY-saved.minY))
+}

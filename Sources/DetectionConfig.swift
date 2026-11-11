@@ -38,7 +38,7 @@ struct DetectionConfig: Equatable {
     """
     static func parse(_ text:String) throws -> DetectionConfig {
         var c=DetectionConfig(),seen=Set<String>()
-        func invalid(_ line:Int)->NSError { NSError(domain:"CameraReference",code:1,userInfo:[NSLocalizedDescriptionKey:"Invalid detection.conf setting on line \(line). Check the name, value and allowed range."]) }
+        func invalid(_ line:Int)->NSError { NSError(domain:"CameraReference",code:1,userInfo:[NSLocalizedDescriptionKey:"Invalid config.conf setting on line \(line). Check the name, value and allowed range."]) }
         for (index,raw) in text.components(separatedBy:.newlines).enumerated() {
             let line=raw.components(separatedBy:"#")[0].trimmingCharacters(in:.whitespaces)
             if line.isEmpty { continue }
@@ -88,11 +88,16 @@ final class DetectionConfigStore {
         let a=try FileManager.default.attributesOfItem(atPath:url.path)
         return "\((a[.modificationDate] as? Date)?.timeIntervalSinceReferenceDate ?? 0): \(a[.size] ?? ""): \(a[.systemFileNumber] ?? "")"
     }
-    init(url:URL=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Camera Reference/detection.conf")) { self.url=url }
+    init(url:URL=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Camera Reference/config.conf")) { self.url=url }
     func ensureFile() throws {
         if !FileManager.default.fileExists(atPath:url.path) {
             try FileManager.default.createDirectory(at:url.deletingLastPathComponent(),withIntermediateDirectories:true)
-            try DetectionConfig.template.write(to:url,atomically:true,encoding:.utf8)
+            let legacy=url.deletingLastPathComponent().appendingPathComponent("detection.conf")
+            if url.lastPathComponent=="config.conf",FileManager.default.fileExists(atPath:legacy.path) {
+                // Copy, do not delete: preserve the original as a migration backup.
+                try FileManager.default.copyItem(at:legacy,to:url)
+            } else { try DetectionConfig.template.write(to:url,atomically:true,encoding:.utf8) }
+            try ensureFile()
         } else {
             var text=try String(contentsOf:url,encoding:.utf8)
             if !text.components(separatedBy:.newlines).contains(where:{ $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces)=="panelCheckIntervalSeconds" }) {

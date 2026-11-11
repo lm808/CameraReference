@@ -1,13 +1,25 @@
-# Camera Reference 0.9.15 — split placement only
+# Camera Reference 1.0 alpha — acceptance tests
 
-Quit the old app, open `build/CameraReference.app`, confirm **0.9.15**. Bridge **0.5.0** is unchanged. Other tests are deferred as requested; prior results are in VALIDATION.md.
+Quit the old app, open the new build or installed copy, and confirm **1.0 alpha** in its menu. Bridge **0.5.0** is unchanged. Keep your working `sideSearchPercent = 30`. `[x]` or `[x ]` means pass; add a brief note for failures.
 
-Use Lightroom Fit and matching app layout. Keep the configured Fit inset at its working value (default 18 points). Clear region in auto mode before fresh-detection comparisons.
+## Window behaviour (priority)
 
-- [ ] In Lightroom side-by-side, select **Full** in the app: the combined viewport still covers both pictures correctly.
-- [ ] Select **Side-by-side → Left**, then **Right**. Repeat with portrait and landscape photos: correct full pane, no tiny picture/gap placement or surrounding Lightroom UI.
-- [ ] In Lightroom above-and-below, check Full first, then **Upper** and **Lower**, with portrait and landscape photos. No UI above/below is covered.
-- [ ] Leave each correct split overlay visible for 10 seconds through background checks. It should remain stable while panels are unchanged.
-- [ ] If detection lacks a divider in the selected margin, it offers calibration rather than guessing. Manual placement remains usable.
+- [ ] Show an overlay; move Lightroom partly beyond each screen edge and back. The overlay follows and remains aligned without being dismissed.
+- [ ] Enter Mission Control and App Exposé. No separate overlay over thumbnails; exit to the same Lightroom window and the overlay returns aligned without another shortcut.
+- [ ] Repeat with another app in front. Other windows cover the overlay normally; returning to Lightroom restores its normal ordering.
+- [ ] Minimise/restore Lightroom and switch Spaces away/back. An unchanged host restores; closing Lightroom, changing photo while suspended, or resizing must not restore stale content.
+- [ ] Repeat relevant movement/overview checks with fullscreen Lightroom and a floating display open. The floating display remains independent.
 
-If a split fails but Full works, copy **Developer tools → Bridge diagnostics** immediately. Include layout/pane and screenshot with overlay dismissed without changing the window. For disappearance, copy diagnostics before another invocation overwrites the evidence. Diagnostics now show Full viewport, scanned margin, pixel inset, trace offsets/count and candidate count.
+## Installation and settings
+
+- [ ] Install the app using the DMG's Applications shortcut. If moving the bridge, use its installer then Add in Lightroom Plug-in Manager and disable the old entry. Confirm heartbeat and ExifTool availability.
+- [ ] Existing GUI settings, shortcuts and calibration survive. Edit config file opens `~/Library/Application Support/Camera Reference/config.conf`; old detection.conf remains a backup and your values are preserved.
+- [ ] If config.conf already exists, it wins over detection.conf. An invalid edit reports an error and retains the last valid in-memory settings.
+
+## Brief regression check
+
+- [ ] Full and all four split panes still align for portrait/landscape at Fit. Leave one visible through several background checks.
+- [ ] Repeated overlay toggles on the same photo report RAM/placement reuse. Change an internal Lightroom panel and wait for the configured check interval: placement refreshes.
+- [ ] Manual calibration disables auto. Clear region preserves the current auto/manual preference. Floating display size, hover title bar, dragging at Fit and Cmd-scroll still work.
+
+For failure, copy **Developer tools → Bridge diagnostics** before invoking again. Record the action, layout/pane and whether the overlay returned on its own. A screenshot with the host unchanged helps distinguish wrong placement from incorrect visibility. Automated evidence and historical results are in docs/VALIDATION.md.
