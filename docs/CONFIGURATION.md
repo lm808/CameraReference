@@ -37,6 +37,15 @@ On migration, `detection.conf` is copied to `config.conf` only if the latter is 
 
 ## Runtime files and RAM
 
-The bridge uses `~/Library/Application Support/CameraReference/` (without a space) for request/response, heartbeat and opaque selection-revision files. The separate path is retained for bridge compatibility; these files are protocol state, not another configuration file.
+All app-owned Application Support files now live under `~/Library/Application Support/Camera Reference/`:
+
+- `config.conf`: advanced settings.
+- `Plugins/`: installed Lightroom bridge.
+- `Bridge/`: transient request/response, heartbeat and selection-revision files.
+- `Backups/Legacy Bridge-…`: preserved contents of the former `CameraReference` folder.
+
+Bridge 0.5.1 and this companion app must be upgraded together. Stop/disable old bridge copies and reload the new plugin. The companion checks for the old folder every five seconds until migration completes. If its heartbeat is less than ten seconds old, migration waits rather than moving files out from under an active old bridge. Diagnostics explain this condition. Once inactive, the entire old folder is moved into a uniquely named backup; unknown files are preserved and stale IPC is never copied into the live Bridge folder. Existing config and plugin files are untouched. If an old app/plugin is run again it may recreate the old directory; quit it and restart the new app to archive that directory too.
+
+GUI settings intentionally remain in the conventional macOS Preferences domain described above; they are not duplicated here.
 
 JPEG bytes, decoded images, captured pixels and automatic placement caches are held in RAM. No disk image cache is created. An independent floating display owns its displayed image until closed/reloaded.

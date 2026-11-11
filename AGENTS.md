@@ -12,7 +12,7 @@ Discussion is not permission to implement. This user explicitly asks to hold wor
 - `bash scripts/package.sh`: build + DMG/checksum under ignored dist/. Uses hdiutil; may require sandbox approval. Does not install the app or publish anything. Existing DMG is not overwritten.
 - Verify signature/plist and `git diff --check` before committing. Run checks appropriate to the change; avoid repeating unchanged suites without reason.
 
-Build metadata currently uses CFBundleShortVersionString `1.0.0` plus CameraReferenceReleaseName `1.0 alpha`; menu reads the latter. Keep release docs/package names consistent when changing versions. Preserve org.local.CameraReference until an explicit bundle-ID migration is planned.
+Build metadata currently uses CFBundleShortVersionString `1.0.0` plus CameraReferenceReleaseName `1.0 alpha 2`; menu reads the latter. Keep release docs/package names consistent when changing versions. Preserve org.local.CameraReference until an explicit bundle-ID migration is planned.
 
 ## Source map and flow
 

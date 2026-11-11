@@ -1,4 +1,4 @@
-# Camera Reference — 1.0 alpha
+# Camera Reference — 1.0 alpha 2
 
 Camera Reference is a macOS menu-bar companion for Lightroom Classic. It displays a camera JPEG over Lightroom’s working area, or in an independent floating window, so you can compare it with your RAW edit.
 
@@ -9,6 +9,8 @@ It can read a matching standalone JPEG or extract the embedded JPEG from a Canon
 Download the disk image for your Mac’s architecture from the repository’s GitHub Releases, when available. Drag **CameraReference.app** to **Applications**, install the included Lightroom bridge, then enable it in Lightroom’s Plugin Manager.
 
 See [installation and upgrades](docs/INSTALL.md) for the complete steps, dependencies and alpha signing limitations. The app requires macOS 13 or later; automatic detection, capture preview and calibration snapping require macOS 14 or later. The bridge has been developed/tested with Lightroom Classic 15.6; other releases need verification. ExifTool is required for CR3 extraction and lossless embedded-JPEG export.
+
+Upgrading from alpha 1 requires reloading **bridge 0.5.1** as well as replacing the app. Both now use `~/Library/Application Support/Camera Reference/Bridge/`; inactive legacy files are preserved under `Camera Reference/Backups/`.
 
 ## Use
 

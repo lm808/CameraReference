@@ -1,5 +1,9 @@
 # Validation evidence
 
+## 1.0 alpha 2
+
+Full automated suite passed, including active-legacy deferral, complete legacy file preservation, idempotent migration and no stale IPC replay. Lua stand-ins assert every bridge read/write uses Camera Reference/Bridge. Native arm64 app built; signature/plist and disk-image checks passed. No user installation was changed; actual coordinated bridge reload and migration acceptance remain in TESTING.md.
+
 ## 1.0 alpha
 
 Automated regressions pass for host translation, temporary overview/Space suspension, stale size rejection and non-destructive config migration. Native Mission Control/Exposé, off-screen restoration and installation acceptance remain pending in TESTING.md. No app was installed or launched and no Lightroom UI was controlled for these checks.

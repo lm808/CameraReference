@@ -1,6 +1,6 @@
-# Camera Reference 1.0 alpha — acceptance tests
+# Camera Reference 1.0 alpha 2 — acceptance tests
 
-Quit the old app, open the new build or installed copy, and confirm **1.0 alpha** in its menu. Bridge **0.5.0** is unchanged. Keep your working `sideSearchPercent = 30`. `[x]` or `[x ]` means pass; add a brief note for failures.
+Quit the old app, open the new build or installed copy, and confirm **1.0 alpha 2** in its menu. Bridge **0.5.1** is required; reload it in Lightroom Plug-in Manager. Keep your working `sideSearchPercent = 30`. `[x]` or `[x ]` means pass; add a brief note for failures.
 
 ## Window behaviour (priority)
 
@@ -11,6 +11,9 @@ Quit the old app, open the new build or installed copy, and confirm **1.0 alpha*
 - [ ] Repeat relevant movement/overview checks with fullscreen Lightroom and a floating display open. The floating display remains independent.
 
 ## Installation and settings
+
+- [ ] Reload bridge 0.5.1, start the new app, and invoke an overlay. All live IPC is under Camera Reference/Bridge; the former CameraReference folder moves into Camera Reference/Backups after the old bridge stops. Config and installed plugin remain intact.
+- [ ] With the old bridge deliberately still running, migration waits and diagnostics explain why. Stop it and reload the new bridge: consolidation completes without replaying old responses.
 
 - [ ] Install the app using the DMG's Applications shortcut. If moving the bridge, use its installer then Add in Lightroom Plug-in Manager and disable the old entry. Confirm heartbeat and ExifTool availability.
 - [ ] Existing GUI settings, shortcuts and calibration survive. Edit config file opens `~/Library/Application Support/Camera Reference/config.conf`; old detection.conf remains a backup and your values are preserved.

@@ -9,3 +9,5 @@ Extracted JPEG bytes and decoded images may remain in RAM while the same photo i
 GUI preferences, calibration and advanced configuration are stored locally. The local bridge directory can contain file paths; diagnostics/export titles may also reveal filenames. Review reports and screenshots before posting them publicly. Do not commit personal config, bridge files or photographs.
 
 There is no app telemetry, analytics or automatic network update mechanism. macOS permissions and security decisions remain managed by the operating system.
+
+Migration backups may retain old bridge responses containing source paths. They live under Camera Reference/Backups and are never read as live protocol state. Remove a backup manually when no longer needed.

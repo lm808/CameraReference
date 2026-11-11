@@ -1,9 +1,9 @@
-# Installing Camera Reference 1.0 alpha
+# Installing Camera Reference 1.0 alpha 2
 
 ## Requirements
 
 - macOS 13 or later; macOS 14 or later for automatic detection, capture preview and snapping.
-- Lightroom Classic and the included Camera Reference bridge (0.5.0). Development verification used Lightroom Classic 15.6.
+- Lightroom Classic and the included Camera Reference bridge (0.5.1). Development verification used Lightroom Classic 15.6.
 - ExifTool for CR3 embedded JPEG extraction/export. Obtain it from https://exiftool.org/ and use Settings → Choose ExifTool if the app cannot find it. A paired standalone JPEG can be used without CR3 extraction.
 - Choose the DMG matching your Mac (`arm64` for Apple silicon, `x86_64` for Intel). This build script does not produce a universal binary.
 
@@ -32,10 +32,10 @@ The installer does not alter Lightroom’s plugin selection. Plugin configuratio
 
 Quit the app, replace it in Applications, and restart it. GUI settings and calibration remain in the same macOS preference domain. Advanced settings migrate from `detection.conf` to `config.conf` only if the new file does not exist; the old file stays as a backup. If both files exist, only `config.conf` is authoritative.
 
-Bridge 0.5.0 is unchanged for this alpha. Reinstall/reload it only if upgrading from an older bridge or moving its location. Installer backups can be removed after confirming the new bridge works.
+Bridge 0.5.1 uses the consolidated folder. Quit the old companion app, stop/disable the old bridge, replace the plugin using the installer, then reload it in Lightroom Plug-in Manager. Start the new companion app. Older bridge versions cannot communicate with this app. Installer backups can be removed after confirming the new bridge works.
 
 ## Verify
 
-The menu should say **Camera Reference 1.0 alpha**. Bridge diagnostics should report bridge 0.5.0 and a recent heartbeat. Start with Full, Lightroom Develop at Fit, and a known paired/embedded JPEG.
+The menu should say **Camera Reference 1.0 alpha 2**. Bridge diagnostics should report bridge 0.5.1 and a recent heartbeat. Start with Full, Lightroom Develop at Fit, and a known paired/embedded JPEG.
 
 For an installed-from-DMG test, use TESTING.md in the repository. For checksum verification, compare `shasum -a 256 <downloaded.dmg>` with the adjacent `.sha256` download; this detects file corruption, not publisher identity.

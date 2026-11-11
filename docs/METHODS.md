@@ -72,3 +72,7 @@ At Fit/below, photo drag moves the window; above Fit it pans. Title-bar drag alw
 ## Evidence and known limits
 
 See VALIDATION.md for accepted user results and measurements; TESTING.md for the current alpha checklist. Full/split fit assumes Lightroom Fit and compatible RAW/JPEG geometry. Native Mission Control and off-screen behaviour is not established by geometry-only tests. Preserve accepted functionality while narrowing changes to the failing path.
+
+## Unified support directory
+
+App and bridge 0.5.1 share Camera Reference/Bridge; config and installed plugins live beside it. The companion archives the entire inactive legacy CameraReference directory inside Backups with a unique name. A recent legacy heartbeat defers migration. Old protocol files are never used to seed current requests, replies or epochs. See CONFIGURATION.md for the coordinated upgrade.

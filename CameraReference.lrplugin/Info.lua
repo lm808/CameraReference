@@ -12,5 +12,5 @@ return {
         { title = 'Camera Reference view API diagnostics', file = 'ViewDiagnostics.lua' },
     },
     LrShutdownPlugin = 'Shutdown.lua',
-    VERSION = { major=0, minor=5, revision=0, build=5 },
+    VERSION = { major=0, minor=5, revision=1, build=6 },
 }

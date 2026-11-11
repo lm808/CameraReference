@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 bash build.sh
 architecture=$(uname -m)
-release_name="CameraReference-1.0-alpha-${architecture}"
+release_name="CameraReference-1.0-alpha-2-${architecture}"
 stage=$(mktemp -d "$PWD/build/package.XXXXXX")
 # Fresh staging folder; no removal of a user's previous release or app installation.
 ditto build/CameraReference.app "$stage/CameraReference.app"
@@ -19,6 +19,6 @@ if [ -e "dist/$release_name.dmg" ]; then
   echo "Release already exists: dist/$release_name.dmg. Move it aside before repackaging." >&2
   exit 1
 fi
-hdiutil create -volname 'Camera Reference 1.0 alpha' -srcfolder "$stage" -format UDZO "dist/$release_name.dmg"
+hdiutil create -volname 'Camera Reference 1.0 alpha 2' -srcfolder "$stage" -format UDZO "dist/$release_name.dmg"
 (cd dist && shasum -a 256 "$release_name.dmg" > "$release_name.dmg.sha256")
 echo "Package: $PWD/dist/$release_name.dmg"

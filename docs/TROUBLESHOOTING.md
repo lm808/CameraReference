@@ -16,8 +16,12 @@ Report app/bridge versions, macOS/Lightroom versions, mode/pane, whether Full wo
 1. Quit Camera Reference.
 2. Disable/remove its bridge entry in Lightroom Plugin Manager and restart Lightroom if needed.
 3. Move CameraReference.app from Applications to the Trash.
-4. Optionally remove the installed plugin, backups and advanced configuration under `~/Library/Application Support/Camera Reference/`, and bridge runtime files under `~/Library/Application Support/CameraReference/`.
+4. Optionally remove the installed plugin, backups and advanced configuration under `~/Library/Application Support/Camera Reference/`, and bridge runtime files under `~/Library/Application Support/Camera Reference/Bridge/`.
 5. To reset GUI preferences/calibration, while the app is quit run `defaults delete org.local.CameraReference`. This is optional and removes your saved preferences.
 6. Remove permissions for Camera Reference in macOS Privacy settings if desired.
 
 None of these steps should delete photographs or exported JPEGs. Keep config/preferences if you intend to reinstall.
+
+## Folder consolidation upgrade
+
+A missing heartbeat after upgrading usually means Lightroom still runs bridge 0.5.0 or an older copy. Disable old entries, install/reload bridge 0.5.1 and restart it. Both app and bridge now use Camera Reference/Bridge. Storage diagnostics report a live legacy bridge that prevents archiving the former folder. Do not delete that folder while an old bridge is active.

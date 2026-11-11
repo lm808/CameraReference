@@ -12,6 +12,7 @@ for _, scenario in ipairs({'ok', 'dng', 'library', 'none', 'notraw', 'sdkerror',
     _G.cameraReferenceStatus = nil
     _PLUGIN = { path = root .. '/CameraReference.lrplugin' }
     io = { open = function(path, mode)
+        assert(path:find('/test/Library/Application Support/Camera Reference/Bridge/', 1, true) == 1, 'Wrong IPC directory')
         local name = path:match('[^/]+$')
         if mode == 'rb' then
             if not files[name] then return nil end

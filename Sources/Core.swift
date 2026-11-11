@@ -40,3 +40,19 @@ func matchingJPEG(for raw: URL) throws -> URL {
     }
     return matches[0]
 }
+
+// Old IPC is archived, never replayed into the new live bridge directory.
+// A fresh legacy heartbeat means the old plugin must be stopped/reloaded first.
+func consolidateLegacyBridge(applicationSupport:URL, now:Date = Date()) throws -> Bool {
+    let fm=FileManager.default
+    let legacy=applicationSupport.appendingPathComponent("CameraReference")
+    guard fm.fileExists(atPath:legacy.path) else { return true }
+    let heartbeat=legacy.appendingPathComponent("heartbeat.txt")
+    if let attributes=try? fm.attributesOfItem(atPath:heartbeat.path),
+       let modified=attributes[.modificationDate] as? Date,now.timeIntervalSince(modified)<10 { return false }
+    let backups=applicationSupport.appendingPathComponent("Camera Reference/Backups")
+    try fm.createDirectory(at:backups,withIntermediateDirectories:true)
+    // Unique destination preserves unknown files and any earlier backup.
+    try fm.moveItem(at:legacy,to:backups.appendingPathComponent("Legacy Bridge-"+UUID().uuidString))
+    return true
+}

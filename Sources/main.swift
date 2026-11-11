@@ -30,7 +30,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var observedWindowFrame:CGRect?
     var hasObservedWindow=false
     var lastImageSize: CGSize?
-    let folder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/CameraReference")
+    var legacyBridgeConsolidated=false
+    var nextLegacyCheck:TimeInterval=0
+    var storageStatus=""
+    func consolidateStorageIfDue() {
+        guard !legacyBridgeConsolidated,ProcessInfo.processInfo.systemUptime>=nextLegacyCheck else { return }
+        nextLegacyCheck=ProcessInfo.processInfo.systemUptime+5
+        do {
+            legacyBridgeConsolidated=try consolidateLegacyBridge(applicationSupport:folder.deletingLastPathComponent().deletingLastPathComponent())
+            storageStatus=legacyBridgeConsolidated ? "Storage: consolidated under Camera Reference." : "Storage migration waiting: stop the old bridge and reload bridge 0.5.1. The old bridge folder is still active."
+        } catch { storageStatus="Storage migration deferred: \(error.localizedDescription)" }
+    }
+    let folder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Camera Reference/Bridge")
     var floating: NSPanel?
     var floatingView: ReferenceView?
     var preferItem: NSMenuItem!
@@ -364,6 +375,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         updateToggleTitle()
         moduleTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
             guard let self else { return }
+            self.consolidateStorageIfDue()
             let epoch=self.selectionEpoch()
             self.imageCache.observe(epoch)
             if let memory=self.placementMemory,memory.epoch != epoch || self.currentModule() != "develop" { self.placementMemory=nil }
@@ -520,7 +532,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 guard response.success else { self.failed(response.value, target: target); return }
                 self.load(response.value, token: token, target: target, work: work, invoked: invoked)
             } else if Date() >= deadline {
-                self.failed("Plugin timed out. Use Lightroom’s File → Plug-in Extras → Start / restart Camera Reference bridge.", target: target)
+                self.failed("Plugin timed out. Reload the updated bridge 0.5.1 in Lightroom’s Plug-in Manager, then use File → Plug-in Extras → Start / restart Camera Reference bridge.", target: target)
             }
         }
     }
@@ -560,7 +572,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                     loaded=LoadedReference(image:cached.image,origin:cached.origin,elapsed:ProcessInfo.processInfo.systemUptime-started,extraction:nil,usedFallback:cached.usedFallback,embeddedBytes:cached.embeddedBytes,cameraOrientation:cached.cameraOrientation,sourceFilename:cached.sourceFilename,stages:"RAM cache hit; source files revalidated")
                 } else {
                     loaded=try loadReference(raw:raw,preferEmbedded:prefer,executable:executable,cancellation:work)
-                    loaded.stages += epoch == nil ? "; RAM cache unavailable: reload bridge 0.5 or check heartbeat":"; RAM cache miss"
+                    loaded.stages += epoch == nil ? "; RAM cache unavailable: reload bridge 0.5.1 or check heartbeat":"; RAM cache miss"
                     if let epoch,let signature,selectionEpoch()==epoch,!work.isCancelled,
                        referenceFileSignature(raw:raw,preferEmbedded:prefer,executable:executable)==signature {
                         imageCache.insert(loaded,key:signature,epoch:epoch)
@@ -996,7 +1008,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let date = attributes?[.modificationDate] as? Date
         let age = date.map { "\(max(0, Int(Date().timeIntervalSince($0)))) seconds ago" } ?? "not received"
         let state = (try? String(contentsOf: folder.appendingPathComponent("status.txt"), encoding: .utf8)) ?? "No plugin status. The bridge may not have started."
-        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + lastLayout + "\n" + panelCheckStatus + "\n\nTiming: " + lastTiming
+        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + storageStatus + "\n" + lastLayout + "\n" + panelCheckStatus + "\n\nTiming: " + lastTiming
     }
     @objc func showDiagnostics() {
         let saved = lastResult
