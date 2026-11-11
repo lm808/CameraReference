@@ -22,7 +22,7 @@ Analysis raster dimensions can differ from capture dimensions. Compute x/y scale
 
 Full detection generates UI-border candidates and validates complete rectangles with sustained edge evidence and consistent inner surround. Photo geometry is calculated from JPEG aspect ratio and configured Fit inset, not traced from photo content. The single-photo path remains the established baseline.
 
-`sideSearchPercent` controls where side boundaries can be sought. 45 helped a narrow window; 30 is verified on the author's current wide/split setup and avoids unwanted inner rectangles. There is no universally verified adaptive rule yet. Preserve user's value through upgrades.
+`sideSearchPercent` controls where side boundaries can be sought. 45 helped a narrow window; 30 resolved earlier wide/split failures; the current preferred default is 40 and avoids unwanted inner rectangles. There is no universally verified adaptive rule yet. Preserve user's value through upgrades.
 
 Each of the four overlay sides chooses UI edge or calculated photo edge. Photo position/scale remain the same regardless of these choices. The photo viewport is converted through the actual native panel after AppKit rounding; placement accepts sub-point rounding, not a displaced panel.
 
@@ -80,3 +80,7 @@ App and bridge 0.5.2 use CameraReference/Bridge. Settings and plugins are siblin
 ## Build, staging and packaging
 
 build/ is internal. scripts/stage.sh builds then checksum-syncs changed components into release/, which is the user-tested payload. scripts/package.sh reads its app version/architecture and packages that folder without rebuilding. Patch bumps accompany delivered updates; minor/major bumps follow the documented user-triggered release convention.
+
+## Avoiding unnecessary overlay updates (1.0.2)
+
+The geometry timer applies a frame-origin change only for a nonzero host translation. Window ordering requires the overlay to remain above its host, not immediately adjacent: intervening Lightroom-owned windows are tolerated. An intervening foreign window still causes correction so another application can cover Lightroom and its overlay. Diagnostics count actual frame moves and ordering calls since show. These counts help test zoom/pan flicker; native improvement is not established by synthetic ordering tests alone.

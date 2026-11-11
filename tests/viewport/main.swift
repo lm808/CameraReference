@@ -200,7 +200,7 @@ defer { try? FileManager.default.removeItem(at:oldConfigURL) }
 try! "# User comment\nfitInsetPoints = 22\n".write(to:oldConfigURL,atomically:true,encoding:.utf8)
 let oldStore=DetectionConfigStore(url:oldConfigURL)
 let migrated=try! oldStore.reload()
-expect(migrated.fitInsetPoints == 22 && migrated.sideSearchPercent == 30,"Existing settings not preserved")
+expect(migrated.fitInsetPoints == 22 && migrated.sideSearchPercent == 40,"Existing settings not preserved")
 let once=try! String(contentsOf:oldConfigURL,encoding:.utf8)
 try! oldStore.ensureFile()
 expect(try! String(contentsOf:oldConfigURL,encoding:.utf8) == once,"Interval appended twice")

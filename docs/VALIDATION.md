@@ -1,5 +1,9 @@
 # Validation evidence
 
+## 1.0.2 candidate
+
+Built/staged in the codex/flicker-fix worktree; original main app remains 1.0.1. Full automated suite passed, including intervening Lightroom-window tolerance, foreign-window precedence, fresh-install default 40, missing-key defaults and preservation of explicit saved values. Generated template and distributed example agree exactly. App signature and plist verified. Native zoom/pan flicker acceptance is pending; maintenance counters and TESTING.md describe the check. No app was launched, plugin installed, merge performed or DMG produced.
+
 ## 1.0.1
 
 Automated checks cover keeping an overlay on resize/metadata uncertainty, overview evidence, and consolidation into CameraReference: active old heartbeat defers movement, existing settings are seeded before waiting, differing conflicts are preserved, empty old directory removed, stale IPC discarded. Full regressions and final focused core checks pass. Native Mission Control/Space and actual installed migration still require the user checklist. The app is staged in release/; no DMG created.

@@ -6,7 +6,7 @@ struct DetectionConfig: Equatable {
     var left=Bound.ui,right=Bound.ui,top=Bound.ui,bottom=Bound.ui
     var panelCheckIntervalSeconds:Double=3
     var fitInsetPoints:CGFloat=18
-    var sideSearchPercent:Double=30
+    var sideSearchPercent:Double=40
     var verticalSnapFraction:CGFloat=0.25,horizontalSnapFraction:CGFloat=0.25
     var snapDistancePoints:CGFloat=8,snapGapPoints:CGFloat=4
     var snapContrast=4
@@ -25,8 +25,8 @@ struct DetectionConfig: Equatable {
     # Minimum Fit margin, in macOS points (not Retina pixels). Range 0...100.
     fitInsetPoints = 18
     # Side-border search from each window edge, 5...50 percent.
-    # 30 searches left 0...30% and right 70...100%; 50 reaches the centre.
-    sideSearchPercent = 30
+    # 40 searches left 0...40% and right 60...100%; 50 reaches the centre.
+    sideSearchPercent = 40
     # Minimum sustained edge length as fraction of Lightroom window, 0.05...1.
     verticalSnapFraction = 0.25
     horizontalSnapFraction = 0.25
@@ -108,7 +108,7 @@ final class DetectionConfigStore {
                 $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces) == "sideSearchPercent"
             }
             if !hasInterval {
-                try (text + "\n# Side-border search from each window edge, 5...50 percent.\n# 30 searches left 0...30% and right 70...100%; 50 reaches the centre.\nsideSearchPercent = 30\n").write(to:url,atomically:true,encoding:.utf8)
+                try (text + "\n# Side-border search from each window edge, 5...50 percent.\n# 40 searches left 0...40% and right 60...100%; 50 reaches the centre.\nsideSearchPercent = 40\n").write(to:url,atomically:true,encoding:.utf8)
             }
         }
     }

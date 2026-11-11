@@ -90,4 +90,19 @@ print("PASS: config.conf migration preserves existing values and legacy backup; 
 
 let defaults=try DetectionConfig.parse(DetectionConfig.template)
 assert(defaults == DetectionConfig())
-assert(defaults.sideSearchPercent == 30 && [defaults.left,defaults.right,defaults.top,defaults.bottom].allSatisfy{$0 == .ui})
+assert(defaults.sideSearchPercent == 40 && [defaults.left,defaults.right,defaults.top,defaults.bottom].allSatisfy{$0 == .ui})
+
+// Front-to-back window list. Lightroom child windows need not be adjacent
+// to their host; foreign windows must still cover the reference.
+let lrWindows:Set<Int>=[4,6,7]
+assert(!overlayNeedsOrdering(order:[9,5,6,7,4],overlay:5,lightroom:4,lightroomWindows:lrWindows))
+assert(!overlayNeedsOrdering(order:[6,9,5,7,4],overlay:5,lightroom:4,lightroomWindows:lrWindows))
+assert(overlayNeedsOrdering(order:[5,6,9,7,4],overlay:5,lightroom:4,lightroomWindows:lrWindows))
+assert(overlayNeedsOrdering(order:[9,6,4,5],overlay:5,lightroom:4,lightroomWindows:lrWindows))
+assert(!overlayNeedsOrdering(order:[9,6,5,4],overlay:5,lightroom:4,lightroomWindows:lrWindows))
+let freshDirectory=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+let freshFile=freshDirectory.appendingPathComponent("config.conf")
+let fresh=try DetectionConfigStore(url:freshFile).reload()
+assert(fresh.sideSearchPercent == 40)
+try FileManager.default.removeItem(at:freshDirectory)
+print("PASS: Lightroom child windows do not cause reordering; foreign windows retain precedence; new installs default to 40")

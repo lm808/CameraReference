@@ -1,4 +1,4 @@
-# Camera Reference — 1.0.1
+# Camera Reference — 1.0.2
 
 Camera Reference is a macOS menu-bar companion for Lightroom Classic. It displays a camera JPEG over Lightroom’s working area, or in an independent floating window, so you can compare it with your RAW edit.
 
@@ -51,7 +51,7 @@ GUI preferences and calibration state remain in macOS-managed preferences. Advan
 
 Open it through **Settings → Edit config file**. Existing `detection.conf` is copied automatically when no new file exists; existing values are preserved and the original remains as a backup. See [configuration](docs/CONFIGURATION.md) and the [example file](config/config.example.conf).
 
-`sideSearchPercent = 30` is the verified setting on the author’s current setup. New configs default to 30 and all four bounds set to `ui`. Existing explicit settings are preserved.
+`sideSearchPercent = 40` is the current preferred setting. New configs default to 40 and all four bounds set to `ui`. Existing explicit settings are preserved.
 
 ## Limitations and help
 

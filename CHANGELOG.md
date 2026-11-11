@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2 — candidate
+
+Skip zero-distance window moves and tolerate intervening Lightroom-owned windows instead of forcing adjacency every timer tick. Preserve other apps’ window precedence; add maintenance counters to diagnostics. New/missing config defaults use sideSearchPercent 40, preserving explicit values. Built in a separate testing worktree; native flicker acceptance pending.
+
 ## 1.0.1
 
 Keep overlays visible through uncertain placement; unify storage under CameraReference with conflict-preserving merge; add incremental release/ staging and patch/minor/major version rules. Bridge 0.5.2 required. No DMG packaged.

@@ -61,6 +61,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var overlayResumeAfter:TimeInterval=0
     var workspaceOverview=false
     var overlayVisibilityStatus="Overlay not shown."
+    var overlayMoveCount=0
+    var overlayOrderCount=0
     func suspendOverlay(reason:String="Space transition") {
         guard let panel else { return }
         overlayVisibilityStatus="Overlay suspended: \(reason)."
@@ -85,7 +87,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             if overlaySuspended {
                 guard ProcessInfo.processInfo.systemUptime>=overlayResumeAfter else { return }
             }
-            panel.setFrameOrigin(CGPoint(x:panel.frame.minX+delta.x,y:panel.frame.minY+delta.y))
+            if delta != .zero {
+                panel.setFrameOrigin(CGPoint(x:panel.frame.minX+delta.x,y:panel.frame.minY+delta.y))
+                overlayMoveCount += 1
+            }
             overlayHost=current
             if overlaySuspended { overlaySuspended=false;_ = orderOverlayAboveLightroom(initial:true) }
         }
@@ -210,7 +215,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if !initial && !order.contains(panel.windowNumber) {
             overlayVisibilityStatus="Overlay retained: native visibility managed by macOS.";return true
         }
-        if overlayNeedsOrdering(order:order,overlay:panel.windowNumber,lightroom:number) { panel.order(.above,relativeTo:number) }
+        let lightroomWindows=Set(windows.filter {
+            ($0[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==owner.processIdentifier
+        }.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.intValue })
+        if overlayNeedsOrdering(order:order,overlay:panel.windowNumber,lightroom:number,lightroomWindows:lightroomWindows) {
+            panel.order(.above,relativeTo:number);overlayOrderCount += 1
+        }
         overlayVisibilityStatus="Overlay ordered above its Lightroom host."
         return true
     }
@@ -633,7 +643,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         configureImageView(view)
         view.refresh = { [weak self] in self?.reloadOverlay() }
         view.image = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
-        p.contentView = view; panel = p;
+        p.contentView = view; panel = p;overlayMoveCount=0;overlayOrderCount=0;
         guard orderOverlayAboveLightroom(initial:true) else { hide();report("Lightroom window unavailable; invoke again when it is visible.");return nil }
         let requested=region.insetBy(dx:-1,dy:-1)
         p.setFrame(requested,display:true)
@@ -1011,7 +1021,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let date = attributes?[.modificationDate] as? Date
         let age = date.map { "\(max(0, Int(Date().timeIntervalSince($0)))) seconds ago" } ?? "not received"
         let state = (try? String(contentsOf: folder.appendingPathComponent("status.txt"), encoding: .utf8)) ?? "No plugin status. The bridge may not have started."
-        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + storageStatus + "\n" + overlayVisibilityStatus + "\n" + lastLayout + "\n" + panelCheckStatus + "\n\nTiming: " + lastTiming
+        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + storageStatus + "\n" + overlayVisibilityStatus + "\nWindow maintenance since show: moves \(overlayMoveCount); ordering changes \(overlayOrderCount).\n" + lastLayout + "\n" + panelCheckStatus + "\n\nTiming: " + lastTiming
     }
     @objc func showDiagnostics() {
         let saved = lastResult

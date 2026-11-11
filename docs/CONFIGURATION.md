@@ -22,14 +22,14 @@ Settings → Edit config file opens this plain-text file. Parsed settings stay i
 | `left`, `right` | `ui` | `ui` or `photo`: include UI backdrop or end at calculated photo edge |
 | `top`, `bottom` | `ui` | Same per-side choice |
 | `fitInsetPoints` | 18 | 0–100 macOS points; minimum Fit margin and split scan band |
-| `sideSearchPercent` | 30 | 5–50%; side-border search from each window edge |
+| `sideSearchPercent` | 40 | 5–50%; side-border search from each window edge |
 | `panelCheckIntervalSeconds` | 3 | 0–3600; 0 disables background capture checks |
 | `verticalSnapFraction`, `horizontalSnapFraction` | 0.25 | 0.05–1; minimum sustained edge fraction |
 | `snapDistancePoints` | 8 | 1–30; Option-snapping attraction radius |
 | `snapGapPoints` | 4 | 0–12; tolerated gaps in snapping edges |
 | `snapContrast` | 4 | Integer 1–64; minimum RGB edge contrast |
 
-`sideSearchPercent = 30` resolved the author’s current Full/split failures. Wider values previously helped narrow windows. This remains an advanced tuning setting, not a universal recommendation.
+New installations and older configs missing this key use `sideSearchPercent = 40`, the author’s current preferred setting. Explicit existing values—including 30—remain unchanged. All four bounds still default to ui.
 
 An inset too small for reliable split scanning offers manual calibration. `overlayAnimation = true` or `false` from an old config is accepted but ignored; overlay animation is always off. Unknown keys, duplicates and invalid values are rejected.
 

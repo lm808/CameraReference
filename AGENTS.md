@@ -4,6 +4,8 @@
 
 Discussion is not permission to implement. This user explicitly asks to hold work until a go-ahead; read the current request carefully. Preserve user test annotations before replacing a checklist. Do not push, publish a release, install/launch the app or change Lightroom unless authorised. Do not spawn subagents unless requested. Licensing is undecided; do not choose one on the user's behalf.
 
+Keep accepted daily-use and candidate builds in separate Git worktrees. Do not rebuild the daily-use release/ when working on a candidate. Merge only after user acceptance; do not call a candidate verified from automated tests alone.
+
 ## Build and checks
 
 For each delivered update increment the patch version (1.0.1 → 1.0.2). For a user-requested packaged feature release increment minor and reset patch (1.1.0). Increment major and reset minor/patch only when the user requests a major revamp (2.0.0). Never make a DMG unless explicitly requested.
@@ -17,7 +19,7 @@ The user runs only `release/CameraReference.app`, never build/. Keep build/ for 
 - `bash scripts/package.sh`: package the existing release/ payload as a DMG/checksum under ignored dist/. Uses hdiutil; may require sandbox approval. Does not install the app or publish anything. Existing DMG is not overwritten.
 - Verify signature/plist and `git diff --check` before committing. Run checks appropriate to the change; avoid repeating unchanged suites without reason.
 
-Use plain three-component versions in CFBundleShortVersionString (currently `1.0.1`); the menu and package script read that value. Preserve org.local.CameraReference until an explicit bundle-ID migration is planned.
+Use plain three-component versions in CFBundleShortVersionString (currently `1.0.2`); the menu and package script read that value. Preserve org.local.CameraReference until an explicit bundle-ID migration is planned.
 
 ## Source map and flow
 
@@ -52,7 +54,7 @@ Main flow: shortcut → bridge request/epoch → image load or RAM hit → manua
 - Respect source/selection epochs, request IDs, cancellation and cache generations. Never display a late result for another request.
 - Clear region must not change auto/manual preference. Successful calibration turns auto off; cancellation changes nothing.
 - Keep visible overlays open through resize, detection failure, heartbeat/module uncertainty and changed selection. Invalidate cached placement for next invocation, not the current display. Follow known movement. Temporarily suspend for host invisibility/overview and restore even if selection or size changed. Explicit user dismissal or confirmed host closure releases it. Never use full-display containment as a movement requirement.
-- Accepted config defaults are `sideSearchPercent = 30` and all four bounds `ui`. Preserve explicit user values during upgrades; never replace a personal config with the example/template.
+- Accepted config defaults are `sideSearchPercent = 40` and all four bounds `ui`. Preserve explicit user values during upgrades; never replace a personal config with the example/template.
 - Canonical support folder is CameraReference (no space). Merge old spaced contents, remove the empty old folder, preserve differing file conflicts beside their destination, and discard only known stale IPC. Do not create legacy folder copies. Preserve explicit settings; seed them before waiting for old bridge shutdown.
 - No private macOS APIs or global security/permission resets. Native app/overview assertions need live evidence.
 

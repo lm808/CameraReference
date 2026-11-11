@@ -1,11 +1,10 @@
-# CameraReference 1.0.1
+# CameraReference 1.0.2 — candidate
 
-Staged development update; no new DMG was created. Run release/CameraReference.app and reload bridge 0.5.2.
+Test this worktree’s release/CameraReference.app. The original worktree’s 1.0.1 app is untouched. Quit one before running the other; both share live preferences/config. Bridge 0.5.2 is unchanged, so no plugin reinstall is needed for this update.
 
-- Keep the displayed overlay open through resize, panel detection failure and bridge/module uncertainty. Such changes invalidate future placement only. Temporary host hiding/overview suspension restores the existing image; explicit dismissal or confirmed host closure closes it.
-- Correct false overview detection: a full-screen Dock surface alone is insufficient evidence.
-- Consolidate Application Support under CameraReference with Bridge and Plugins subfolders, preserving explicit settings and conflicting files without duplicate legacy directories.
-- Default new settings to sideSearchPercent 30 and all four bounds ui.
-- Maintain an incremental release/ staging payload; package only on request.
+- Skip position changes when Lightroom has not moved.
+- Do not force immediate adjacency around Lightroom-owned windows during redraws; retain other apps’ ability to cover the overlay.
+- Show actual movement/ordering counts in Bridge diagnostics.
+- Default new installations and configs missing sideSearchPercent to 40. Explicit saved values and ui/photo preferences are preserved.
 
-Stop old bridge copies before upgrade. See INSTALL.md in release/ or docs/INSTALL.md in the repository. Native overview and migration acceptance remain in TESTING.md. Ad-hoc signed, not notarised; licensing remains undecided.
+Native split zoom/pan flicker acceptance is pending. See TESTING.md in this worktree. No DMG was created; do not merge until accepted.

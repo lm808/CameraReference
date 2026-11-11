@@ -1,14 +1,12 @@
-# CameraReference 1.0.1 — acceptance tests
+# CameraReference 1.0.2 — candidate checks
 
-Quit the old app; run **release/CameraReference.app**, confirm **1.0.1**, and reload bridge **0.5.2**. `[x]` or `[x ]` means pass. No DMG test is needed for this update.
+Quit the original app and open **this testing worktree’s release/CameraReference.app**. Confirm 1.0.2. Bridge 0.5.2 is unchanged; no reinstall is needed. Keep the original 1.0.1 release/ app for fallback. `[x]` or `[x ]` means pass.
 
-- [ ] Show an overlay and wait through several background checks: it stays visible.
-- [ ] Resize Lightroom, change internal panels, or change photo/module: the visible reference remains until you dismiss it. Toggle off/on in Develop to get fresh placement/current photo.
-- [ ] Move Lightroom partially off-screen and back: the overlay follows. Other apps can cover it.
-- [ ] Enter/exit Mission Control and App Exposé; minimise/restore and switch Spaces. It hides temporarily and returns, including after resize or selection changes. Close the actual host window: overlay closes.
-- [ ] Stop old bridges and start the updated app/bridge. Config and plugins end up under CameraReference; the spaced folder disappears after consolidation. Verify personal values (30 and ui bounds) survive. Re-add the plugin's new path if moved.
-- [ ] If a legacy bridge is still active, diagnostics report migration waiting; existing config still loads. Stop it: migration completes. Conflicting files are preserved with a .migrated suffix, never silently overwritten.
-- [ ] Full and all split panes still align for landscape/portrait at Fit. Repeated toggles reuse RAM/placement when valid. Manual calibration/clear preference behaviour remains intact.
-- [ ] Floating display size, hover chrome, Fit dragging and Cmd-scroll still work independently.
+- [ ] In side-by-side, show the overlay and zoom/pan the neighbouring RAW repeatedly: no flicker. Repeat left/right and portrait/landscape.
+- [ ] Repeat in above-and-below, then check ordinary Full placement.
+- [ ] Compare Developer tools → Bridge diagnostics before/after zoom/pan. With the Lightroom window stationary, “moves” should stay zero. Ordering should not continuously increase merely because Lightroom-owned child windows intervene. If it does, report both counts and the gesture/layout.
+- [ ] Move Lightroom: overlay follows. Switch to another app: its windows cover the overlay normally. Return to Lightroom: ordering remains correct.
+- [ ] Resize/change panels: existing overlay stays open; toggling it off/on refreshes placement. Mission Control/Space/minimise handling should not regress.
+- [ ] Confirm your existing sideSearchPercent and ui/photo bounds have not been overwritten. New/missing config defaults are 40/all ui (covered automatically; do not delete your live config just to test this).
 
-For unexpected hiding, copy Developer tools → Bridge diagnostics before invoking again; it now includes visibility reasons. Native behaviour is not proven by automated geometry tests.
+To fall back, quit the candidate and open the original worktree’s release/CameraReference.app. No branch switching, settings reset or plugin swap is needed between these two versions. Report remaining flicker with Bridge diagnostics before invoking again.

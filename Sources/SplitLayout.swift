@@ -62,8 +62,13 @@ func panelBoundsChanged(previous:CGRect?,current:CGRect?,tolerance:CGFloat=1)->B
     guard let previous,let current else { return true }
     return abs(previous.minX-current.minX)>tolerance || abs(previous.minY-current.minY)>tolerance || abs(previous.width-current.width)>tolerance || abs(previous.height-current.height)>tolerance
 }
-func overlayNeedsOrdering(order:[Int],overlay:Int,lightroom:Int)->Bool {
+// The overlay need only stay above its host, not immediately adjacent to it.
+// Lightroom owns transient child windows during interaction. Reordering around
+// those every poll causes needless WindowServer changes. Other applications
+// between the overlay and host still take precedence and must cover the overlay.
+func overlayNeedsOrdering(order:[Int],overlay:Int,lightroom:Int,lightroomWindows:Set<Int> = [])->Bool {
     guard let lr=order.firstIndex(of:lightroom) else { return false }
     guard let own=order.firstIndex(of:overlay) else { return true }
-    return own+1 != lr
+    if own>lr { return true }
+    return order[(own+1)..<lr].contains { !lightroomWindows.contains($0) }
 }
