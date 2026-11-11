@@ -1,4 +1,4 @@
-# Installing Camera Reference 1.0.3
+# Installing Camera Reference 1.0.4
 
 For manual source builds, older-commit recovery, and stable/candidate Git worktrees, see [Building from source and keeping a working version](SOURCE-BUILD.md).
 
@@ -18,7 +18,7 @@ Run `bash scripts/stage.sh` to build and refresh release/. Launch **release/Came
 1. Quit any older Camera Reference process.
 2. Open the disk image and drag **CameraReference.app** onto **Applications**.
 3. Launch the copy in Applications, not the copy inside the disk image.
-4. On first use of automatic detection, allow Screen Recording (or Screen & System Audio Recording, depending on macOS). Accessibility is only used by optional read-only diagnostic tools; core placement does not require it.
+4. On first use of automatic detection, allow Screen Recording (or Screen & System Audio Recording, depending on macOS). Accessibility is optional: read-only diagnostics use it, and existing permission improves dialog/minimise state checks. Core placement does not require it; the lifecycle timer never prompts.
 
 The current build is ad-hoc signed, not Developer ID signed or notarised. Downloaded copies may be blocked by Gatekeeper. Only proceed if you trust the source; macOS’s Privacy & Security panel may offer **Open Anyway** after a blocked launch. Do not disable Gatekeeper globally. Apple’s instructions: https://support.apple.com/102445 . A notarised release remains future distribution work.
 
@@ -42,6 +42,6 @@ Bridge 0.5.2 uses the unspaced CameraReference/Bridge folder. Quit the old compa
 
 ## Verify
 
-The menu should say **Camera Reference 1.0.3**. Bridge diagnostics should report bridge 0.5.2 and a recent heartbeat. Start with Full, Lightroom Develop at Fit, and a known paired/embedded JPEG.
+The menu should say **Camera Reference 1.0.4**. Bridge diagnostics should report bridge 0.5.2 and a recent heartbeat. Start with Full, Lightroom Develop at Fit, and a known paired/embedded JPEG.
 
 Use TESTING.md in the repository for staged-app acceptance; DMG installation is tested only when a package is requested. For checksum verification, compare `shasum -a 256 <downloaded.dmg>` with the adjacent `.sha256` download; this detects file corruption, not publisher identity.

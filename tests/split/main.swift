@@ -106,3 +106,11 @@ let fresh=try DetectionConfigStore(url:freshFile).reload()
 assert(fresh.sideSearchPercent == 40)
 try FileManager.default.removeItem(at:freshDirectory)
 print("PASS: Lightroom child windows do not cause reordering; foreign windows retain precedence; new installs default to 40")
+
+for (layout,expected) in [(OverlayLayout.full,"Full view (▣)"),(.left,"left (◧)"),(.right,"right (◨)"),(.upper,"upper pane (⬒)"),(.lower,"lower pane (⬓)")] {
+    let text=calibrationInstructions(layout:layout,automatic:true)
+    assert(text.contains(expected) && text.contains("Cancelling keeps auto-detection and the saved region."))
+}
+let manualInstructions=calibrationInstructions(layout:.left,automatic:false)
+assert(!manualInstructions.contains("Auto-detection expects") && manualInstructions.contains("Cancelling keeps manual mode and the saved region."))
+print("PASS: calibration guidance reflects selected layout/pane and preserves mode wording")

@@ -86,3 +86,7 @@ build/ is internal. scripts/stage.sh builds then checksum-syncs changed componen
 The geometry timer applies a frame-origin change only for a nonzero host translation. Window ordering requires the overlay to remain above its host, not immediately adjacent: intervening Lightroom-owned windows are tolerated. An intervening foreign window still causes correction so another application can cover Lightroom and its overlay. Diagnostics count actual frame moves and ordering calls since show. These counts help test zoom/pan flicker; native improvement is not established by synthetic ordering tests alone.
 
 1.0.3 changes the window-level strategy after the user reported flicker on every click in 1.0.2. The earlier adjacency-only fix was insufficient. Dialog/sheet and native overview behaviour need explicit acceptance; do not claim the floating approach has passed live tests.
+
+## Dialog and minimise handling (1.0.4 candidate)
+
+When Accessibility is already granted, bind a read-only AX window to the selected host by geometry and inspect minimise/focused dialog/sheet state with short messaging timeouts. Do not prompt from the timer. The fallback uses on-screen window IDs/opacity and new substantial titled Lightroom windows above the host, excluding known panes and untitled redraw surfaces. Window names are not logged. Dialog presence lowers to normal level; closing restores the accepted floating behaviour. Thumbnail-sized geometry suspends rather than translating the overlay into the Dock. Native confirmation is required, particularly when AX is unavailable.

@@ -19,7 +19,7 @@ The user runs only `release/CameraReference.app`, never build/. Keep build/ for 
 - `bash scripts/package.sh`: package the existing release/ payload as a DMG/checksum under ignored dist/. Uses hdiutil; may require sandbox approval. Does not install the app or publish anything. Existing DMG is not overwritten.
 - Verify signature/plist and `git diff --check` before committing. Run checks appropriate to the change; avoid repeating unchanged suites without reason.
 
-Use plain three-component versions in CFBundleShortVersionString (currently `1.0.3`); the menu and package script read that value. Preserve org.local.CameraReference until an explicit bundle-ID migration is planned.
+Use plain three-component versions in CFBundleShortVersionString (currently `1.0.4`); the menu and package script read that value. Preserve org.local.CameraReference until an explicit bundle-ID migration is planned.
 
 ## Source map and flow
 

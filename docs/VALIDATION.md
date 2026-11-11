@@ -1,5 +1,9 @@
 # Validation evidence
 
+## 1.0.4 candidate
+
+Full automated suite passed, including new-dialog fallback versus known panes/untitled redraws, thumbnail versus ordinary/off-screen host geometry, and calibration text for all five layouts and both modes. App compiled and staged; signature/plist checks passed. Native AX/window-list semantics, Email Photo/View Options, minimise animation and restoration remain pending. No app launch, plugin change or new permission request was performed.
+
 ## 1.0.3 candidate
 
 Local app built and staged with foreground-dependent floating level. Targeted split/ordering/config tests passed; these test normal-level fallback and configuration, not native cross-process activation. Signature/plist verified. Clicking, zoom/pan, dialogs/sheets, app switching and overview acceptance remain pending. No permissions changed and no plugin reinstall required.
@@ -181,3 +185,24 @@ User 0.9.11 first sample: bridge179 ms, load849 ms (extract294, decode/orientati
 ## 0.9.13
 
 Background interval defaults3s (20 checks/min maximum), zero disables; captures capped1280px, full placement unchanged. On user's small-window screenshot, five-run median fresh detector47.16ms at1800px versus33.57ms at1280px, bounds agree within1pt. No claim for live capture/battery cost. Diagnostic background duration includes setup/stability/capture/detection. Geometry timer stays0.2s without screenshots; float-only pointer sampling80ms replaces competing hover events.
+
+
+## User acceptance of 1.0.3 (11 November 2026)
+
+Verbatim completed checklist; diagnostic-counter check explicitly skipped. Dialog exceptions and minimise failure are outstanding, not passes.
+
+```text
+# CameraReference 1.0.3 — candidate checks
+
+Quit the original app and open **this testing worktree’s release/CameraReference.app**. Confirm 1.0.3. Bridge 0.5.2 is unchanged; no reinstall is needed. Keep the original 1.0.1 release/ app for fallback. `[x]` or `[x ]` means pass.
+
+- [x ] In side-by-side, show the overlay and zoom/pan the neighbouring RAW repeatedly: no flicker. Repeat left/right and portrait/landscape.
+- [x ] Repeat in above-and-below, then check ordinary Full placement.
+- [since the above works well i am skipping this.] Compare Developer tools → Bridge diagnostics before/after zoom/pan. With the Lightroom window stationary, “moves” should stay zero. While Lightroom stays active, ordering and level-change counts should stay stable after initial show. If it does, report both counts and the gesture/layout.
+- [x. Most dialogues work, the one got behind was 'email photo'  and 'view options'.] Click different Lightroom controls repeatedly with overlay visible: no cover-and-restore flashes. Open a Lightroom dialog/sheet and check it remains usable; close it and check the overlay.
+- [x ] Move Lightroom: overlay follows. Switch to another app: its windows cover the overlay normally. Return to Lightroom: ordering remains correct.
+- [x ] Resize/change panels: existing overlay stays open; toggling it off/on refreshes placement. Mission Control/Space/minimise handling should not regress.
+- [x, only that minuimising leaves the overlay half stuck on the screen. ] Confirm your existing sideSearchPercent and ui/photo bounds have not been overwritten. New/missing config defaults are 40/all ui (covered automatically; do not delete your live config just to test this).
+
+To fall back, quit the candidate and open the original worktree’s release/CameraReference.app. No branch switching, settings reset or plugin swap is needed between these two versions. Report remaining flicker with Bridge diagnostics before invoking again.
+```

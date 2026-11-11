@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4 — candidate
+
+Yield floating level to Lightroom dialogs, add host visibility/minimise checks and ignore thumbnail geometry during movement. Use existing Accessibility permission for direct state checks with window-list fallback. Shorten calibration instructions with current layout/pane/mode. Preserve the user’s 1.0.3 results. Native acceptance pending.
+
 ## 1.0.3 — candidate
 
 Float the overlay while Lightroom is active; lower it and restore normal host-relative ordering when another app activates. Avoid periodic reordering while floating. Add level-change diagnostics. Native clicks, zoom/pan, dialogs and app-switch acceptance pending.

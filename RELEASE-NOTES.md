@@ -1,7 +1,9 @@
-# CameraReference 1.0.3 — candidate
+# CameraReference 1.0.4 — candidate
 
-Run this testing worktree’s release/CameraReference.app. Bridge 0.5.2 is unchanged; no plugin reinstall is needed. Original main worktree app remains 1.0.1.
+Run this worktree’s release/CameraReference.app. Bridge 0.5.2 and config defaults (40/all ui) are unchanged.
 
-The overlay now floats while Lightroom is active, so Lightroom clicks cannot repeatedly cover it. It drops to normal level when another app activates; ordinary host-relative ordering resumes. Movement follows the host only when it actually moves. Diagnostics show move, ordering and level-change counts.
+- Lower the overlay for Lightroom dialogs and restore floating behaviour afterward.
+- Check on-screen membership/opacity and, when already authorised, Accessibility minimise state. Do not move overlays into thumbnail-sized host geometry.
+- Use shorter calibration instructions showing the selected layout, pane/icon and current mode.
 
-Default sideSearchPercent remains 40; explicit settings are preserved. No permission/signing changes, automatic permission resets or DMG packaging are included. Native flicker, dialogs and app-switch acceptance remain in TESTING.md.
+1.0.3 passed flicker, placement, movement and app-switch checks; Email Photo/View Options and minimising remained problematic. Those user annotations are preserved in docs/VALIDATION.md. Retest the focused cases in TESTING.md. No new permission prompts, plugin installation, merge or DMG packaging.

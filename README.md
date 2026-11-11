@@ -1,4 +1,4 @@
-# Camera Reference — 1.0.3
+# Camera Reference — 1.0.4
 
 Camera Reference is a macOS menu-bar companion for Lightroom Classic. It displays a camera JPEG over Lightroom’s working area, or in an independent floating window, so you can compare it with your RAW edit.
 

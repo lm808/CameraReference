@@ -154,7 +154,11 @@ func hostWindowSnapshot(_ id:CGWindowID)->HostWindowSnapshot? {
           let row=rows.first(where:{($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value==id}),
           let data=row[kCGWindowBounds as String] as? [String:Any],let frame=CGRect(dictionaryRepresentation:data as CFDictionary) else { return nil }
     let appKit=CGRect(x:frame.minX,y:CGDisplayBounds(CGMainDisplayID()).height-frame.maxY,width:frame.width,height:frame.height)
-    return HostWindowSnapshot(id:id,frame:appKit,onScreen:(row[kCGWindowIsOnscreen as String] as? NSNumber)?.boolValue ?? false)
+    let visibleRows=CGWindowListCopyWindowInfo(.optionOnScreenOnly,kCGNullWindowID) as? [[String:Any]]
+    let listed=visibleRows.map { $0.contains { ($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value==id } }
+    let visible=listed ?? ((row[kCGWindowIsOnscreen as String] as? NSNumber)?.boolValue ?? false)
+    let alpha=(row[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 1
+    return HostWindowSnapshot(id:id,frame:appKit,onScreen:visible && alpha>0)
 }
 // Dock can own a permanent full-screen transparent window during ordinary work.
 // Its geometry alone is NOT evidence of Mission Control. Require Dock activation
@@ -188,4 +192,80 @@ func overlayHostAction(saved:CGRect,current:CGRect?,onScreen:Bool,overview:Bool)
     guard let current else { return .retain }
     if !onScreen { return .suspend }
     return .translate(CGPoint(x:current.minX-saved.minX,y:current.minY-saved.minY))
+}
+
+// Bounded, read-only AX lifecycle checks when already authorised. No permission
+// prompts from the timer; window-list metadata remains the fallback.
+final class LightroomHostAccessibility {
+    private let application:AXUIElement
+    private let host:AXUIElement
+    private static func read(_ element:AXUIElement,_ key:String)->CFTypeRef? {
+        var value:CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element,key as CFString,&value) == .success else { return nil }
+        return value
+    }
+    private static func element(_ value:CFTypeRef?)->AXUIElement? {
+        guard let value,CFGetTypeID(value)==AXUIElementGetTypeID() else { return nil }
+        return unsafeBitCast(value,to:AXUIElement.self)
+    }
+    private static func frame(_ element:AXUIElement)->CGRect? {
+        guard let p=read(element,kAXPositionAttribute),let s=read(element,kAXSizeAttribute),
+              CFGetTypeID(p)==AXValueGetTypeID(),CFGetTypeID(s)==AXValueGetTypeID() else { return nil }
+        var point=CGPoint.zero,size=CGSize.zero
+        guard AXValueGetValue(unsafeBitCast(p,to:AXValue.self),.cgPoint,&point),
+              AXValueGetValue(unsafeBitCast(s,to:AXValue.self),.cgSize,&size) else { return nil }
+        return CGRect(origin:point,size:size)
+    }
+    init?(pid:pid_t,hostFrame:CGRect) {
+        guard AXIsProcessTrusted() else { return nil }
+        let app=AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app,0.03)
+        guard let windows=Self.read(app,kAXWindowsAttribute) as? [AXUIElement] else { return nil }
+        let cg=CGRect(x:hostFrame.minX,y:CGDisplayBounds(CGMainDisplayID()).height-hostFrame.maxY,width:hostFrame.width,height:hostFrame.height)
+        guard let match=windows.prefix(16).first(where:{ window in
+            guard let r=Self.frame(window) else { return false }
+            return abs(r.minX-cg.minX)<2 && abs(r.minY-cg.minY)<2 && abs(r.width-cg.width)<2 && abs(r.height-cg.height)<2
+        }) else { return nil }
+        application=app;host=match;AXUIElementSetMessagingTimeout(host,0.03)
+    }
+    var minimized:Bool? { (Self.read(host,kAXMinimizedAttribute) as? NSNumber)?.boolValue }
+    var hasDialog:Bool {
+        if let children=Self.read(host,kAXChildrenAttribute) as? [AXUIElement],
+           children.prefix(16).contains(where:{Self.read($0,kAXRoleAttribute) as? String == kAXSheetRole}) { return true }
+        guard let focused=Self.element(Self.read(application,kAXFocusedWindowAttribute)),!CFEqual(focused,host) else { return false }
+        let subrole=Self.read(focused,kAXSubroleAttribute) as? String
+        return subrole==kAXDialogSubrole || subrole==kAXSystemDialogSubrole || (Self.read(focused,kAXModalAttribute) as? NSNumber)?.boolValue==true
+    }
+}
+
+struct LightroomWindowMetadata {
+    let id:CGWindowID
+    let frame:CGRect // AppKit
+    let layer:Int
+    let hasTitle:Bool
+}
+func lightroomWindowMetadata(pid:pid_t)->[LightroomWindowMetadata]? {
+    guard let rows=CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements],kCGNullWindowID) as? [[String:Any]] else { return nil }
+    return rows.compactMap { row in
+        guard (row[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==pid,
+              let id=(row[kCGWindowNumber as String] as? NSNumber)?.uint32Value,
+              let d=row[kCGWindowBounds as String] as? [String:Any],let r=CGRect(dictionaryRepresentation:d as CFDictionary) else { return nil }
+        let frame=CGRect(x:r.minX,y:CGDisplayBounds(CGMainDisplayID()).height-r.maxY,width:r.width,height:r.height)
+        return LightroomWindowMetadata(id:id,frame:frame,layer:(row[kCGWindowLayer as String] as? NSNumber)?.intValue ?? 0,
+                                      hasTitle:!(row[kCGWindowName as String] as? String ?? "").isEmpty)
+    }
+}
+// New titled, substantial Lightroom windows above the host can be non-modal
+// dialogs such as View Options. Existing child panes and redraw surfaces do not
+// trigger this fallback; no titles or photo paths are retained in diagnostics.
+func hasNewLightroomDialog(windows:[LightroomWindowMetadata],host:CGWindowID,baseline:Set<CGWindowID>)->Bool {
+    guard let index=windows.firstIndex(where:{$0.id==host}) else { return false }
+    return windows[..<index].contains { window in
+        !baseline.contains(window.id) && window.hasTitle && window.layer>=0 && window.layer<=Int(CGWindowLevelForKey(.modalPanelWindow)) && window.frame.width>=180 && window.frame.height>=100
+    }
+}
+func hostIsPresentationThumbnail(_ frame:CGRect)->Bool {
+    // Lightroom's editing window cannot normally resize this small; this is
+    // animation/thumbnail geometry, not a new photo viewport to follow.
+    frame.width<300 || frame.height<180
 }

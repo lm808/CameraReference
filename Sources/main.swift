@@ -56,6 +56,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var shortcutItem: NSMenuItem!
     var panel: OverlayPanel?
     var overlayHost:HostWindowSnapshot?
+    var overlayAccessibility:LightroomHostAccessibility?
+    var overlayBaselineWindows=Set<CGWindowID>()
+    var overlayDialogVisible=false
+    var overlayLifecycleStatus="Window lifecycle not sampled."
+    func updateOverlayLifecycle() {
+        guard let saved=overlayHost,let owner=NSWorkspace.shared.runningApplications.first(where:isLightroomApp) else { return }
+        let windows=lightroomWindowMetadata(pid:owner.processIdentifier)
+        overlayDialogVisible=(overlayAccessibility?.hasDialog ?? false) || (windows.map { hasNewLightroomDialog(windows:$0,host:saved.id,baseline:overlayBaselineWindows) } ?? false)
+        overlayLifecycleStatus="Lifecycle: dialog \(overlayDialogVisible); minimised \(overlayAccessibility?.minimized.map(String.init) ?? "unavailable"); \(overlayAccessibility == nil ? "window-list fallback":"Accessibility + window list")."
+    }
     var overlayEpoch:String?
     var overlaySuspended=false
     var overlayResumeAfter:TimeInterval=0
@@ -74,6 +84,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func reconcileOverlayHost() {
         guard let panel,let saved=overlayHost else { return }
         let current=hostWindowSnapshot(saved.id)
+        if overlayAccessibility?.minimized == true || (current.map { hostIsPresentationThumbnail($0.frame) } ?? false) {
+            suspendOverlay(reason:"Lightroom minimised or thumbnail transition");return
+        }
         if !workspaceOverview,current == nil,hostWindowIsClosed(saved.id) {
             overlayVisibilityStatus="Overlay dismissed: Lightroom host closed.";hide();invalidateAutomaticGeometry();return
         }
@@ -196,7 +209,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     @discardableResult func orderOverlayAboveLightroom(initial:Bool=false)->Bool {
         guard let panel else { return false }
-        let floating=isLightroom() && !workspaceOverview
+        updateOverlayLifecycle()
+        let floating=isLightroom() && !workspaceOverview && !overlayDialogVisible
         let desiredLevel:NSWindow.Level=floating ? .floating:.normal
         let levelChanged=panel.level != desiredLevel
         // Lower immediately on app deactivation, even if host metadata is
@@ -223,7 +237,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             return area(a)<area(b)
         }
         guard let number=(lightroom?[kCGWindowNumber as String] as? NSNumber)?.intValue else { return false }
-        if initial && overlayHost == nil { overlayHost=hostWindowSnapshot(CGWindowID(number));overlayEpoch=selectionEpoch() }
+        if initial && overlayHost == nil {
+            overlayHost=hostWindowSnapshot(CGWindowID(number));overlayEpoch=selectionEpoch()
+            overlayBaselineWindows=Set(lightroomWindowMetadata(pid:owner.processIdentifier)?.map(\.id) ?? [])
+            if let host=overlayHost { overlayAccessibility=LightroomHostAccessibility(pid:owner.processIdentifier,hostFrame:host.frame) }
+        }
         guard overlayHost?.id==CGWindowID(number) else { return false }
         if floating {
             panel.orderFront(nil);overlayOrderCount += 1
@@ -239,7 +257,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if levelChanged || overlayNeedsOrdering(order:order,overlay:panel.windowNumber,lightroom:number,lightroomWindows:lightroomWindows) {
             panel.order(.above,relativeTo:number);overlayOrderCount += 1
         }
-        overlayVisibilityStatus="Overlay at normal level while another app is active."
+        overlayVisibilityStatus=overlayDialogVisible ? "Overlay lowered for a Lightroom dialog.":"Overlay at normal level while another app is active."
         return true
     }
 
@@ -470,7 +488,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func hide() {
         if destination == .overlay { cancelRequest() }
         (panel?.contentView as? ReferenceView)?.releaseContent()
-        panel?.orderOut(nil); panel = nil;overlayHost=nil;overlayEpoch=nil;overlaySuspended=false;updateIcon()
+        panel?.orderOut(nil); panel = nil;overlayHost=nil;overlayAccessibility=nil;overlayBaselineWindows=[];overlayDialogVisible=false;overlayEpoch=nil;overlaySuspended=false;updateIcon()
     }
     func currentModule() -> String? {
         let url = folder.appendingPathComponent("heartbeat.txt")
@@ -972,8 +990,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     func askForCalibration(workingAreaTooNarrow:Bool = false) {
-        let alert=NSAlert();alert.icon=NSApp.applicationIconImage; alert.messageText=workingAreaTooNarrow ? "Working area too narrow for automatic placement—enlarge it or calibrate manually." : "Select the reference viewing area"
-        alert.informativeText="The viewing area could not be identified reliably. Select the entire photo backdrop between the panels, including the margins around the photo, then invoke again. Accepting a region switches to manual mode. Cancelling keeps your current mode and region."
+        let alert=NSAlert();alert.icon=NSApp.applicationIconImage
+        alert.messageText="Cannot reliably identify viewing area."
+        let automatic=UserDefaults.standard.bool(forKey:regionKey("automaticBounds"))
+        alert.informativeText=(workingAreaTooNarrow ? "Working area too narrow—enlarge it or calibrate manually.\n\n":"") + calibrationInstructions(layout:overlayLayout,automatic:automatic)
         alert.addButton(withTitle:"Calibrate manually…"); alert.addButton(withTitle:"Cancel")
         NSApp.activate(ignoringOtherApps:true)
         if alert.runModal() == .alertFirstButtonReturn {
@@ -1039,7 +1059,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let date = attributes?[.modificationDate] as? Date
         let age = date.map { "\(max(0, Int(Date().timeIntervalSince($0)))) seconds ago" } ?? "not received"
         let state = (try? String(contentsOf: folder.appendingPathComponent("status.txt"), encoding: .utf8)) ?? "No plugin status. The bridge may not have started."
-        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + storageStatus + "\n" + overlayVisibilityStatus + "\nWindow maintenance since show: moves \(overlayMoveCount); ordering changes \(overlayOrderCount); level changes \(overlayLevelChangeCount).\n" + lastLayout + "\n" + panelCheckStatus + "\n\nTiming: " + lastTiming
+        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + storageStatus + "\n" + overlayVisibilityStatus + "\n" + overlayLifecycleStatus + "\nWindow maintenance since show: moves \(overlayMoveCount); ordering changes \(overlayOrderCount); level changes \(overlayLevelChangeCount).\n" + lastLayout + "\n" + panelCheckStatus + "\n\nTiming: " + lastTiming
     }
     @objc func showDiagnostics() {
         let saved = lastResult
