@@ -237,3 +237,11 @@ Automated verification: `bash test.sh` passed, including ARW candidate selection
 ## 1.0.6 candidate
 
 Confirmed Library heartbeat now dismisses visible/suspended overlays, cancels pending overlay loads and discards ongoing Develop screen-inspection callbacks. Unknown/stale module state and floating displays retain their previous behaviour. Existing Lua bridge tests passed, including immediate reporting of a module switch; native app build passed. Native switch/return acceptance is pending in TESTING.md. No changes to detection geometry or window-ordering policy.
+
+## Acceptance before 1.0.7
+
+User accepted 1.0.6 ("Looks good, merge into main branch"); main was fast-forwarded to 3895434 with the tested app staged. No individual 1.0.6 checklist annotations were supplied. The 1.0.7 work remains isolated in the candidate worktree.
+
+## 1.0.7 candidate validation
+
+`bash test.sh` passed: existing Full/split raster, bridge, preview and geometry regressions plus off-screen content-local crop/child-extent/coordinate checks. After adding a missed-restore safeguard, the core suite was rebuilt and rerun separately. Native build, staged signature/plist and diff checks passed. These synthetic tests do not establish native ScreenCaptureKit child composition or Lightroom notification delivery. No app was launched or Lightroom manipulated; user acceptance remains pending in TESTING.md. Main’s accepted 1.0.6 payload remains untouched.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.7 — candidate
+
+Add explicitly cropped window-only capture for off-screen windows, preserving contained-window capture. Add optional Accessibility minimise notifications, binding retries and common-mode lifecycle polling. Native acceptance pending.
+
 ## 1.0.6 — candidate
 
 Dismiss the overlay on a confirmed switch to Library, cancelling pending overlay loading. Preserve the floating display and retention through uncertain module/heartbeat state. Returning to Develop does not automatically reopen it.

@@ -14,7 +14,7 @@ Export.swift writes the view's retained embedded snapshot only on explicit Save,
 
 CG/ScreenCaptureKit window geometry is top-left screen coordinates; AppKit is bottom-left. Convert once using the primary display's top-left height relationship (`appKitRect`). Window movement must use deltas in the same coordinate system. Retina pixels are not points.
 
-Capture uses a display-bound filter including only Lightroom's selected window and children, with an explicit display-local source crop. This fixed shifted captures in non-maximised windows. New capture requires a window wholly on one display; do not substitute the display width for the window width. Stability checks reject movement during capture.
+Capture uses a display-bound filter including only Lightroom's selected window and children, with an explicit display-local source crop. This fixed shifted captures in non-maximised windows. Wholly contained windows retain this path. Clipped/spanning windows use a desktop-independent window filter, cropping the parent frame relative to the filter content extent; if that extent does not contain the complete parent, reject rather than stretch visible pixels. Do not substitute display or child-surface width for the parent width. Stability checks reject movement during capture.
 
 Analysis raster dimensions can differ from capture dimensions. Compute x/y scale from actual raster and window sizes; apply configured point insets through these scales. Background checks cap capture width at 1280; normal detection is not reduced for this optimisation.
 
@@ -100,3 +100,9 @@ CR3 continues to request JpgFromRaw only. ARW probes JpgFromRaw then PreviewImag
 Optional real-file check (read-only; no image output): compile tests/arw-sample/main.swift with Sources/Core.swift, Sources/ImageSource.swift and Sources/Export.swift, then pass a local ARW path. Requires ExifTool. It checks extraction, orientation/export in memory, cache reuse and unchanged RAW hash/mtime. Do not commit the sample.
 
 A fresh bridge heartbeat reporting `library` is an explicit overlay dismissal condition. The existing module timer uses `hide()` to release a visible/suspended overlay and cancel pending overlay requests. Unknown/stale module state is not a dismissal signal; floating displays are independent.
+
+## Off-screen capture and minimise notifications (1.0.7 candidate)
+
+The off-screen fallback uses Apple's public `SCContentFilter(desktopIndependentWindow:)`; the existing Full/split detector and point/raster mapping are unchanged. Cache keys distinguish capture modes/extents. Preview/calibration share the same capture. Background checks still pause off-screen. Verify native content extent and child composition through diagnostics/preview before declaring this fallback accepted. API reference: https://developer.apple.com/documentation/screencapturekit/sccontentfilter
+
+An optional AX observer listens for host miniaturise/deminiaturise notifications on the common run-loop modes. Miniaturise suspends immediately and overrides potentially lagging AX attributes for 0.4 seconds; subsequent polling can recover even if a restore notification was missed. Window visibility must also recover before restoring. Failed initial AX binding retries at most once per second while an overlay exists, without prompting for permission. Lifecycle polling also runs in common modes during tracking. With no Accessibility permission or unsupported notifications, the existing window-list fallback remains; native minimisation is not claimed fixed without testing. Diagnostics report whether notifications are active.

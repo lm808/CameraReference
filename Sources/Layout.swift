@@ -194,11 +194,45 @@ func overlayHostAction(saved:CGRect,current:CGRect?,onScreen:Bool,overview:Bool)
     return .translate(CGPoint(x:current.minX-saved.minX,y:current.minY-saved.minY))
 }
 
+// Notifications win briefly over lagging AX attributes during animation, but a
+// missed restore notification must not leave a retained overlay hidden forever.
+func hostMinimizedState(polled:Bool?,notified:Bool?,notificationAge:TimeInterval)->Bool? {
+    if notified == true,notificationAge<0.4 { return true }
+    return polled ?? notified
+}
+
 // Bounded, read-only AX lifecycle checks when already authorised. No permission
 // prompts from the timer; window-list metadata remains the fallback.
 final class LightroomHostAccessibility {
     private let application:AXUIElement
     private let host:AXUIElement
+    private var observer:AXObserver?
+    private var notifiedMinimized:Bool?
+    private var notificationTime:TimeInterval=0
+    var onMinimized:(()->Void)?
+    var watchesMinimize:Bool { observer != nil }
+    deinit {
+        if let observer { CFRunLoopRemoveSource(CFRunLoopGetMain(),AXObserverGetRunLoopSource(observer),.commonModes) }
+    }
+    private func watchMinimize(pid:pid_t) {
+        var created:AXObserver?
+        guard AXObserverCreate(pid,{ _,_,notification,context in
+            guard let context else { return }
+            let owner=Unmanaged<LightroomHostAccessibility>.fromOpaque(context).takeUnretainedValue()
+            owner.notificationTime=ProcessInfo.processInfo.systemUptime
+            if notification as String == kAXWindowMiniaturizedNotification {
+                owner.notifiedMinimized=true;owner.onMinimized?()
+            } else if notification as String == kAXWindowDeminiaturizedNotification {
+                owner.notifiedMinimized=false
+            }
+        },&created) == .success,let created else { return }
+        let context=Unmanaged.passUnretained(self).toOpaque()
+        let mini=AXObserverAddNotification(created,host,kAXWindowMiniaturizedNotification as CFString,context)
+        let restore=AXObserverAddNotification(created,host,kAXWindowDeminiaturizedNotification as CFString,context)
+        guard mini == .success,restore == .success else { return }
+        observer=created
+        CFRunLoopAddSource(CFRunLoopGetMain(),AXObserverGetRunLoopSource(created),.commonModes)
+    }
     private static func read(_ element:AXUIElement,_ key:String)->CFTypeRef? {
         var value:CFTypeRef?
         guard AXUIElementCopyAttributeValue(element,key as CFString,&value) == .success else { return nil }
@@ -227,8 +261,12 @@ final class LightroomHostAccessibility {
             return abs(r.minX-cg.minX)<2 && abs(r.minY-cg.minY)<2 && abs(r.width-cg.width)<2 && abs(r.height-cg.height)<2
         }) else { return nil }
         application=app;host=match;AXUIElementSetMessagingTimeout(host,0.03)
+        watchMinimize(pid:pid)
     }
-    var minimized:Bool? { (Self.read(host,kAXMinimizedAttribute) as? NSNumber)?.boolValue }
+    var minimized:Bool? {
+        hostMinimizedState(polled:(Self.read(host,kAXMinimizedAttribute) as? NSNumber)?.boolValue,
+                           notified:notifiedMinimized,notificationAge:ProcessInfo.processInfo.systemUptime-notificationTime)
+    }
     var hasDialog:Bool {
         if let children=Self.read(host,kAXChildrenAttribute) as? [AXUIElement],
            children.prefix(16).contains(where:{Self.read($0,kAXRoleAttribute) as? String == kAXSheetRole}) { return true }

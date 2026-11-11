@@ -54,3 +54,17 @@ if CommandLine.arguments.count > 2 {
     assert(abs(photo.width-237)<5 && abs(photo.height-158)<4)
     print("PASS: 900 × 702 screenshot detects narrow viewport and fits photograph within measured screen bounds")
 }
+
+// Window-only filters expose the full content extent, even outside displays.
+for origin in [CGPoint(x:-120,y:33),CGPoint(x:800,y:-50),CGPoint(x:1200,y:700)] {
+    let host=CGRect(origin:origin,size:CGSize(width:1392,height:888))
+    assert(windowCaptureSourceRect(window:host,display:display) == nil)
+    assert(windowCaptureSourceRect(window:host,display:host) == CGRect(origin:.zero,size:host.size))
+    let childrenExtent=host.insetBy(dx:-24,dy:-16)
+    let crop=windowCaptureSourceRect(window:host,display:childrenExtent)!
+    assert(crop == CGRect(x:24,y:16,width:1392,height:888))
+    let mapped=crop.offsetBy(dx:childrenExtent.minX,dy:childrenExtent.minY)
+    assert(mapped == host)
+    assert(appKitRect(appKitRect(mapped,primaryHeight:982),primaryHeight:982) == host)
+}
+print("PASS: off-screen window-local crops preserve full dimensions, child offsets and screen coordinates")

@@ -57,14 +57,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var panel: OverlayPanel?
     var overlayHost:HostWindowSnapshot?
     var overlayAccessibility:LightroomHostAccessibility?
+    var nextAccessibilityBind:TimeInterval=0
+    func bindOverlayAccessibility(pid:pid_t,frame:CGRect) {
+        guard overlayAccessibility == nil,ProcessInfo.processInfo.systemUptime>=nextAccessibilityBind else { return }
+        nextAccessibilityBind=ProcessInfo.processInfo.systemUptime+1
+        overlayAccessibility=LightroomHostAccessibility(pid:pid,hostFrame:frame)
+        overlayAccessibility?.onMinimized={ [weak self] in self?.suspendOverlay(reason:"Lightroom minimise notification") }
+    }
     var overlayBaselineWindows=Set<CGWindowID>()
     var overlayDialogVisible=false
     var overlayLifecycleStatus="Window lifecycle not sampled."
     func updateOverlayLifecycle() {
         guard let saved=overlayHost,let owner=NSWorkspace.shared.runningApplications.first(where:isLightroomApp) else { return }
+        bindOverlayAccessibility(pid:owner.processIdentifier,frame:saved.frame)
         let windows=lightroomWindowMetadata(pid:owner.processIdentifier)
         overlayDialogVisible=(overlayAccessibility?.hasDialog ?? false) || (windows.map { hasNewLightroomDialog(windows:$0,host:saved.id,baseline:overlayBaselineWindows) } ?? false)
-        overlayLifecycleStatus="Lifecycle: dialog \(overlayDialogVisible); minimised \(overlayAccessibility?.minimized.map(String.init) ?? "unavailable"); \(overlayAccessibility == nil ? "window-list fallback":"Accessibility + window list")."
+        overlayLifecycleStatus="Lifecycle: minimise notifications \(overlayAccessibility?.watchesMinimize == true ? "active":"unavailable"); dialog \(overlayDialogVisible); minimised \(overlayAccessibility?.minimized.map(String.init) ?? "unavailable"); \(overlayAccessibility == nil ? "window-list fallback":"Accessibility + window list")."
     }
     var overlayEpoch:String?
     var overlaySuspended=false
@@ -240,7 +248,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if initial && overlayHost == nil {
             overlayHost=hostWindowSnapshot(CGWindowID(number));overlayEpoch=selectionEpoch()
             overlayBaselineWindows=Set(lightroomWindowMetadata(pid:owner.processIdentifier)?.map(\.id) ?? [])
-            if let host=overlayHost { overlayAccessibility=LightroomHostAccessibility(pid:owner.processIdentifier,hostFrame:host.frame) }
+            if let host=overlayHost { bindOverlayAccessibility(pid:owner.processIdentifier,frame:host.frame) }
         }
         guard overlayHost?.id==CGWindowID(number) else { return false }
         if floating {
@@ -450,6 +458,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.checkPanelBoundariesIfDue()
             // Module/heartbeat uncertainty invalidates reuse, not the user-visible image.
         }
+        if let moduleTimer { RunLoop.main.add(moduleTimer,forMode:.common) }
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(frontAppChanged), name: NSWorkspace.didActivateApplicationNotification, object: nil)
         NSWorkspace.shared.notificationCenter.addObserver(self,selector:#selector(spaceChanged),name:NSWorkspace.activeSpaceDidChangeNotification,object:nil)
         NotificationCenter.default.addObserver(self, selector: #selector(displaysChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)

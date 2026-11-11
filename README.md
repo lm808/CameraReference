@@ -1,4 +1,4 @@
-# Camera Reference — 1.0.6
+# Camera Reference — 1.0.7
 
 Camera Reference is a macOS menu-bar companion for Lightroom Classic. It displays a camera JPEG over Lightroom’s working area, or in an independent floating window, so you can compare it with your RAW edit.
 
@@ -59,7 +59,7 @@ Open it through **Settings → Edit config file**. Existing `detection.conf` is 
 
 ## Limitations and help
 
-Placement assumes Lightroom Fit and a supported, clearly bounded viewport. Crop, lens/perspective corrections and RAW/JPEG aspect differences can prevent exact alignment. Split wipe views and automatic synchronisation with Lightroom’s zoom/pan are not supported. New automatic detection requires the Lightroom window wholly on one display; an already placed overlay can follow it partially off-screen.
+Placement assumes Lightroom Fit and a supported, clearly bounded viewport. Crop, lens/perspective corrections and RAW/JPEG aspect differences can prevent exact alignment. Split wipe views and automatic synchronisation with Lightroom’s zoom/pan are not supported. Partially off-screen windows use a window-only capture with an explicit crop; wholly contained windows retain the established display capture. Native acceptance of this fallback is pending.
 
 See [troubleshooting and uninstalling](docs/TROUBLESHOOTING.md), [privacy](PRIVACY.md), [current acceptance tests](TESTING.md), and [release notes](RELEASE-NOTES.md). Report failures with app/bridge versions, layout/pane, diagnostics and a screenshot if you are comfortable sharing it.
 

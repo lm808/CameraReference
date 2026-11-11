@@ -455,3 +455,10 @@ for size in [CGSize(width:6000,height:4000),CGSize(width:4000,height:6000)] {
     n.reset();assert(n.zoom==1 && n.pan == .zero)
 }
 print("PASS: larger-region panning, pointer-centred zoom and exact Fit reset for portrait/landscape")
+
+assert(hostMinimizedState(polled:false,notified:true,notificationAge:0.1) == true)
+assert(hostMinimizedState(polled:false,notified:true,notificationAge:1) == false)
+assert(hostMinimizedState(polled:true,notified:false,notificationAge:1) == true)
+assert(hostMinimizedState(polled:nil,notified:true,notificationAge:1) == true)
+assert(hostMinimizedState(polled:nil,notified:nil,notificationAge:1) == nil)
+print("PASS: minimise notification bridges attribute lag; polling recovers a missed restore without treating uncertainty as minimisation")

@@ -1,10 +1,9 @@
-# CameraReference 1.0.6 — candidate
+# CameraReference 1.0.7 — candidate
 
-Run this worktree’s release/CameraReference.app. Bridge 0.5.2 and defaults (40/all ui) are unchanged.
+Run this worktree’s release/CameraReference.app. Main retains accepted 1.0.6; bridge 0.5.2 and config defaults are unchanged.
 
-- Switching to Library dismisses the overlay and cancels pending overlay loading, including while suspended. Floating display is unaffected; returning to Develop requires invoking again. Unknown/stale module state still keeps the overlay.
-- Zoom/pan uses the full overlay region while preserving the original Fit rectangle.
-- Calibration pane icons no longer have parentheses.
-- Sony ARW embedded previews supported: select the largest valid JpgFromRaw/PreviewImage, retain orientation, caching and explicit export. The supplied sample yields 1616 × 1080; higher detail depends on available embedded previews. No RAW writes or persistent image cache.
+- Partially off-screen/spanning windows use an explicit window-only crop. Fully contained windows retain the accepted display capture and unchanged Full/split detection.
+- When Accessibility is already authorised, listen for minimise/restore notifications and retry missing host binding. Lifecycle polling continues during window interactions. No new permission prompt.
+- Diagnostics identify capture mode and minimise-notification availability.
 
-Off-screen detection and minimise/restore reliability are unchanged and deferred. Native zoom/ARW acceptance is in TESTING.md; previous results are preserved. No DMG or merge.
+Native off-screen and minimise/restore testing is required; see TESTING.md. Window-list fallback remains when notifications are unavailable. No DMG, installation or merge.

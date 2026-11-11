@@ -2,8 +2,8 @@
 
 ## 1.0 alpha acceptance
 
-- Validate temporary hiding/restoration through Mission Control, App Exposé, minimising and Spaces.
-- Validate partially off-screen following and return, including other apps covering Lightroom.
+- Validate 1.0.7 minimise notifications/restoration, including fallback without Accessibility; retain Mission Control/App Exposé/Space behaviour.
+- Validate 1.0.7 fresh off-screen window capture, including child surfaces, split layouts and mixed-scale displays; retain off-screen following and other-app covering.
 - Check DMG installation and advanced config migration without losing personal settings.
 - Retain Full and all split-pane portrait/landscape placement; user accepted 0.9.15 with sideSearchPercent = 30.
 
