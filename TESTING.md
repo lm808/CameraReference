@@ -1,7 +1,8 @@
-# CameraReference 1.0.5 — first update checks
+# CameraReference 1.0.6 — candidate checks
 
-Quit the previous candidate and open **this worktree’s release/CameraReference.app**, confirming 1.0.5. Bridge 0.5.2 is unchanged. Your previous annotations are preserved in docs/VALIDATION.md.
+Quit the previous candidate and open **this worktree’s release/CameraReference.app**, confirming 1.0.6. Bridge 0.5.2 is unchanged. Your previous annotations are preserved in docs/VALIDATION.md.
 
+- [ ] Show an overlay, switch to Library: it dismisses. Return to Develop: it stays closed until invoked again. Repeat switching while an overlay is loading. A floating display should stay open.
 - [ ] At Fit, landscape/portrait reference size and alignment are unchanged. Zoom the reference: it uses the full detected/calibrated region, including the previous backdrop margins, without spilling outside the region.
 - [ ] Cmd-scroll stays centred around the pointer when pan limits allow; pan to each edge; Fit restores the original size/position. Check asymmetric ui/photo bounds if you use them. Floating display still zooms/pans normally.
 - [ ] Detection-failure guidance shows pane icons without parentheses. Layout/mode wording and cancellation are unchanged.

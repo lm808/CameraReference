@@ -1,4 +1,4 @@
-# Camera Reference — 1.0.5
+# Camera Reference — 1.0.6
 
 Camera Reference is a macOS menu-bar companion for Lightroom Classic. It displays a camera JPEG over Lightroom’s working area, or in an independent floating window, so you can compare it with your RAW edit.
 
@@ -43,7 +43,7 @@ Zoomed overlays can draw and pan across their whole region; Fit keeps the origin
 
 The current selected photo’s JPEG bytes and decoded image are cached in RAM. Automatic UI bounds are reused for repeated toggles; window movement translates them, while resize, selection and relevant settings changes invalidate reuse. No disk image cache is created.
 
-The overlay floats while Lightroom is active, preventing Lightroom clicks from covering it. When another app becomes active, it drops to normal window level so other applications can cover it. It follows Lightroom movement. In this alpha, overview/Space/minimisation transitions suspend it rather than release its image; return to the host window permits restoration, even after resize or selection changes. Partial off-screen movement uses normal clipping. Placement uncertainty invalidates the cache for the next invocation without dismissing the visible overlay. You can dismiss it manually. These behaviours still need native acceptance on your display setup.
+The overlay floats while Lightroom is active, preventing Lightroom clicks from covering it. When another app becomes active, it drops to normal window level so other applications can cover it. It follows Lightroom movement. In this alpha, overview/Space/minimisation transitions suspend it rather than release its image; return to the host window permits restoration, even after resize or selection changes. Partial off-screen movement uses normal clipping. Placement uncertainty invalidates the cache for the next invocation without dismissing the visible overlay. Switching to Library dismisses the overlay; returning to Develop does not reopen it. The floating display stays open. You can also dismiss the overlay manually. These behaviours still need native acceptance on your display setup.
 
 Background checks detect internal panel changes while Lightroom is active. They default to every **3 seconds**, use a lower-resolution capture, and are cancelled for foreground requests. Set the interval to **0** to disable them; use Clear region after panel changes in that case.
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.6 — candidate
+
+Dismiss the overlay on a confirmed switch to Library, cancelling pending overlay loading. Preserve the floating display and retention through uncertain module/heartbeat state. Returning to Develop does not automatically reopen it.
+
 ## 1.0.5 — candidate
 
 Remove icon parentheses; separate Fit geometry from the whole-region zoom/pan boundary. Add ARW embedded JPEG selection across JpgFromRaw/PreviewImage while retaining the CR3 path. Supplied ARW passed read-only extraction/export checks. Off-screen capture and minimise reliability remain deferred.

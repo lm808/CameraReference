@@ -434,7 +434,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.consolidateStorageIfDue()
             let epoch=self.selectionEpoch()
             self.imageCache.observe(epoch)
-            if let memory=self.placementMemory,memory.epoch != epoch || self.currentModule() != "develop" { self.placementMemory=nil }
+            let module=self.currentModule()
+            if let memory=self.placementMemory,memory.epoch != epoch || module != "develop" { self.placementMemory=nil }
+            // A confirmed Library switch dismisses even a suspended overlay and
+            // cancels an in-flight overlay request. Missing/stale heartbeats do neither.
+            if module == "library" {
+                if self.panel != nil || self.destination == .overlay { self.hide() }
+                // Detection also requires Develop; discard its callback so a
+                // quick return cannot resurrect an overlay from the old request.
+                if self.screenInspectionID != nil { self.cancelScreenInspection() }
+            }
             self.workspaceOverview=(self.panel != nil || self.placementMemory != nil) && workspaceOverviewIsVisible()
             self.observeWindowGeometry()
             if self.panel != nil { _ = self.orderOverlayAboveLightroom() }

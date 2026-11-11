@@ -233,3 +233,7 @@ If dialog/minimise behaviour fails, copy Developer tools → Bridge diagnostics 
 Sony ARW sample supplied by the user was tested read-only: PreviewImage selected, 1616 × 1080 decoded pixels, 272733 JPEG bytes. In-memory export/orientation round-trip and cache reuse passed; RAW SHA-256 and modification time stayed unchanged. No extracted JPEG was saved. This establishes that sample, not every Sony model. Synthetic cases cover larger valid candidates from either tag, invalid fallback and rotated output. Native portrait ARW acceptance and the new zoom interaction remain in TESTING.md.
 
 Automated verification: `bash test.sh` passed, including ARW candidate selection/fallback/orientation/cache tests, whole-region navigation geometry, and a rendered-pixel test confirming zoom draws outside the original Fit rectangle. Native build, staged app signature verification, plist version 1.0.5 and `git diff --check` passed. Native acceptance remains pending; no app launch, installation or DMG was performed.
+
+## 1.0.6 candidate
+
+Confirmed Library heartbeat now dismisses visible/suspended overlays, cancels pending overlay loads and discards ongoing Develop screen-inspection callbacks. Unknown/stale module state and floating displays retain their previous behaviour. Existing Lua bridge tests passed, including immediate reporting of a module switch; native app build passed. Native switch/return acceptance is pending in TESTING.md. No changes to detection geometry or window-ordering policy.
