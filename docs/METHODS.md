@@ -55,7 +55,7 @@ Background validation defaults to 3 seconds while Lightroom is active in Develop
 
 ## Overlay lifecycle and ordering
 
-The overlay is normal-level, nonactivating and ordered immediately above the selected Lightroom window. Other windows can cover both. Do not use a globally floating overlay or dismiss merely because another app becomes active.
+The overlay is nonactivating and floats only while Lightroom is active. App activation notifications lower it immediately when another app activates; the timer is a fallback. Inactive ordering places it above its Lightroom host at normal level so other apps can cover both. While floating it avoids timer-driven ordering calls. Do not keep it globally floating across app switches or dismiss merely because another app becomes active.
 
 Movement allows partial off-screen clipping. AppKit must not constrain the borderless overlay back inside a display. Resizing invalidates geometry.
 
@@ -84,3 +84,5 @@ build/ is internal. scripts/stage.sh builds then checksum-syncs changed componen
 ## Avoiding unnecessary overlay updates (1.0.2)
 
 The geometry timer applies a frame-origin change only for a nonzero host translation. Window ordering requires the overlay to remain above its host, not immediately adjacent: intervening Lightroom-owned windows are tolerated. An intervening foreign window still causes correction so another application can cover Lightroom and its overlay. Diagnostics count actual frame moves and ordering calls since show. These counts help test zoom/pan flicker; native improvement is not established by synthetic ordering tests alone.
+
+1.0.3 changes the window-level strategy after the user reported flicker on every click in 1.0.2. The earlier adjacency-only fix was insufficient. Dialog/sheet and native overview behaviour need explicit acceptance; do not claim the floating approach has passed live tests.

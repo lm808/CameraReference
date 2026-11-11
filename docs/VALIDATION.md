@@ -1,5 +1,9 @@
 # Validation evidence
 
+## 1.0.3 candidate
+
+Local app built and staged with foreground-dependent floating level. Targeted split/ordering/config tests passed; these test normal-level fallback and configuration, not native cross-process activation. Signature/plist verified. Clicking, zoom/pan, dialogs/sheets, app switching and overview acceptance remain pending. No permissions changed and no plugin reinstall required.
+
 ## 1.0.2 candidate
 
 Built/staged in the codex/flicker-fix worktree; original main app remains 1.0.1. Full automated suite passed, including intervening Lightroom-window tolerance, foreign-window precedence, fresh-install default 40, missing-key defaults and preservation of explicit saved values. Generated template and distributed example agree exactly. App signature and plist verified. Native zoom/pan flicker acceptance is pending; maintenance counters and TESTING.md describe the check. No app was launched, plugin installed, merge performed or DMG produced.
