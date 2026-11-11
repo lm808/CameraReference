@@ -99,3 +99,15 @@ Split-only search prefers the combined supported viewport rather than the innerm
 Overlay uses public AppKit transient/ignoresCycle behaviour, intended to hide during Mission Control, and ordering reconciliation does not reinsert an already shown panel absent from the onscreen list. Native overview/return behaviour remains acceptance work. Background rejection diagnostics now distinguish changed from unvalidated bounds and include before/after UI plus detector report; they do not claim the user's disappearance cause is proven.
 
 Full regression suite passed for the margin/combined-viewport change. Final targeted viewport tests also passed after seed hardening and normal/1280px consistency additions; final app build, signature, plist and diff checks passed. No native Mission Control or Lightroom acceptance is claimed.
+
+## 0.9.14 user regression and 0.9.15 replacement
+
+User reports0.9.14 side-by-side recognition failed for both orientations and stacked placement covered Lightroom UI; reject the prior synthetic successes as sufficient acceptance. User confirms selecting Full in Lightroom split layouts finds the combined area correctly.0.9.15 therefore restores ViewportDetector.swift exactly to0.9.13 and invokes its singlePhoto/Full path for combined bounds. No split-specific rectangle ranking, minimum25% size rule, or saved-pane substitution remains in that path.
+
+The new divider scanner uses only the bottom configured inset for side-by-side and left inset for stacked layouts, with12 or fewer traces spanning20–80% of the inset. It requires a thin contrast line with matching background on both sides across at least half the traces. This tolerates missing endpoint pixels; top labels/right photo content are not sampled. Missing/ambiguous evidence or an unusably small inset offers calibration.
+
+Full suite passed. The0.9.14 portrait fixture exposes an ambiguous Full result, so it is now explicitly a known-viewport margin-scanner test rather than justification to modify Full. Pipeline fixtures still verify identical Full bounds and pane selection/fallback. Tests cover wrong orientation, all four panes, stale hints, endpoint gaps, unused-margin labels, zero inset and resolution consistency.
+
+Actual user margin crops passed at full/half/quarter resolution: horizontal divider1118.5/1118/1116 original crop pixels; vertical divider2075.39/2076/2074.90. Crop tests use explicit local viewport coordinates and do not claim to test full-window detection. Optional tests/margin-crops/main.swift takes the two original files; screenshots are not committed. Other native tests deferred by user; no Mission Control or unrelated UI changes in0.9.15.
+
+Final0.9.15 app build, signature/plist and diff checks passed. ViewportDetector.swift is byte-for-byte identical to the0.9.13 commit. Native split acceptance remains required; no unrelated UI changes were made.

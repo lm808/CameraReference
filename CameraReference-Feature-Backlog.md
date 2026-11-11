@@ -3,6 +3,13 @@
 Updated: 10 November 2026.
 Current baseline: 0.9.6 accepted by user as working for most cases; 0.9.7 adds the icon; 0.9.8 is the polish/test build. Historical sections below are retained as development history, not current outstanding requirements. This checklist supersedes their old statuses.
 
+## 0.9.15 — current status
+
+- [x] Replace regressed0.9.14 split method with unchanged Full combined bounds.
+- [x] Bottom-only/left-only configured-inset scanning, endpoint-gap tolerance and ambiguity fallback.
+- [x] Actual supplied crop checks at three resolutions; short split-only TESTING.md.
+- [ ] Native split placement acceptance. Other tests deferred at user request.
+
 ## 0.9.14 — current status
 
 - [x] Preserve accepted0.9.13 icons, hover, navigation, ordinary following and148ms cache-hit result as regression baselines.

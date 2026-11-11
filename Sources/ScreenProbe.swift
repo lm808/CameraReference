@@ -135,7 +135,7 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
                 let top=appKitRect(seed,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
                 return CGRect(x:(top.minX-window.frame.minX)*sx,y:(top.minY-window.frame.minY)*sy,width:top.width*sx,height:top.height*sy)
             }
-            detection=detectSplitViewport(in:raster,layout:layout,seed:local,sideSearchPercent:settings.sideSearchPercent)
+            detection=detectSplitViewport(in:raster,layout:layout,seed:local,sideSearchPercent:settings.sideSearchPercent,insetPixels:CGSize(width:settings.fitInsetPoints*sx,height:settings.fitInsetPoints*sy))
             reused=false
         }
         let childMode:String
@@ -167,21 +167,58 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
     catch { return ScreenProbeResult(candidate:nil,summary:"Screen inspection failed. Check permission, keep Lightroom visible and try again. No capture was saved.") }
 }
 
-// Split-only boundary validation. Full mode never calls this path.
-func detectSplitViewport(in raster:EdgeRaster,layout:OverlayLayout,seed:CGRect?=nil,sideSearchPercent:Double=45)->ViewportDetection {
-    if let seed,seed.width*(layout.group==1 ? 2:1)>=CGFloat(raster.width)*0.25,seed.height*(layout.group==2 ? 2:1)>=CGFloat(raster.height)*0.25 {
-        // A pane hint must also validate as part of a complete two-pane viewport.
-        // Never accept a stale narrow gap merely because its own four edges exist.
-        var combined=seed
-        if layout.group==1 { combined.size.width *= 2;if layout == .right { combined.origin.x -= seed.width } }
-        else { combined.size.height *= 2;if layout == .lower { combined.origin.y -= seed.height } }
-        let result=detectViewport(in:raster,knownBounds:combined,singlePhoto:false,sideSearchPercent:sideSearchPercent,splitAxis:layout.group)
-        if let full=result.bounds,let found=layout.pane(in:full,vertical:result.verticalDivider,horizontal:result.horizontalDivider),
-           abs(found.minX-seed.minX)<3,abs(found.minY-seed.minY)<3,abs(found.maxX-seed.maxX)<3,abs(found.maxY-seed.maxY)<3 {
-            return ViewportDetection(bounds:found,verticalDivider:nil,horizontalDivider:nil,background:result.background,summary:"Calibrated pane validated against combined viewport and divider.\n"+result.summary)
-        }
+// Always obtain the combined viewport through the unchanged Full detector.
+// A previous pane hint must not substitute different outer bounds.
+func detectSplitViewport(in raster:EdgeRaster,layout:OverlayLayout,seed _:CGRect?=nil,sideSearchPercent:Double=45,insetPixels:CGSize=CGSize(width:18,height:18))->ViewportDetection {
+    let full=detectViewport(in:raster,singlePhoto:true,sideSearchPercent:sideSearchPercent)
+    guard let viewport=full.bounds else { return full }
+    let scan=scanInsetDivider(in:raster,viewport:viewport,layout:layout,insetPixels:insetPixels)
+    let pane=layout.pane(in:viewport,vertical:layout.group==1 ? scan.position:nil,horizontal:layout.group==2 ? scan.position:nil)
+    return ViewportDetection(bounds:pane,verticalDivider:nil,horizontalDivider:nil,background:full.background,summary:full.summary+"\n"+scan.summary+"\nSelected \(layout.label) pane: \(String(describing:pane)).")
+}
+
+// Pixel coordinates. Scan only the bottom margin for left/right, left margin for
+// upper/lower. Several parallel traces tolerate short divider endpoint gaps.
+func scanInsetDivider(in raster:EdgeRaster,viewport:CGRect,layout:OverlayLayout,insetPixels:CGSize)->(position:CGFloat?,summary:String) {
+    let vertical=layout.group==1
+    let inset=vertical ? insetPixels.height:insetPixels.width
+    let name=vertical ? "bottom":"left"
+    guard layout != .full,inset.isFinite,inset>=4,viewport.width>0,viewport.height>0 else {
+        return (nil,"Configured inset is too small for reliable divider scanning; calibrate manually.")
     }
-    let outer=detectViewport(in:raster,singlePhoto:false,sideSearchPercent:sideSearchPercent,splitAxis:layout.group)
-    let pane=outer.bounds.flatMap { layout.pane(in:$0,vertical:outer.verticalDivider,horizontal:outer.horizontalDivider) }
-    return ViewportDetection(bounds:pane,verticalDivider:nil,horizontalDivider:nil,background:outer.background,summary:outer.summary+"\nExplicit \(layout.label) pane: " + (pane == nil ? "No supported divider; calibrate the chosen pane.":"UI bounds accepted."))
+    func rgb(_ x:Int,_ y:Int)->[Int]? {
+        guard x>=0,y>=0,x<raster.width,y<raster.height else { return nil }
+        let i=(y*raster.width+x)*4
+        return (0..<3).map { Int(raster.rgba[i+$0]) }
+    }
+    func difference(_ a:[Int],_ b:[Int])->Int { zip(a,b).map { abs($0-$1) }.max()! }
+    let start=vertical ? viewport.minX:viewport.minY,end=vertical ? viewport.maxX:viewport.maxY
+    let low=Int(start+(end-start)*0.2),high=Int(start+(end-start)*0.8)
+    guard high>low else { return (nil,"No interior divider search interval.") }
+    let first=max(2,Int(ceil(inset*0.2))),last=Int(floor(inset*0.8))
+    guard last>=first else { return (nil,"Inset leaves no usable scan band.") }
+    let offsets=Array(Set((0..<12).map { first+(last-first)*$0/11 })).sorted()
+    // Width allowance scales with the available inset; wider objects are not thin dividers.
+    let flank=max(2,min(8,Int(ceil(inset/6))))
+    var supported=[Int]()
+    for position in low..<high {
+        var hits=0
+        for offset in offsets {
+            let across=vertical ? Int(viewport.maxY)-1-offset:Int(viewport.minX)+offset
+            let c=vertical ? rgb(position,across):rgb(across,position)
+            let a=vertical ? rgb(position-flank,across):rgb(across,position-flank)
+            let b=vertical ? rgb(position+flank,across):rgb(across,position+flank)
+            if let c,let a,let b,difference(a,b)<=6,difference(c,a)>=3,difference(c,b)>=3 { hits+=1 }
+        }
+        if hits>=max(2,Int(ceil(Double(offsets.count)*0.5))) { supported.append(position) }
+    }
+    var groups=[[Int]]()
+    for position in supported {
+        if let last=groups.last?.last,position-last<=2 { groups[groups.count-1].append(position) }
+        else { groups.append([position]) }
+    }
+    let valid=groups.filter { $0.last!-$0.first!<=flank*2 }
+    let detail="Full viewport \(viewport); \(name) inset \(inset) raster pixels, offsets \(first)…\(last), \(offsets.count) traces; \(valid.count) thin-line candidates."
+    guard valid.count==1,groups.count==1 else { return (nil,detail+" Missing/ambiguous divider; calibrate manually.") }
+    return (CGFloat(valid[0].first!+valid[0].last!)/2,detail)
 }

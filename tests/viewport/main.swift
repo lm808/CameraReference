@@ -253,26 +253,53 @@ func portraitPair(orientation:Int)->EdgeRaster {
     } }
     return EdgeRaster(width:width,height:height,rgba:bytes)
 }
-for mode:OverlayLayout in [.left,.right,.upper,.lower] {
-    let found=detectSplitViewport(in:portraitPair(orientation:mode.group),layout:mode)
-    expect(found.bounds != nil,"Portrait pair rejected: \(mode): \(found.summary)")
-    let expected=mode.pane(in:CGRect(x:200,y:80,width:1200,height:820),vertical:800,horizontal:490)!
-    expect(abs(found.bounds!.minX-expected.minX)<3 && abs(found.bounds!.minY-expected.minY)<3 && abs(found.bounds!.width-expected.width)<3 && abs(found.bounds!.height-expected.height)<3,"Photo edge/gap chosen: \(mode) \(found.summary)")
+func paneFromKnownViewport(_ raster:EdgeRaster,_ mode:OverlayLayout,_ viewport:CGRect,_ inset:CGFloat=18)->CGRect? {
+    let scan=scanInsetDivider(in:raster,viewport:viewport,layout:mode,insetPixels:CGSize(width:inset,height:inset))
+    return mode.pane(in:viewport,vertical:mode.group==1 ? scan.position:nil,horizontal:mode.group==2 ? scan.position:nil)
 }
-print("PASS: portrait and landscape-like pairs select entire left/right/upper/lower panes, not photo edges or gaps")
+for mode:OverlayLayout in [.left,.right,.upper,.lower] {
+    let raster=portraitPair(orientation:mode.group)
+    let full=CGRect(x:200,y:80,width:1200,height:820)
+    let found=paneFromKnownViewport(raster,mode,full)
+    expect(found != nil,"Known viewport margin scan failed")
+    let expected=mode.pane(in:full,vertical:800,horizontal:490)!
+    expect(abs(found!.minX-expected.minX)<3 && abs(found!.minY-expected.minY)<3 && abs(found!.width-expected.width)<3 && abs(found!.height-expected.height)<3,"Photo edge/gap chosen by margin scan")
+    // This deliberately ambiguous artificial scene is NOT used to change Full.
+    let detectedFull=detectViewport(in:raster,singlePhoto:true)
+    let split=detectSplitViewport(in:raster,layout:mode)
+    if let outer=detectedFull.bounds,let pane=split.bounds { expect(outer.contains(pane),"Split bypassed Full bounds") }
+}
+print("PASS: margin scanner selects all four panes from known combined viewport; split never replaces Full bounds")
 
 let staleGap=CGRect(x:700,y:80,width:100,height:820)
-let corrected=detectSplitViewport(in:portraitPair(orientation:1),layout:.left,seed:staleGap)
-expect(corrected.bounds != nil && corrected.bounds!.width>590 && corrected.bounds!.minX<203,"Stale gap calibration hint reused as a pane")
-print("PASS: stale narrow-gap seed cannot bypass combined-viewport validation")
+let corrected=detectSplitViewport(in:fixture(bg:[0,0,0],split:1),layout:.left,seed:staleGap)
+expect(corrected.bounds != nil && corrected.bounds!.width>320 && abs(corrected.bounds!.minX-120)<3,"Stale gap calibration hint reused as a pane")
+print("PASS: stale pane hint cannot override Full bounds")
 for mode:OverlayLayout in [.left,.right,.upper,.lower] {
     let full=portraitPair(orientation:mode.group),w=1280,h=800
     var bytes=[UInt8](repeating:0,count:w*h*4)
     for y in 0..<h { for x in 0..<w { for c in 0..<4 { bytes[(y*w+x)*4+c]=full.rgba[((y*full.height/h)*full.width+x*full.width/w)*4+c] } } }
-    let low=detectSplitViewport(in:EdgeRaster(width:w,height:h,rgba:bytes),layout:mode)
-    let high=detectSplitViewport(in:full,layout:mode)
-    expect(low.bounds != nil && high.bounds != nil,"Resolution-dependent split rejection")
-    let r=low.bounds!,normalized=CGRect(x:r.minX/0.8,y:r.minY/0.8,width:r.width/0.8,height:r.height/0.8)
-    expect(!panelBoundsChanged(previous:high.bounds,current:normalized,tolerance:4),"Background resolution invalidates stable split")
+    let low=paneFromKnownViewport(EdgeRaster(width:w,height:h,rgba:bytes),mode,CGRect(x:160,y:64,width:960,height:656),14.4)
+    let high=paneFromKnownViewport(full,mode,CGRect(x:200,y:80,width:1200,height:820))
+    expect(low != nil && high != nil,"Resolution-dependent split rejection")
+    let r=low!,normalized=CGRect(x:r.minX/0.8,y:r.minY/0.8,width:r.width/0.8,height:r.height/0.8)
+    expect(!panelBoundsChanged(previous:high,current:normalized,tolerance:4),"Background resolution invalidates stable split")
 }
 print("PASS: split placement agrees across normal and 1280px background resolution")
+
+for mode:OverlayLayout in [.left,.upper] {
+    let base=fixture(bg:[0,0,0],split:mode.group)
+    var pixels=base.rgba
+    // Divider stops six pixels short of the selected margin.
+    for y in 60..<580 { for x in 120..<780 {
+        let endpoint=mode == .left ? (abs(x-450)<2 && y>=574):(abs(y-320)<2 && x<126)
+        // Distracting text-like marks in the UNUSED top/right margins.
+        let label=mode == .left ? (x>=390 && x<397 && y<75):(y>=270 && y<277 && x>765)
+        if endpoint || label { for c in 0..<3 { pixels[(y*900+x)*4+c]=endpoint ? 0:120 } }
+    } }
+    let result=detectSplitViewport(in:EdgeRaster(width:900,height:650,rgba:pixels),layout:mode)
+    expect(result.bounds != nil,"Endpoint gap or unused-margin label blocked scan")
+}
+let emptyInset=scanInsetDivider(in:fixture(bg:[0,0,0],split:1),viewport:CGRect(x:120,y:60,width:660,height:520),layout:.left,insetPixels:.zero)
+expect(emptyInset.position==nil,"Zero inset must offer calibration")
+print("PASS: short divider endpoint gaps tolerated; top/right labels ignored; zero inset rejected")

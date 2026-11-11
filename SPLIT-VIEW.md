@@ -35,3 +35,7 @@ The read-only Accessibility investigation run from a temporary test executable o
 ## 0.9.14
 
 Split candidates must represent a combined viewport (minimum25% window width/height), with the largest supported same-surround rectangle preferred. Full keeps its innermost-rectangle rule. Explicit split divider scanning samples offsets2...7 from both opposite margins and requires support at each end; unrelated photo edges terminating inside the viewport should fail. Multiple distinct divider clusters remain ambiguous. Seeded panes reconstruct a two-pane candidate and must validate combined bounds plus divider; stale tiny gap seeds are rejected. Synthetic pairs and normal/1280px consistency cover all four panes. Exact screenshot reproduction remains unavailable because the attached local path no longer exists. Native test remains essential, particularly true boundary visibility/captions and small windows.
+
+## 0.9.15 — replaces0.9.14
+
+User evidence: Full finds correct combined viewport in split layouts. Reuse detectViewport(singlePhoto:true) unchanged, then scan the configured bottom or left inset. Tests use actual supplied margin crops at three resolutions, plus independent pipeline and scanner fixtures.0.9.14 outer ranking/minimum-size/opposing-margin logic is removed, not further tuned. A saved pane is not an alternative source of outer bounds. Missing/ambiguous thin-line candidates fail safely. Crop regression can be run with `bash test.sh <stacked-left-margin.png> <side-by-side-bottom-margin.png>`; original images stay outside the repository.

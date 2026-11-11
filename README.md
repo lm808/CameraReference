@@ -1,6 +1,12 @@
-# Camera Reference 0.9.14 — robust split boundaries
+# Camera Reference 0.9.15 — Full viewport plus inset scanning
 
 Quit the old companion and open `build/CameraReference.app`. For RAM reuse, reload the updated `CameraReference.lrplugin` (bridge 0.5.0) and run File → Plug-in Extras → Start / restart Camera Reference bridge. Older bridges remain compatible but disable caching. Nothing is installed or launched by the build scripts.
+
+## New in 0.9.15
+
+Replaces the regressed0.9.14 split method. Combined bounds come directly from the unchanged0.9.13 Full detector. Side-by-side scans horizontally within the **bottom** inset only; above-and-below scans vertically within the **left** inset only. Several parallel traces tolerate the divider stopping a few pixels short of the border. Top labels are avoided.
+
+`fitInsetPoints` remains the existing configurable margin (default18macOS points), converted to actual raster pixels for both normal and low-resolution checks. Missing/ambiguous divider evidence or an inset too small to scan offers calibration. Saved pane hints cannot override Full bounds. Actual supplied crops passed at three resolutions; full native placement still needs the short TESTING.md list. Other tests/features are deferred for this release; bridge unchanged.
 
 ## New in 0.9.14
 
