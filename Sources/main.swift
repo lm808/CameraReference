@@ -11,7 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var floatingTitle="Camera Reference"
     private var versionTitle: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
-        return "Camera Reference \(Bundle.main.object(forInfoDictionaryKey:"CameraReferenceReleaseName") as? String ?? version)"
+        return "Camera Reference \(version)"
     }
     var floatingZoom:Double=0
     var calibrationTask:Task<Void,Never>?
@@ -37,11 +37,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard !legacyBridgeConsolidated,ProcessInfo.processInfo.systemUptime>=nextLegacyCheck else { return }
         nextLegacyCheck=ProcessInfo.processInfo.systemUptime+5
         do {
-            legacyBridgeConsolidated=try consolidateLegacyBridge(applicationSupport:folder.deletingLastPathComponent().deletingLastPathComponent())
-            storageStatus=legacyBridgeConsolidated ? "Storage: consolidated under Camera Reference." : "Storage migration waiting: stop the old bridge and reload bridge 0.5.1. The old bridge folder is still active."
+            legacyBridgeConsolidated=try consolidateSupportDirectory(applicationSupport:folder.deletingLastPathComponent().deletingLastPathComponent())
+            storageStatus=legacyBridgeConsolidated ? "Storage: consolidated under CameraReference." : "Storage migration waiting: stop the old bridge and reload bridge 0.5.2. The old bridge folder is still active."
         } catch { storageStatus="Storage migration deferred: \(error.localizedDescription)" }
     }
-    let folder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Camera Reference/Bridge")
+    let folder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/CameraReference/Bridge")
     var floating: NSPanel?
     var floatingView: ReferenceView?
     var preferItem: NSMenuItem!
@@ -60,8 +60,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var overlaySuspended=false
     var overlayResumeAfter:TimeInterval=0
     var workspaceOverview=false
-    func suspendOverlay() {
+    var overlayVisibilityStatus="Overlay not shown."
+    func suspendOverlay(reason:String="Space transition") {
         guard let panel else { return }
+        overlayVisibilityStatus="Overlay suspended: \(reason)."
         cancelPanelCheck();overlaySuspended=true
         overlayResumeAfter=ProcessInfo.processInfo.systemUptime+0.4
         panel.orderOut(nil)
@@ -69,15 +71,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func reconcileOverlayHost() {
         guard let panel,let saved=overlayHost else { return }
         let current=hostWindowSnapshot(saved.id)
+        if !workspaceOverview,current == nil,hostWindowIsClosed(saved.id) {
+            overlayVisibilityStatus="Overlay dismissed: Lightroom host closed.";hide();invalidateAutomaticGeometry();return
+        }
+        if let current,abs(current.frame.width-saved.frame.width)>=0.5 || abs(current.frame.height-saved.frame.height)>=0.5 {
+            invalidateAutomaticGeometry() // Next invocation; keep the displayed image.
+        }
         if let current,!NSScreen.screens.contains(where:{$0.frame.contains(current.frame)}) { cancelPanelCheck() }
         switch overlayHostAction(saved:saved.frame,current:current?.frame,onScreen:current?.onScreen ?? false,overview:workspaceOverview) {
-        case .discard:hide();invalidateAutomaticGeometry()
-        case .suspend:suspendOverlay()
+        case .retain:overlayVisibilityStatus="Overlay retained: host metadata temporarily unavailable."
+        case .suspend:suspendOverlay(reason:workspaceOverview ? "Dock overview active":"host is off-screen or on another Space")
         case .translate(let delta):
             if overlaySuspended {
                 guard ProcessInfo.processInfo.systemUptime>=overlayResumeAfter else { return }
-                if let overlayEpoch,selectionEpoch() != overlayEpoch { hide();return }
-                guard currentModule()=="develop" else { hide();return }
             }
             panel.setFrameOrigin(CGPoint(x:panel.frame.minX+delta.x,y:panel.frame.minY+delta.y))
             overlayHost=current
@@ -176,9 +182,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let expected=memory.translated(window:window,windowID:memory.windowID,epoch:memory.epoch,settingsKey:memory.settingsKey,layout:memory.layout)
         if panelBoundsChanged(previous:expected,current:result.uiFrame,tolerance:4) {
             let reason=result.uiFrame == nil ? "UI boundaries could not be validated":"UI boundaries changed"
-            panelCheckStatus="Background check dismissed/invalidated placement: \(reason).\nPrevious UI: \(String(describing:expected)); checked UI: \(String(describing:result.uiFrame)).\n"+result.summary
+            panelCheckStatus="Background check invalidated cached placement (visible overlay retained): \(reason).\nPrevious UI: \(String(describing:expected)); checked UI: \(String(describing:result.uiFrame)).\n"+result.summary
             invalidateAutomaticGeometry()
-            if panel != nil { hide();report("Overlay dismissed: \(reason.lowercased()). Invoke again; Bridge diagnostics records the boundary check.") }
+            if panel != nil { overlayVisibilityStatus="Overlay retained; cached placement invalidated: \(reason.lowercased())." }
         } else { panelCheckStatus="Background check: UI boundaries unchanged. Repeated toggle can skip capture." }
         panelCheckStatus += String(format:" 1280px check: %.0f ms elapsed.",elapsed*1000)
     }
@@ -201,8 +207,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if initial && overlayHost == nil { overlayHost=hostWindowSnapshot(CGWindowID(number));overlayEpoch=selectionEpoch() }
         guard overlayHost?.id==CGWindowID(number) else { return false }
         let order=windows.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.intValue }
-        if !initial && !order.contains(panel.windowNumber) { suspendOverlay();return true }
+        if !initial && !order.contains(panel.windowNumber) {
+            overlayVisibilityStatus="Overlay retained: native visibility managed by macOS.";return true
+        }
         if overlayNeedsOrdering(order:order,overlay:panel.windowNumber,lightroom:number) { panel.order(.above,relativeTo:number) }
+        overlayVisibilityStatus="Overlay ordered above its Lightroom host."
         return true
     }
 
@@ -311,6 +320,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
         do { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700]) }
         catch { fatalError("Cannot create bridge directory: \(error)") }
+        consolidateStorageIfDue()
         status = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         updateIcon()
         let menu = NSMenu(); menu.delegate=self
@@ -383,9 +393,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.observeWindowGeometry()
             if self.panel != nil { _ = self.orderOverlayAboveLightroom() }
             self.checkPanelBoundariesIfDue()
-            guard self.panel != nil || self.destination == .overlay else { return }
-            if let module = self.currentModule(), module != "develop" { self.hide(); self.report("Overlay dismissed: Lightroom left Develop.") }
-            else if self.panel != nil && self.currentModule() == nil { self.hide(); self.report("Overlay dismissed: bridge status is unavailable.") }
+            // Module/heartbeat uncertainty invalidates reuse, not the user-visible image.
         }
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(frontAppChanged), name: NSWorkspace.didActivateApplicationNotification, object: nil)
         NSWorkspace.shared.notificationCenter.addObserver(self,selector:#selector(spaceChanged),name:NSWorkspace.activeSpaceDidChangeNotification,object:nil)
@@ -465,15 +473,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if panel != nil { reconcileOverlayHost();return }
         guard hasObservedWindow else { return }
         if current == nil && observedWindowFrame == nil { return }
-        if !sameWindowGeometry(current,observedWindowFrame) {
-            if let current,let previous=observedWindowFrame,abs(current.width-previous.width)<0.5,abs(current.height-previous.height)<0.5 {
-                if let panel {
-                    let moved=panel.frame.offsetBy(dx:current.minX-previous.minX,dy:current.minY-previous.minY)
-                    panel.setFrame(moved,display:true,animate:false)
-                }
-            } else { hide();invalidateAutomaticGeometry() }
-        }
+        if !sameWindowGeometry(current,observedWindowFrame) { invalidateAutomaticGeometry() }
     }
+
     @objc func spaceChanged() {
         suspendOverlay();cancelScreenInspection();lastProbe=nil
         Task { await ScreenGeometryCache.shared.reset() }
@@ -481,7 +483,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     @objc func displaysChanged() {
         invalidateAutomaticGeometry()
-        hide(); calibration?.finish(nil)
+        calibration?.finish(nil)
         displayTimer?.invalidate()
         displayTimer=Timer.scheduledTimer(withTimeInterval:0.6,repeats:false) { [weak self] _ in
             guard let self,self.savedRegion != nil else { return }
@@ -532,7 +534,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 guard response.success else { self.failed(response.value, target: target); return }
                 self.load(response.value, token: token, target: target, work: work, invoked: invoked)
             } else if Date() >= deadline {
-                self.failed("Plugin timed out. Reload the updated bridge 0.5.1 in Lightroom’s Plug-in Manager, then use File → Plug-in Extras → Start / restart Camera Reference bridge.", target: target)
+                self.failed("Plugin timed out. Reload the updated bridge 0.5.2 in Lightroom’s Plug-in Manager, then use File → Plug-in Extras → Start / restart Camera Reference bridge.", target: target)
             }
         }
     }
@@ -572,7 +574,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                     loaded=LoadedReference(image:cached.image,origin:cached.origin,elapsed:ProcessInfo.processInfo.systemUptime-started,extraction:nil,usedFallback:cached.usedFallback,embeddedBytes:cached.embeddedBytes,cameraOrientation:cached.cameraOrientation,sourceFilename:cached.sourceFilename,stages:"RAM cache hit; source files revalidated")
                 } else {
                     loaded=try loadReference(raw:raw,preferEmbedded:prefer,executable:executable,cancellation:work)
-                    loaded.stages += epoch == nil ? "; RAM cache unavailable: reload bridge 0.5.1 or check heartbeat":"; RAM cache miss"
+                    loaded.stages += epoch == nil ? "; RAM cache unavailable: reload bridge 0.5.2 or check heartbeat":"; RAM cache miss"
                     if let epoch,let signature,selectionEpoch()==epoch,!work.isCancelled,
                        referenceFileSignature(raw:raw,preferEmbedded:prefer,executable:executable)==signature {
                         imageCache.insert(loaded,key:signature,epoch:epoch)
@@ -636,8 +638,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let requested=region.insetBy(dx:-1,dy:-1)
         p.setFrame(requested,display:true)
         lastLayout += "\nOverlay panel requested (AppKit): \(requested). Actual: \(p.frame)."
-        guard overlayPlacementIsAcceptable(requested:requested,actual:p.frame) else {
-            hide();report("macOS moved the overlay panel. No offset overlay displayed; see geometry diagnostics.");return nil
+        if !overlayPlacementIsAcceptable(requested:requested,actual:p.frame) {
+            invalidateAutomaticGeometry()
+            lastLayout += "\nmacOS adjusted placement; overlay retained for manual dismissal."
         }
         // Convert through the actual native window and content view after AppKit rounding.
         view.imageViewport = view.convert(p.convertFromScreen(photoFrame ?? region), from:nil)
@@ -797,7 +800,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 NSWorkspace.shared.activateFileViewerSelecting([detectionSettings.url]);return
             }
             NSWorkspace.shared.open([detectionSettings.url],withApplicationAt:editor,configuration:NSWorkspace.OpenConfiguration()) { [weak self] _,error in
-                if error != nil { DispatchQueue.main.async { self?.report("Could not open TextEdit. Edit config.conf as plain text in Application Support/Camera Reference.");self?.showResult() } }
+                if error != nil { DispatchQueue.main.async { self?.report("Could not open TextEdit. Edit config.conf as plain text in Application Support/CameraReference.");self?.showResult() } }
             }
         }
         catch { report("Could not open config.conf: \(error.localizedDescription)");showResult() }
@@ -1008,7 +1011,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let date = attributes?[.modificationDate] as? Date
         let age = date.map { "\(max(0, Int(Date().timeIntervalSince($0)))) seconds ago" } ?? "not received"
         let state = (try? String(contentsOf: folder.appendingPathComponent("status.txt"), encoding: .utf8)) ?? "No plugin status. The bridge may not have started."
-        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + storageStatus + "\n" + lastLayout + "\n" + panelCheckStatus + "\n\nTiming: " + lastTiming
+        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + storageStatus + "\n" + overlayVisibilityStatus + "\n" + lastLayout + "\n" + panelCheckStatus + "\n\nTiming: " + lastTiming
     }
     @objc func showDiagnostics() {
         let saved = lastResult

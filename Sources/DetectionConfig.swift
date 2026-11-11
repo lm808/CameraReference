@@ -88,7 +88,7 @@ final class DetectionConfigStore {
         let a=try FileManager.default.attributesOfItem(atPath:url.path)
         return "\((a[.modificationDate] as? Date)?.timeIntervalSinceReferenceDate ?? 0): \(a[.size] ?? ""): \(a[.systemFileNumber] ?? "")"
     }
-    init(url:URL=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Camera Reference/config.conf")) { self.url=url }
+    init(url:URL=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/CameraReference/config.conf")) { self.url=url }
     func ensureFile() throws {
         if !FileManager.default.fileExists(atPath:url.path) {
             try FileManager.default.createDirectory(at:url.deletingLastPathComponent(),withIntermediateDirectories:true)

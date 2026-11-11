@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 1.0.1
+
+Keep overlays visible through uncertain placement; unify storage under CameraReference with conflict-preserving merge; add incremental release/ staging and patch/minor/major version rules. Bridge 0.5.2 required. No DMG packaged.
+
+Require Dock activation as well as screen-sized presentation evidence before overview suppression. A permanent full-screen Dock surface must not hide ordinary overlays. Add visibility reasons to Bridge diagnostics. Native overview acceptance remains pending.
 
 Correct fresh/missing config defaults to sideSearchPercent 30 and all four UI bounds. Preserve explicit saved values; align the example and agent instructions with the accepted settings.
 

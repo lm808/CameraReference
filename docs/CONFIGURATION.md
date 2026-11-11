@@ -13,7 +13,7 @@ Each setting has one authoritative storage location. Calibration remains interna
 
 ## Advanced configuration
 
-`~/Library/Application Support/Camera Reference/config.conf`
+`~/Library/Application Support/CameraReference/config.conf`
 
 Settings → Edit config file opens this plain-text file. Parsed settings stay in memory; metadata checks detect edits. Valid changes apply on the next invocation/check as appropriate, without changing an already drawn photo midway. Invalid edits retain the last valid settings and are reported on explicit use. Background checks do not show configuration alerts.
 
@@ -37,14 +37,14 @@ On migration, `detection.conf` is copied to `config.conf` only if the latter is 
 
 ## Runtime files and RAM
 
-All app-owned Application Support files now live under `~/Library/Application Support/Camera Reference/`:
+All app-owned Application Support files now live under `~/Library/Application Support/CameraReference/`:
 
 - `config.conf`: advanced settings.
 - `Plugins/`: installed Lightroom bridge.
 - `Bridge/`: transient request/response, heartbeat and selection-revision files.
-- `Backups/Legacy Bridge-…`: preserved contents of the former `CameraReference` folder.
+Bridge 0.5.2 and this app share CameraReference/Bridge. Stop/disable old bridge copies before moving their installed folder and reload the new plugin. Existing settings are copied first if the canonical files are absent, so defaults cannot replace them while waiting for old writers. A legacy heartbeat newer than ten seconds defers the remainder; the app retries every five seconds and reports progress in diagnostics.
 
-Bridge 0.5.1 and this companion app must be upgraded together. Stop/disable old bridge copies and reload the new plugin. The companion checks for the old folder every five seconds until migration completes. If its heartbeat is less than ten seconds old, migration waits rather than moving files out from under an active old bridge. Diagnostics explain this condition. Once inactive, the entire old folder is moved into a uniquely named backup; unknown files are preserved and stale IPC is never copied into the live Bridge folder. Existing config and plugin files are untouched. If an old app/plugin is run again it may recreate the old directory; quit it and restart the new app to archive that directory too.
+Once inactive, contents of the spaced Camera Reference folder are merged into CameraReference. Known stale IPC is discarded rather than replayed. Unknown files are preserved, identical files deduplicated, and the empty spaced folder removed. If differing files have the same destination, the canonical file wins and the old file is preserved beside it with a `.migrated-…` suffix for review. No legacy folder backup is created. Previously created backups are user data and are not silently deleted. Do not run older apps again: they may recreate the old folder.
 
 GUI settings intentionally remain in the conventional macOS Preferences domain described above; they are not duplicated here.
 

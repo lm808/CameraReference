@@ -1,5 +1,9 @@
 # Validation evidence
 
+## 1.0.1
+
+Automated checks cover keeping an overlay on resize/metadata uncertainty, overview evidence, and consolidation into CameraReference: active old heartbeat defers movement, existing settings are seeded before waiting, differing conflicts are preserved, empty old directory removed, stale IPC discarded. Full regressions and final focused core checks pass. Native Mission Control/Space and actual installed migration still require the user checklist. The app is staged in release/; no DMG created.
+
 ## 1.0 alpha 2
 
 Full automated suite passed, including active-legacy deferral, complete legacy file preservation, idempotent migration and no stale IPC replay. Lua stand-ins assert every bridge read/write uses Camera Reference/Bridge. Native arm64 app built; signature/plist and disk-image checks passed. No user installation was changed; actual coordinated bridge reload and migration acceptance remain in TESTING.md.

@@ -1,4 +1,4 @@
-# Camera Reference — 1.0 alpha 2
+# Camera Reference — 1.0.1
 
 Camera Reference is a macOS menu-bar companion for Lightroom Classic. It displays a camera JPEG over Lightroom’s working area, or in an independent floating window, so you can compare it with your RAW edit.
 
@@ -10,7 +10,7 @@ Download the disk image for your Mac’s architecture from the repository’s Gi
 
 See [installation and upgrades](docs/INSTALL.md) for the complete steps, dependencies and alpha signing limitations. The app requires macOS 13 or later; automatic detection, capture preview and calibration snapping require macOS 14 or later. The bridge has been developed/tested with Lightroom Classic 15.6; other releases need verification. ExifTool is required for CR3 extraction and lossless embedded-JPEG export.
 
-Upgrading from alpha 1 requires reloading **bridge 0.5.1** as well as replacing the app. Both now use `~/Library/Application Support/Camera Reference/Bridge/`; inactive legacy files are preserved under `Camera Reference/Backups/`.
+For development testing, run **release/CameraReference.app** after `bash scripts/stage.sh`. build/ is internal. This update requires bridge **0.5.2**. Stop old copies before consolidation; see the upgrade instructions.
 
 ## Use
 
@@ -39,7 +39,7 @@ Initial floating size approximates a photo fitted into one side-by-side pane: ha
 
 The current selected photo’s JPEG bytes and decoded image are cached in RAM. Automatic UI bounds are reused for repeated toggles; window movement translates them, while resize, selection and relevant settings changes invalidate reuse. No disk image cache is created.
 
-The overlay follows Lightroom and can be covered by other applications. In this alpha, overview/Space/minimisation transitions suspend it rather than release its image; return to the same unchanged window permits restoration. Partial off-screen movement uses normal clipping. These behaviours still need native acceptance on your display setup.
+The overlay follows Lightroom and can be covered by other applications. In this alpha, overview/Space/minimisation transitions suspend it rather than release its image; return to the host window permits restoration, even after resize or selection changes. Partial off-screen movement uses normal clipping. Placement uncertainty invalidates the cache for the next invocation without dismissing the visible overlay. You can dismiss it manually. These behaviours still need native acceptance on your display setup.
 
 Background checks detect internal panel changes while Lightroom is active. They default to every **3 seconds**, use a lower-resolution capture, and are cancelled for foreground requests. Set the interval to **0** to disable them; use Clear region after panel changes in that case.
 
@@ -47,7 +47,7 @@ Background checks detect internal panel changes while Lightroom is active. They 
 
 GUI preferences and calibration state remain in macOS-managed preferences. Advanced settings are in:
 
-`~/Library/Application Support/Camera Reference/config.conf`
+`~/Library/Application Support/CameraReference/config.conf`
 
 Open it through **Settings → Edit config file**. Existing `detection.conf` is copied automatically when no new file exists; existing values are preserved and the original remains as a backup. See [configuration](docs/CONFIGURATION.md) and the [example file](config/config.example.conf).
 
@@ -61,7 +61,11 @@ See [troubleshooting and uninstalling](docs/TROUBLESHOOTING.md), [privacy](PRIVA
 
 ## Development
 
-Run `bash build.sh` to build the app, `bash test.sh` for automated checks, and `bash scripts/package.sh` to produce a native-architecture DMG and checksum under `dist/`. Builds require Apple command-line development tools; Lua bridge tests additionally use `texlua`. Packaging uses macOS `hdiutil`. Generated artifacts and user settings are not tracked in Git.
+Run `bash test.sh` for automated checks and `bash scripts/stage.sh` to build and update the app you test in **release/**. `build/` holds internal compiler/test output. Only when packaging is requested, run `bash scripts/package.sh`; it packages the staged payload without rebuilding it.
+
+Each delivered update increments patch (1.0.1 → 1.0.2). A requested packaged feature release increments minor and resets patch (1.1.0). Major revamps increment major and reset both smaller numbers only on the author's instruction (2.0.0).
+
+Builds require Apple command-line tools; Lua bridge tests use texlua. Packaging uses macOS hdiutil. Generated build/, release/ and dist/ contents are not tracked in Git.
 
 [AGENTS.md](AGENTS.md) maps the source and development rules. [Methods](docs/METHODS.md) records why the implementation works; [validation](docs/VALIDATION.md) separates measured evidence from native acceptance still pending. [Backlog](docs/BACKLOG.md) tracks future work; [changelog](CHANGELOG.md) records releases.
 

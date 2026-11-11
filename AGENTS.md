@@ -6,15 +6,18 @@ Discussion is not permission to implement. This user explicitly asks to hold wor
 
 ## Build and checks
 
-Make and test authorised changes without automatically creating a new release. Local builds for verification are fine, but do not bump versions or run release packaging unless the user explicitly asks for a new release/package.
+For each delivered update increment the patch version (1.0.1 → 1.0.2). For a user-requested packaged feature release increment minor and reset patch (1.1.0). Increment major and reset minor/patch only when the user requests a major revamp (2.0.0). Never make a DMG unless explicitly requested.
+
+The user runs only `release/CameraReference.app`, never build/. Keep build/ for intermediate binaries/tests. After an update, refresh the ignored release/ staging folder with scripts/stage.sh; copy only changed components. Package that staged/tested payload when requested.
 
 - `bash build.sh`: native-architecture macOS app at `build/CameraReference.app` (ad-hoc signed).
 - `bash test.sh`: Swift regression executables and Lua stand-ins; requires Apple command-line tools and texlua.
 - `bash test.sh <stacked-left-crop.png> <side-by-side-bottom-crop.png>`: optional original crop scanner checks; images remain external.
-- `bash scripts/package.sh`: build + DMG/checksum under ignored dist/. Uses hdiutil; may require sandbox approval. Does not install the app or publish anything. Existing DMG is not overwritten.
+- `bash scripts/stage.sh`: build and incrementally refresh release/; --no-build stages an already verified build.
+- `bash scripts/package.sh`: package the existing release/ payload as a DMG/checksum under ignored dist/. Uses hdiutil; may require sandbox approval. Does not install the app or publish anything. Existing DMG is not overwritten.
 - Verify signature/plist and `git diff --check` before committing. Run checks appropriate to the change; avoid repeating unchanged suites without reason.
 
-Build metadata currently uses CFBundleShortVersionString `1.0.0` plus CameraReferenceReleaseName `1.0 alpha 2`; menu reads the latter. Keep release docs/package names consistent when changing versions. Preserve org.local.CameraReference until an explicit bundle-ID migration is planned.
+Use plain three-component versions in CFBundleShortVersionString (currently `1.0.1`); the menu and package script read that value. Preserve org.local.CameraReference until an explicit bundle-ID migration is planned.
 
 ## Source map and flow
 
@@ -48,13 +51,13 @@ Main flow: shortcut → bridge request/epoch → image load or RAM hit → manua
 - Full mode and accepted manual placement must remain usable during split development.
 - Respect source/selection epochs, request IDs, cancellation and cache generations. Never display a late result for another request.
 - Clear region must not change auto/manual preference. Successful calibration turns auto off; cancellation changes nothing.
-- Temporary suspension retains content; explicit dismissal releases it. Do not reintroduce full-display containment as a movement requirement.
+- Keep visible overlays open through resize, detection failure, heartbeat/module uncertainty and changed selection. Invalidate cached placement for next invocation, not the current display. Follow known movement. Temporarily suspend for host invisibility/overview and restore even if selection or size changed. Explicit user dismissal or confirmed host closure releases it. Never use full-display containment as a movement requirement.
 - Accepted config defaults are `sideSearchPercent = 30` and all four bounds `ui`. Preserve explicit user values during upgrades; never replace a personal config with the example/template.
-- Keep config migration non-destructive: new config wins, old file retained, user values preserved.
+- Canonical support folder is CameraReference (no space). Merge old spaced contents, remove the empty old folder, preserve differing file conflicts beside their destination, and discard only known stale IPC. Do not create legacy folder copies. Preserve explicit settings; seed them before waiting for old bridge shutdown.
 - No private macOS APIs or global security/permission resets. Native app/overview assertions need live evidence.
 
 ## Documentation and repository hygiene
 
 README describes current functionality/usage, never a development diary. CHANGELOG records user-facing changes; RELEASE-NOTES describes the current downloadable build. docs/METHODS.md is the technical rationale; docs/VALIDATION.md records evidence; docs/BACKLOG.md lists unresolved work. TESTING.md is short/current only. Update related docs when behaviour changes; qualify synthetic versus native checks.
 
-Do not commit build/dist artifacts, personal config, bridge runtime files, photographs, credentials or screenshot captures. Use config/config.example.conf for defaults. Preserve uncommitted user changes; inspect git status first. Keep working tree changes scoped and commit tested work. Do not create arbitrary release tags or push without instruction.
+Do not commit build/release/dist artifacts, personal config, bridge runtime files, photographs, credentials or screenshot captures. Use config/config.example.conf for defaults. Preserve uncommitted user changes; inspect git status first. Keep working tree changes scoped and commit tested work. Do not create arbitrary release tags or push without instruction.

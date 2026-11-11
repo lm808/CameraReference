@@ -41,18 +41,57 @@ func matchingJPEG(for raw: URL) throws -> URL {
     return matches[0]
 }
 
-// Old IPC is archived, never replayed into the new live bridge directory.
-// A fresh legacy heartbeat means the old plugin must be stopped/reloaded first.
-func consolidateLegacyBridge(applicationSupport:URL, now:Date = Date()) throws -> Bool {
+// Consolidate support data without replaying old protocol files or overwriting
+// explicit canonical settings. Wait until old writers have stopped.
+func consolidateSupportDirectory(applicationSupport:URL, now:Date = Date()) throws -> Bool {
     let fm=FileManager.default
-    let legacy=applicationSupport.appendingPathComponent("CameraReference")
-    guard fm.fileExists(atPath:legacy.path) else { return true }
-    let heartbeat=legacy.appendingPathComponent("heartbeat.txt")
-    if let attributes=try? fm.attributesOfItem(atPath:heartbeat.path),
-       let modified=attributes[.modificationDate] as? Date,now.timeIntervalSince(modified)<10 { return false }
-    let backups=applicationSupport.appendingPathComponent("Camera Reference/Backups")
-    try fm.createDirectory(at:backups,withIntermediateDirectories:true)
-    // Unique destination preserves unknown files and any earlier backup.
-    try fm.moveItem(at:legacy,to:backups.appendingPathComponent("Legacy Bridge-"+UUID().uuidString))
+    let canonical=applicationSupport.appendingPathComponent("CameraReference")
+    let spaced=applicationSupport.appendingPathComponent("Camera Reference")
+    try fm.createDirectory(at:canonical,withIntermediateDirectories:true)
+    // Seed settings before waiting for an old bridge to stop, so opening the
+    // app cannot generate defaults in place of the existing user's config.
+    for name in ["config.conf","detection.conf"] {
+        let source=spaced.appendingPathComponent(name),destination=canonical.appendingPathComponent(name)
+        if fm.fileExists(atPath:source.path),!fm.fileExists(atPath:destination.path) {
+            try fm.copyItem(at:source,to:destination)
+        }
+    }
+    for heartbeat in [spaced.appendingPathComponent("Bridge/heartbeat.txt"),canonical.appendingPathComponent("heartbeat.txt")] {
+        if let a=try? fm.attributesOfItem(atPath:heartbeat.path),let date=a[.modificationDate] as? Date,now.timeIntervalSince(date)<10 { return false }
+    }
+    try fm.createDirectory(at:canonical,withIntermediateDirectories:true)
+    let ipc:Set<String>=["request.txt","response.txt","response-selection.txt","selection.txt","heartbeat.txt","status.txt"]
+    func merge(_ source:URL,_ destination:URL) throws {
+        let sourceValues=try source.resourceValues(forKeys:[.isDirectoryKey,.isSymbolicLinkKey])
+        guard fm.fileExists(atPath:destination.path) else { try fm.moveItem(at:source,to:destination);return }
+        let destinationValues=try destination.resourceValues(forKeys:[.isDirectoryKey,.isSymbolicLinkKey])
+        if sourceValues.isDirectory==true,sourceValues.isSymbolicLink != true,
+           destinationValues.isDirectory==true,destinationValues.isSymbolicLink != true {
+            for child in try fm.contentsOfDirectory(at:source,includingPropertiesForKeys:nil) {
+                try merge(child,destination.appendingPathComponent(child.lastPathComponent))
+            }
+            try fm.removeItem(at:source) // Empty after successful merge only.
+        } else if fm.contentsEqual(atPath:source.path,andPath:destination.path) {
+            try fm.removeItem(at:source)
+        } else {
+            // Conflicts remain beside the canonical file for user review, not
+            // in another legacy folder. Never silently replace a preference.
+            try fm.moveItem(at:source,to:destination.deletingLastPathComponent().appendingPathComponent(destination.lastPathComponent+".migrated-"+UUID().uuidString))
+        }
+    }
+    if fm.fileExists(atPath:spaced.path) {
+        // These files are disposable IPC, not settings. Do not merge stale
+        // requests/epochs into a bridge that may already be running here.
+        let oldBridge=spaced.appendingPathComponent("Bridge")
+        for name in ipc {
+            let file=oldBridge.appendingPathComponent(name)
+            if fm.fileExists(atPath:file.path) { try fm.removeItem(at:file) }
+        }
+        try merge(spaced,canonical)
+    }
+    for name in ipc {
+        let old=canonical.appendingPathComponent(name)
+        if fm.fileExists(atPath:old.path) { try fm.removeItem(at:old) }
+    }
     return true
 }

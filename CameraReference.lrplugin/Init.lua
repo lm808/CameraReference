@@ -6,7 +6,7 @@ local View = import 'LrApplicationView'
 local UUID = import 'LrUUID'
 local FunctionContext = import 'LrFunctionContext'
 local folder = Paths.child(Paths.getStandardFilePath('home'),
-    'Library/Application Support/Camera Reference/Bridge')
+    'Library/Application Support/CameraReference/Bridge')
 local function read(path)
     local f = io.open(path, 'rb')
     if not f then return nil end
@@ -26,13 +26,13 @@ local generation = {}
 _G.cameraReferenceGeneration = generation
 _G.cameraReferenceRunning = true
 _G.cameraReferenceFolder = folder
-_G.cameraReferenceStatus = 'Starting bridge 0.5.1'
+_G.cameraReferenceStatus = 'Starting bridge 0.5.2'
 Tasks.startAsyncTask(function()
     local ok, err = Tasks.pcall(function()
       FunctionContext.callWithContext("CameraReferenceSelection", function(context)
         local created, why = Files.createAllDirectories(folder)
         if not created then error('Cannot create bridge folder: ' .. tostring(why)) end
-        _G.cameraReferenceStatus = 'Running 0.5.1'
+        _G.cameraReferenceStatus = 'Running 0.5.2'
         write('status.txt', _G.cameraReferenceStatus)
         local request = Paths.child(folder, 'request.txt')
         Files.delete(Paths.child(folder, 'response.txt')) -- Remove any reply left by an earlier crashed session.

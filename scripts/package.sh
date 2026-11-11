@@ -1,24 +1,20 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-bash build.sh
-architecture=$(uname -m)
-release_name="CameraReference-1.0-alpha-2-${architecture}"
-stage=$(mktemp -d "$PWD/build/package.XXXXXX")
-# Fresh staging folder; no removal of a user's previous release or app installation.
-ditto build/CameraReference.app "$stage/CameraReference.app"
-ln -s /Applications "$stage/Applications"
-ditto CameraReference.lrplugin "$stage/CameraReference.lrplugin"
-cp scripts/Install-Lightroom-Bridge.command "$stage/Install Lightroom Bridge.command"
-cp docs/INSTALL.md "$stage/INSTALL.md"
-cp PRIVACY.md "$stage/PRIVACY.md"
-cp RELEASE-NOTES.md "$stage/RELEASE-NOTES.md"
-chmod +x "$stage/Install Lightroom Bridge.command"
+# Explicit packaging only. Package the staged/tested payload, never rebuild it.
+stage="$PWD/release"
+for item in CameraReference.app CameraReference.lrplugin 'Install Lightroom Bridge.command' INSTALL.md PRIVACY.md RELEASE-NOTES.md Applications; do
+  if [ ! -e "$stage/$item" ]; then echo "Missing staged component: $item. Run scripts/stage.sh first." >&2; exit 1; fi
+done
+codesign --verify --deep --strict "$stage/CameraReference.app"
+version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$stage/CameraReference.app/Contents/Info.plist")
+architecture=$(lipo -archs "$stage/CameraReference.app/Contents/MacOS/CameraReference" | tr ' ' '-')
+release_name="CameraReference-${version}-${architecture}"
 mkdir -p dist
 if [ -e "dist/$release_name.dmg" ]; then
   echo "Release already exists: dist/$release_name.dmg. Move it aside before repackaging." >&2
   exit 1
 fi
-hdiutil create -volname 'Camera Reference 1.0 alpha 2' -srcfolder "$stage" -format UDZO "dist/$release_name.dmg"
+hdiutil create -volname "CameraReference $version" -srcfolder "$stage" -format UDZO "dist/$release_name.dmg"
 (cd dist && shasum -a 256 "$release_name.dmg" > "$release_name.dmg.sha256")
 echo "Package: $PWD/dist/$release_name.dmg"

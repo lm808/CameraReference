@@ -3,10 +3,10 @@ set -euo pipefail
 package_dir=$(cd "$(dirname "$0")" && pwd)
 source_plugin="$package_dir/CameraReference.lrplugin"
 if [ ! -d "$source_plugin" ]; then
-  echo 'Run this installer from the mounted Camera Reference disk image.' >&2
+  echo 'Run this installer from the release folder or mounted Camera Reference disk image.' >&2
   exit 1
 fi
-plugin_parent="$HOME/Library/Application Support/Camera Reference/Plugins"
+plugin_parent="$HOME/Library/Application Support/CameraReference/Plugins"
 plugin_destination="$plugin_parent/CameraReference.lrplugin"
 mkdir -p "$plugin_parent"
 if [ -e "$plugin_destination" ]; then

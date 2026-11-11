@@ -1,28 +1,14 @@
-# Camera Reference 1.0 alpha 2 — acceptance tests
+# CameraReference 1.0.1 — acceptance tests
 
-Quit the old app, open the new build or installed copy, and confirm **1.0 alpha 2** in its menu. Bridge **0.5.1** is required; reload it in Lightroom Plug-in Manager. Keep your working `sideSearchPercent = 30`. `[x]` or `[x ]` means pass; add a brief note for failures.
+Quit the old app; run **release/CameraReference.app**, confirm **1.0.1**, and reload bridge **0.5.2**. `[x]` or `[x ]` means pass. No DMG test is needed for this update.
 
-## Window behaviour (priority)
+- [ ] Show an overlay and wait through several background checks: it stays visible.
+- [ ] Resize Lightroom, change internal panels, or change photo/module: the visible reference remains until you dismiss it. Toggle off/on in Develop to get fresh placement/current photo.
+- [ ] Move Lightroom partially off-screen and back: the overlay follows. Other apps can cover it.
+- [ ] Enter/exit Mission Control and App Exposé; minimise/restore and switch Spaces. It hides temporarily and returns, including after resize or selection changes. Close the actual host window: overlay closes.
+- [ ] Stop old bridges and start the updated app/bridge. Config and plugins end up under CameraReference; the spaced folder disappears after consolidation. Verify personal values (30 and ui bounds) survive. Re-add the plugin's new path if moved.
+- [ ] If a legacy bridge is still active, diagnostics report migration waiting; existing config still loads. Stop it: migration completes. Conflicting files are preserved with a .migrated suffix, never silently overwritten.
+- [ ] Full and all split panes still align for landscape/portrait at Fit. Repeated toggles reuse RAM/placement when valid. Manual calibration/clear preference behaviour remains intact.
+- [ ] Floating display size, hover chrome, Fit dragging and Cmd-scroll still work independently.
 
-- [ ] Show an overlay; move Lightroom partly beyond each screen edge and back. The overlay follows and remains aligned without being dismissed.
-- [ ] Enter Mission Control and App Exposé. No separate overlay over thumbnails; exit to the same Lightroom window and the overlay returns aligned without another shortcut.
-- [ ] Repeat with another app in front. Other windows cover the overlay normally; returning to Lightroom restores its normal ordering.
-- [ ] Minimise/restore Lightroom and switch Spaces away/back. An unchanged host restores; closing Lightroom, changing photo while suspended, or resizing must not restore stale content.
-- [ ] Repeat relevant movement/overview checks with fullscreen Lightroom and a floating display open. The floating display remains independent.
-
-## Installation and settings
-
-- [ ] Reload bridge 0.5.1, start the new app, and invoke an overlay. All live IPC is under Camera Reference/Bridge; the former CameraReference folder moves into Camera Reference/Backups after the old bridge stops. Config and installed plugin remain intact.
-- [ ] With the old bridge deliberately still running, migration waits and diagnostics explain why. Stop it and reload the new bridge: consolidation completes without replaying old responses.
-
-- [ ] Install the app using the DMG's Applications shortcut. If moving the bridge, use its installer then Add in Lightroom Plug-in Manager and disable the old entry. Confirm heartbeat and ExifTool availability.
-- [ ] Existing GUI settings, shortcuts and calibration survive. Edit config file opens `~/Library/Application Support/Camera Reference/config.conf`; old detection.conf remains a backup and your values are preserved.
-- [ ] If config.conf already exists, it wins over detection.conf. An invalid edit reports an error and retains the last valid in-memory settings.
-
-## Brief regression check
-
-- [ ] Full and all four split panes still align for portrait/landscape at Fit. Leave one visible through several background checks.
-- [ ] Repeated overlay toggles on the same photo report RAM/placement reuse. Change an internal Lightroom panel and wait for the configured check interval: placement refreshes.
-- [ ] Manual calibration disables auto. Clear region preserves the current auto/manual preference. Floating display size, hover title bar, dragging at Fit and Cmd-scroll still work.
-
-For failure, copy **Developer tools → Bridge diagnostics** before invoking again. Record the action, layout/pane and whether the overlay returned on its own. A screenshot with the host unchanged helps distinguish wrong placement from incorrect visibility. Automated evidence and historical results are in docs/VALIDATION.md.
+For unexpected hiding, copy Developer tools → Bridge diagnostics before invoking again; it now includes visibility reasons. Native behaviour is not proven by automated geometry tests.

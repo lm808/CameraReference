@@ -156,11 +156,15 @@ func hostWindowSnapshot(_ id:CGWindowID)->HostWindowSnapshot? {
     let appKit=CGRect(x:frame.minX,y:CGDisplayBounds(CGMainDisplayID()).height-frame.maxY,width:frame.width,height:frame.height)
     return HostWindowSnapshot(id:id,frame:appKit,onScreen:(row[kCGWindowIsOnscreen as String] as? NSNumber)?.boolValue ?? false)
 }
-// Public window-list metadata only. Dock's screen-sized presentation surfaces
-// cover Mission Control/Exposé (and Launchpad); ordinary Dock strips do not.
-// Native .transient suppression remains the primary overview behaviour.
+// Dock can own a permanent full-screen transparent window during ordinary work.
+// Its geometry alone is NOT evidence of Mission Control. Require Dock activation
+// as well; native .transient suppression remains the primary overview behaviour.
+func dockOverviewEvidence(dockIsFrontmost:Bool,coverage:CGFloat)->Bool {
+    dockIsFrontmost && coverage>0.65
+}
 func workspaceOverviewIsVisible()->Bool {
-    guard let dock=NSWorkspace.shared.runningApplications.first(where:{$0.bundleIdentifier=="com.apple.dock"}),
+    guard NSWorkspace.shared.frontmostApplication?.bundleIdentifier=="com.apple.dock",
+          let dock=NSWorkspace.shared.runningApplications.first(where:{$0.bundleIdentifier=="com.apple.dock"}),
           let rows=CGWindowListCopyWindowInfo(.optionOnScreenOnly,kCGNullWindowID) as? [[String:Any]] else { return false }
     let screens=NSScreen.screens.map { CGRect(x:$0.frame.minX,y:CGDisplayBounds(CGMainDisplayID()).height-$0.frame.maxY,width:$0.frame.width,height:$0.frame.height) }
     return rows.contains { row in
@@ -168,16 +172,20 @@ func workspaceOverviewIsVisible()->Bool {
               let d=row[kCGWindowBounds as String] as? [String:Any],let frame=CGRect(dictionaryRepresentation:d as CFDictionary) else { return false }
         return screens.contains { screen in
             let overlap=frame.intersection(screen)
-            return !overlap.isNull && overlap.width*overlap.height>screen.width*screen.height*0.65
+            return !overlap.isNull && dockOverviewEvidence(dockIsFrontmost:true,coverage:overlap.width*overlap.height/(screen.width*screen.height))
         }
     }
 }
 
-enum OverlayHostAction:Equatable { case suspend,discard,translate(CGPoint) }
+// A failed metadata query is not proof that a window closed.
+func hostWindowIsClosed(_ id:CGWindowID)->Bool {
+    guard let rows=CGWindowListCopyWindowInfo(.optionAll,kCGNullWindowID) as? [[String:Any]],!rows.isEmpty else { return false }
+    return !rows.contains { ($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value==id }
+}
+enum OverlayHostAction:Equatable { case retain,suspend,translate(CGPoint) }
 func overlayHostAction(saved:CGRect,current:CGRect?,onScreen:Bool,overview:Bool)->OverlayHostAction {
     if overview { return .suspend }
-    guard let current else { return .discard }
+    guard let current else { return .retain }
     if !onScreen { return .suspend }
-    guard abs(saved.width-current.width)<0.5,abs(saved.height-current.height)<0.5 else { return .discard }
     return .translate(CGPoint(x:current.minX-saved.minX,y:current.minY-saved.minY))
 }

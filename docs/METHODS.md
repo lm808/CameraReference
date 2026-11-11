@@ -51,7 +51,7 @@ GUI preferences/calibration stay in UserDefaults. Advanced config is parsed from
 
 PlacementMemory stores UI bounds, window identity/size, selection epoch, layout, geometry-config key and surround colour. Repeated valid toggles skip capture. Movement translates; resize, changed selection/mode/config or invalid display context prevent reuse.
 
-Background validation defaults to 3 seconds while Lightroom is active in Develop with eligible auto placement. A 1280px capture compares UI bounds with 4-point tolerance; a change/unvalidated result invalidates placement and explains any dismissal. Foreground work cancels it. Interval 0 disables only this capture loop. A separate 0.2-second metadata timer tracks windows; a float-only 80ms pointer sample drives hover chrome.
+Background validation defaults to 3 seconds while Lightroom is active in Develop with eligible auto placement. A 1280px capture compares UI bounds with 4-point tolerance; a change/unvalidated result invalidates cached placement for the next invocation but retains the visible overlay. Foreground work cancels it. Interval 0 disables only this capture loop. A separate 0.2-second metadata timer tracks windows; a float-only 80ms pointer sample drives hover chrome.
 
 ## Overlay lifecycle and ordering
 
@@ -59,7 +59,7 @@ The overlay is normal-level, nonactivating and ordered immediately above the sel
 
 Movement allows partial off-screen clipping. AppKit must not constrain the borderless overlay back inside a display. Resizing invalidates geometry.
 
-1.0 alpha separates **suspend** (order out, retain image/host/epoch) from **dismiss** (release content). A hidden host, Space/overview transition or minimisation suspends. Returning to the same visible host with unchanged dimensions/selection in Develop permits restoration after a short settling interval. Closed host, resize, changed selection during suspension, or explicit toggle/cancel dismisses. Display reconfiguration still invalidates.
+Suspend retains the image while the host is invisible, minimised, on another Space or overview is active. Restore after a short settling interval without imposing a selection/size/module prerequisite. Resize invalidates cached geometry but keeps the current image and translates its origin with the host. Bridge failure, changed panels or uncertain detection cannot dismiss it. A confirmed absent host in a successful all-window enumeration or explicit user dismissal releases content. Display changes invalidate future placement only.
 
 Native `.transient`/`.ignoresCycle` flags suppress overview participation. Public CG window metadata is used to recognise large Dock-owned overview surfaces; no private notification/API is used. This heuristic and App Exposé variants require native acceptance. Do not claim perfect macOS overview detection from unit tests.
 
@@ -75,4 +75,8 @@ See VALIDATION.md for accepted user results and measurements; TESTING.md for the
 
 ## Unified support directory
 
-App and bridge 0.5.1 share Camera Reference/Bridge; config and installed plugins live beside it. The companion archives the entire inactive legacy CameraReference directory inside Backups with a unique name. A recent legacy heartbeat defers migration. Old protocol files are never used to seed current requests, replies or epochs. See CONFIGURATION.md for the coordinated upgrade.
+App and bridge 0.5.2 use CameraReference/Bridge. Settings and plugins are siblings. The companion merges the old spaced directory after old writers stop, seeds existing settings before waiting, preserves differing file conflicts, and removes the empty old directory. It discards known stale protocol files rather than replaying them. See CONFIGURATION.md.
+
+## Build, staging and packaging
+
+build/ is internal. scripts/stage.sh builds then checksum-syncs changed components into release/, which is the user-tested payload. scripts/package.sh reads its app version/architecture and packages that folder without rebuilding. Patch bumps accompany delivered updates; minor/major bumps follow the documented user-triggered release convention.
