@@ -1,5 +1,7 @@
 # Installing Camera Reference 1.0.1
 
+For manual source builds, older-commit recovery, and stable/candidate Git worktrees, see [Building from source and keeping a working version](SOURCE-BUILD.md).
+
 ## Requirements
 
 - macOS 13 or later; macOS 14 or later for automatic detection, capture preview and snapping.

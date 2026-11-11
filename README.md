@@ -61,6 +61,8 @@ See [troubleshooting and uninstalling](docs/TROUBLESHOOTING.md), [privacy](PRIVA
 
 ## Development
 
+See [source builds, manual installation and Git rollback workflow](docs/SOURCE-BUILD.md) to keep a known-good version while testing updates.
+
 Run `bash test.sh` for automated checks and `bash scripts/stage.sh` to build and update the app you test in **release/**. `build/` holds internal compiler/test output. Only when packaging is requested, run `bash scripts/package.sh`; it packages the staged payload without rebuilding it.
 
 Each delivered update increments patch (1.0.1 → 1.0.2). A requested packaged feature release increments minor and resets patch (1.1.0). Major revamps increment major and reset both smaller numbers only on the author's instruction (2.0.0).

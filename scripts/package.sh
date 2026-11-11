@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 # Explicit packaging only. Package the staged/tested payload, never rebuild it.
 stage="$PWD/release"
-for item in CameraReference.app CameraReference.lrplugin 'Install Lightroom Bridge.command' INSTALL.md PRIVACY.md RELEASE-NOTES.md Applications; do
+for item in CameraReference.app CameraReference.lrplugin 'Install Lightroom Bridge.command' INSTALL.md SOURCE-BUILD.md PRIVACY.md RELEASE-NOTES.md Applications; do
   if [ ! -e "$stage/$item" ]; then echo "Missing staged component: $item. Run scripts/stage.sh first." >&2; exit 1; fi
 done
 codesign --verify --deep --strict "$stage/CameraReference.app"
