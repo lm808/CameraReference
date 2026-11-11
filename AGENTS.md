@@ -6,6 +6,8 @@ Discussion is not permission to implement. This user explicitly asks to hold wor
 
 ## Build and checks
 
+Make and test authorised changes without automatically creating a new release. Local builds for verification are fine, but do not bump versions or run release packaging unless the user explicitly asks for a new release/package.
+
 - `bash build.sh`: native-architecture macOS app at `build/CameraReference.app` (ad-hoc signed).
 - `bash test.sh`: Swift regression executables and Lua stand-ins; requires Apple command-line tools and texlua.
 - `bash test.sh <stacked-left-crop.png> <side-by-side-bottom-crop.png>`: optional original crop scanner checks; images remain external.
@@ -47,6 +49,7 @@ Main flow: shortcut → bridge request/epoch → image load or RAM hit → manua
 - Respect source/selection epochs, request IDs, cancellation and cache generations. Never display a late result for another request.
 - Clear region must not change auto/manual preference. Successful calibration turns auto off; cancellation changes nothing.
 - Temporary suspension retains content; explicit dismissal releases it. Do not reintroduce full-display containment as a movement requirement.
+- Accepted config defaults are `sideSearchPercent = 30` and all four bounds `ui`. Preserve explicit user values during upgrades; never replace a personal config with the example/template.
 - Keep config migration non-destructive: new config wins, old file retained, user values preserved.
 - No private macOS APIs or global security/permission resets. Native app/overview assertions need live evidence.
 

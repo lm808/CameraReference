@@ -51,7 +51,7 @@ GUI preferences and calibration state remain in macOS-managed preferences. Advan
 
 Open it through **Settings → Edit config file**. Existing `detection.conf` is copied automatically when no new file exists; existing values are preserved and the original remains as a backup. See [configuration](docs/CONFIGURATION.md) and the [example file](config/config.example.conf).
 
-`sideSearchPercent = 30` is the verified setting on the author’s current setup. The shipped default remains 45 because wider searches previously helped narrow windows; set 30 if the search confuses photo gaps with outer UI bounds.
+`sideSearchPercent = 30` is the verified setting on the author’s current setup. New configs default to 30 and all four bounds set to `ui`. Existing explicit settings are preserved.
 
 ## Limitations and help
 

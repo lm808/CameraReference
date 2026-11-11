@@ -200,13 +200,13 @@ defer { try? FileManager.default.removeItem(at:oldConfigURL) }
 try! "# User comment\nfitInsetPoints = 22\n".write(to:oldConfigURL,atomically:true,encoding:.utf8)
 let oldStore=DetectionConfigStore(url:oldConfigURL)
 let migrated=try! oldStore.reload()
-expect(migrated.fitInsetPoints == 22 && migrated.sideSearchPercent == 45,"Existing settings not preserved")
+expect(migrated.fitInsetPoints == 22 && migrated.sideSearchPercent == 30,"Existing settings not preserved")
 let once=try! String(contentsOf:oldConfigURL,encoding:.utf8)
 try! oldStore.ensureFile()
 expect(try! String(contentsOf:oldConfigURL,encoding:.utf8) == once,"Interval appended twice")
 try! "sideSearchPercent = 30\nfitInsetPoints = 22\n".write(to:oldConfigURL,atomically:true,encoding:.utf8)
 expect(try! oldStore.reload().sideSearchPercent == 30,"Edited interval not reloaded")
-expect(DetectionConfig().key != (try! DetectionConfig.parse("sideSearchPercent = 30")).key,"Manual layout key ignores interval")
+expect(DetectionConfig().key != (try! DetectionConfig.parse("sideSearchPercent = 45")).key,"Manual layout key ignores interval")
 print("PASS: configurable side search, narrow-only failure message, cache invalidation, config migration and reload")
 
 for mode:OverlayLayout in [.left,.right,.upper,.lower] {

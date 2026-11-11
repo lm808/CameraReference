@@ -20,9 +20,9 @@ Settings → Edit config file opens this plain-text file. Parsed settings stay i
 | Setting | Default | Allowed values / purpose |
 |---|---|---|
 | `left`, `right` | `ui` | `ui` or `photo`: include UI backdrop or end at calculated photo edge |
-| `top`, `bottom` | `photo` | Same per-side choice |
+| `top`, `bottom` | `ui` | Same per-side choice |
 | `fitInsetPoints` | 18 | 0–100 macOS points; minimum Fit margin and split scan band |
-| `sideSearchPercent` | 45 | 5–50%; side-border search from each window edge |
+| `sideSearchPercent` | 30 | 5–50%; side-border search from each window edge |
 | `panelCheckIntervalSeconds` | 3 | 0–3600; 0 disables background capture checks |
 | `verticalSnapFraction`, `horizontalSnapFraction` | 0.25 | 0.05–1; minimum sustained edge fraction |
 | `snapDistancePoints` | 8 | 1–30; Option-snapping attraction radius |

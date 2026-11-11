@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+Correct fresh/missing config defaults to sideSearchPercent 30 and all four UI bounds. Preserve explicit saved values; align the example and agent instructions with the accepted settings.
+
 ## 1.0 alpha 2
 
 Consolidate Application Support under Camera Reference, with Bridge subfolder and required bridge 0.5.1. Preserve the inactive legacy folder as a unique backup, defer while its heartbeat is active, and never replay stale IPC. GUI preferences remain in macOS Preferences.

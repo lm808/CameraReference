@@ -3,30 +3,30 @@ import CoreGraphics
 
 struct DetectionConfig: Equatable {
     enum Bound:String { case ui,photo }
-    var left=Bound.ui,right=Bound.ui,top=Bound.photo,bottom=Bound.photo
+    var left=Bound.ui,right=Bound.ui,top=Bound.ui,bottom=Bound.ui
     var panelCheckIntervalSeconds:Double=3
     var fitInsetPoints:CGFloat=18
-    var sideSearchPercent:Double=45
+    var sideSearchPercent:Double=30
     var verticalSnapFraction:CGFloat=0.25,horizontalSnapFraction:CGFloat=0.25
     var snapDistancePoints:CGFloat=8,snapGapPoints:CGFloat=4
     var snapContrast=4
     var key:String { "\(left.rawValue),\(right.rawValue),\(top.rawValue),\(bottom.rawValue),\(fitInsetPoints),\(sideSearchPercent)" }
     var needsPhoto:Bool { [left,right,top,bottom].contains(.photo) }
     static let template="""
-    # Camera Reference detection settings. Save as plain text.
+    # Camera Reference advanced settings. Save as plain text.
     # Reloaded only when this file changes. No restart required.
     # Background UI checks in seconds; 0 disables checks. Range 0...3600.
     panelCheckIntervalSeconds = 3
     # Each side: ui or photo. Photo bounds are calculated, not edge-detected.
     left = ui
     right = ui
-    top = photo
-    bottom = photo
+    top = ui
+    bottom = ui
     # Minimum Fit margin, in macOS points (not Retina pixels). Range 0...100.
     fitInsetPoints = 18
-    # Side-border search from each window edge, 5...50 percent. Previously 30.
-    # 45 searches left 0...45% and right 55...100%; 50 reaches the centre.
-    sideSearchPercent = 45
+    # Side-border search from each window edge, 5...50 percent.
+    # 30 searches left 0...30% and right 70...100%; 50 reaches the centre.
+    sideSearchPercent = 30
     # Minimum sustained edge length as fraction of Lightroom window, 0.05...1.
     verticalSnapFraction = 0.25
     horizontalSnapFraction = 0.25
@@ -108,7 +108,7 @@ final class DetectionConfigStore {
                 $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces) == "sideSearchPercent"
             }
             if !hasInterval {
-                try (text + "\n# Side-border search from each window edge, 5...50 percent (previously 30).\n# 45 searches left 0...45% and right 55...100%; 50 reaches the centre.\nsideSearchPercent = 45\n").write(to:url,atomically:true,encoding:.utf8)
+                try (text + "\n# Side-border search from each window edge, 5...50 percent.\n# 30 searches left 0...30% and right 70...100%; 50 reaches the centre.\nsideSearchPercent = 30\n").write(to:url,atomically:true,encoding:.utf8)
             }
         }
     }
