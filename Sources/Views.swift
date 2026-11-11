@@ -42,6 +42,7 @@ final class ReferenceView: NSView, NSMenuItemValidation {
     deinit { toastTimer?.invalidate() }
     var imageViewport:CGRect?
     private var viewport: CGRect { imageViewport ?? (showIndicator ? bounds.insetBy(dx:1,dy:1) : bounds) }
+    private var drawingViewport:CGRect { showIndicator ? bounds.insetBy(dx:1,dy:1):bounds }
     override var isOpaque: Bool { true }
     override func acceptsFirstMouse(for event:NSEvent?) -> Bool { true }
     func releaseContent() { zoomChanged=nil; image=nil; exportSnapshot=nil; refresh=nil; save=nil; canSave=nil }
@@ -50,9 +51,9 @@ final class ReferenceView: NSView, NSMenuItemValidation {
         switch scrollIntent(command:event.modifierFlags.contains(.command),precise:event.hasPreciseScrollingDeltas,momentum:!event.momentumPhase.isEmpty) {
         case .ignore: return
         case .pan:
-            navigation.move(dx:event.scrollingDeltaX,dy:-event.scrollingDeltaY,image:image.size,viewport:viewport.size)
+            navigation.move(dx:event.scrollingDeltaX,dy:-event.scrollingDeltaY,image:image.size,fitRect:viewport,viewport:drawingViewport)
         case .zoom:
-            navigation.magnify(factor:exp(event.scrollingDeltaY*(event.hasPreciseScrollingDeltas ? 0.01 : 0.1)),at:convert(event.locationInWindow,from:nil),image:image.size,viewport:viewport)
+            navigation.magnify(factor:exp(event.scrollingDeltaY*(event.hasPreciseScrollingDeltas ? 0.01 : 0.1)),at:convert(event.locationInWindow,from:nil),image:image.size,viewport:drawingViewport,fitRect:viewport)
         }
         needsDisplay=true
     }
@@ -69,7 +70,7 @@ final class ReferenceView: NSView, NSMenuItemValidation {
     override func mouseDragged(with event:NSEvent) {
         guard interactive, let previous=lastDrag, let image else { return }
         let point=convert(event.locationInWindow,from:nil)
-        navigation.move(dx:point.x-previous.x,dy:point.y-previous.y,image:image.size,viewport:viewport.size)
+        navigation.move(dx:point.x-previous.x,dy:point.y-previous.y,image:image.size,fitRect:viewport,viewport:drawingViewport)
         lastDrag=point; needsDisplay=true
     }
     override func mouseUp(with event:NSEvent) { lastDrag=nil }
@@ -103,13 +104,13 @@ final class ReferenceView: NSView, NSMenuItemValidation {
     override func draw(_ dirtyRect:NSRect) {
         backgroundColour.setFill(); bounds.fill()
         guard let image else { return }
-        navigation.clamp(image:image.size,viewport:viewport.size)
+        navigation.clamp(image:image.size,fitRect:viewport,viewport:drawingViewport)
         let percentage=imageZoomPercent(image:image.size,viewport:viewport.size,zoom:navigation.zoom,scale:window?.backingScaleFactor ?? 1)
         if abs(percentage-lastZoom)>0.01 { lastZoom=percentage; zoomChanged?(percentage) }
         let fitted=fittedSize(image:image.size,inside:viewport.size)
         let size=CGSize(width:fitted.width*navigation.zoom,height:fitted.height*navigation.zoom)
         let frame=CGRect(x:viewport.midX-size.width/2+navigation.pan.x,y:viewport.midY-size.height/2+navigation.pan.y,width:size.width,height:size.height)
-        NSGraphicsContext.saveGraphicsState(); viewport.clip()
+        NSGraphicsContext.saveGraphicsState(); drawingViewport.clip()
         image.draw(in:frame,from:.zero,operation:.copy,fraction:1,respectFlipped:true,hints:[.interpolation:NSImageInterpolation.high])
         NSGraphicsContext.restoreGraphicsState()
         if let toast { drawToast(toast,in:bounds) }

@@ -398,3 +398,60 @@ assert(hostIsPresentationThumbnail(CGRect(x:0,y:0,width:160,height:90)))
 assert(!hostIsPresentationThumbnail(hostFrame))
 assert(!hostIsPresentationThumbnail(partialOffscreen))
 print("PASS: new dialog fallback excludes existing panes/untitled redraws; thumbnail geometry is distinct from normal/off-screen host")
+
+// Synthetic ARW candidates exercise selection independently of real camera data.
+let arw=folder.appendingPathComponent("sony.ARW")
+try Data("synthetic Sony RAW".utf8).write(to:arw)
+let arwBefore=try Data(contentsOf:arw)
+let arwDate=try FileManager.default.attributesOfItem(atPath:arw.path)[.modificationDate] as! Date
+let largeBitmap=CGContext(data:nil,width:128,height:64,bitsPerComponent:8,bytesPerRow:0,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.noneSkipLast.rawValue)!
+largeBitmap.draw(fixtureImage,in:CGRect(x:0,y:0,width:128,height:64))
+let largeData=NSMutableData()
+let largeEncoder=CGImageDestinationCreateWithData(largeData,"public.jpeg" as CFString,1,nil)!
+CGImageDestinationAddImage(largeEncoder,largeBitmap.makeImage()!,nil)
+assert(CGImageDestinationFinalize(largeEncoder))
+let largeJPEG=largeData as Data
+let arwTool=try script("arw-tool","if '-Orientation' in sys.argv:\n sys.stdout.write('6\\n')\nelif '-PreviewImage' in sys.argv:\n sys.stdout.buffer.write(base64.b64decode('\(largeJPEG.base64EncodedString())'))\nelse:\n sys.stdout.buffer.write(base64.b64decode('\(fixture.base64EncodedString())'))\n")
+let arwLoaded=try loadReference(raw:arw,preferEmbedded:true,executable:arwTool,cancellation:Cancellation())
+assert(arwLoaded.origin == .embedded && arwLoaded.image.width==64 && arwLoaded.image.height==128)
+assert(arwLoaded.embeddedBytes==largeJPEG && arwLoaded.stages.contains("PreviewImage"))
+let arwExport=try exportJPEG(arwLoaded.embeddedBytes!,orientation:arwLoaded.cameraOrientation)
+let arwExportImage=try decodeJPEG(CGImageSourceCreateWithData(arwExport as CFData,nil))
+assert(arwExportImage.width==64 && arwExportImage.height==128)
+let arwCache=SelectionImageCache();arwCache.observe("sony-selection")
+arwCache.insert(arwLoaded,key:"sony",epoch:"sony-selection")
+assert(arwCache.value(key:"sony",epoch:"sony-selection")?.embeddedBytes==largeJPEG)
+let arwJfrTool=try script("arw-jfr","if '-Orientation' in sys.argv:\n sys.stdout.write('1\\n')\nelif '-JpgFromRaw' in sys.argv:\n sys.stdout.buffer.write(base64.b64decode('\(largeJPEG.base64EncodedString())'))\nelse:\n sys.stdout.buffer.write(base64.b64decode('\(fixture.base64EncodedString())'))\n")
+let arwLargest=try extractEmbeddedJPEG(raw:arw,executable:arwJfrTool,cancellation:Cancellation())
+assert(arwLargest.tag=="JpgFromRaw" && arwLargest.bytes==largeJPEG)
+let arwFallbackTool=try script("arw-fallback","if '-JpgFromRaw' in sys.argv:\n sys.stdout.buffer.write(b'invalid')\nelse:\n sys.stdout.buffer.write(base64.b64decode('\(fixture.base64EncodedString())'))\n")
+let arwFallback=try extractEmbeddedJPEG(raw:arw,executable:arwFallbackTool,cancellation:Cancellation())
+assert(arwFallback.tag=="PreviewImage" && arwFallback.bytes==fixture)
+expectFailure { _ = try extractJPEG(raw:arw,executable:badTool,cancellation:Cancellation()) }
+let arwCancel=Cancellation();arwCancel.cancel()
+expectFailure { _ = try extractJPEG(raw:arw,executable:arwTool,cancellation:arwCancel) }
+let arwAfter=try Data(contentsOf:arw)
+let arwAfterDate=try FileManager.default.attributesOfItem(atPath:arw.path)[.modificationDate] as! Date
+assert(arwAfter==arwBefore && arwAfterDate==arwDate)
+print("PASS: ARW largest valid tag, invalid fallback, orientation/export, RAM reuse, cancellation and unchanged RAW")
+
+// Separate Fit geometry from the zoom/pan boundary, including asymmetric margins.
+let zoomRegion=CGRect(x:0,y:0,width:1000,height:700)
+for size in [CGSize(width:6000,height:4000),CGSize(width:4000,height:6000)] {
+    let fitBox=CGRect(x:150,y:80,width:700,height:500)
+    let fitSize=fittedSize(image:size,inside:fitBox.size)
+    var n=ImageNavigation()
+    n.clamp(image:size,fitRect:fitBox,viewport:zoomRegion)
+    assert(n.pan == .zero && n.zoom==1)
+    n.zoom=5
+    let point=CGPoint(x:fitBox.midX+10,y:fitBox.midY+10)
+    let before=CGPoint(x:(point.x-fitBox.midX-n.pan.x)/n.zoom,y:(point.y-fitBox.midY-n.pan.y)/n.zoom)
+    n.magnify(factor:1.2,at:point,image:size,viewport:zoomRegion,fitRect:fitBox)
+    let after=CGPoint(x:(point.x-fitBox.midX-n.pan.x)/n.zoom,y:(point.y-fitBox.midY-n.pan.y)/n.zoom)
+    assert(abs(before.x-after.x)<0.001 && abs(before.y-after.y)<0.001)
+    n.move(dx:100000,dy:-100000,image:size,fitRect:fitBox,viewport:zoomRegion)
+    let frame=CGRect(x:fitBox.midX-fitSize.width*n.zoom/2+n.pan.x,y:fitBox.midY-fitSize.height*n.zoom/2+n.pan.y,width:fitSize.width*n.zoom,height:fitSize.height*n.zoom)
+    assert(abs(frame.minX-zoomRegion.minX)<0.001 && abs(frame.maxY-zoomRegion.maxY)<0.001)
+    n.reset();assert(n.zoom==1 && n.pan == .zero)
+}
+print("PASS: larger-region panning, pointer-centred zoom and exact Fit reset for portrait/landscape")

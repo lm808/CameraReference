@@ -1,4 +1,4 @@
-# Installing Camera Reference 1.0.4
+# Installing Camera Reference 1.0.5
 
 For manual source builds, older-commit recovery, and stable/candidate Git worktrees, see [Building from source and keeping a working version](SOURCE-BUILD.md).
 
@@ -6,7 +6,7 @@ For manual source builds, older-commit recovery, and stable/candidate Git worktr
 
 - macOS 13 or later; macOS 14 or later for automatic detection, capture preview and snapping.
 - Lightroom Classic and the included Camera Reference bridge (0.5.2). Development verification used Lightroom Classic 15.6.
-- ExifTool for CR3 embedded JPEG extraction/export. Obtain it from https://exiftool.org/ and use Settings → Choose ExifTool if the app cannot find it. A paired standalone JPEG can be used without CR3 extraction.
+- ExifTool for CR3/ARW embedded JPEG extraction/export. Obtain it from https://exiftool.org/ and use Settings → Choose ExifTool if the app cannot find it. A paired standalone JPEG can be used without embedded extraction.
 - Choose the DMG matching your Mac (`arm64` for Apple silicon, `x86_64` for Intel). This build script does not produce a universal binary.
 
 ## Testing from the repository
@@ -42,6 +42,6 @@ Bridge 0.5.2 uses the unspaced CameraReference/Bridge folder. Quit the old compa
 
 ## Verify
 
-The menu should say **Camera Reference 1.0.4**. Bridge diagnostics should report bridge 0.5.2 and a recent heartbeat. Start with Full, Lightroom Develop at Fit, and a known paired/embedded JPEG.
+The menu should say **Camera Reference 1.0.5**. Bridge diagnostics should report bridge 0.5.2 and a recent heartbeat. Start with Full, Lightroom Develop at Fit, and a known paired/embedded JPEG.
 
 Use TESTING.md in the repository for staged-app acceptance; DMG installation is tested only when a package is requested. For checksum verification, compare `shasum -a 256 <downloaded.dmg>` with the adjacent `.sha256` download; this detects file corruption, not publisher identity.

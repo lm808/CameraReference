@@ -41,3 +41,22 @@ for layout in OverlayLayout.allCases {
 }
 precondition(masks.count==5,"Pane diagrams must be distinct")
 print("PASS: five nonempty distinct menu diagrams and title-bar drag at any zoom")
+
+// Pixel-level regression: zoom must draw into margins outside the Fit rectangle.
+let zoomView=ReferenceView(frame:CGRect(x:0,y:0,width:400,height:300))
+zoomView.imageViewport=CGRect(x:100,y:100,width:200,height:100)
+let redContext=CGContext(data:nil,width:200,height:100,bitsPerComponent:8,bytesPerRow:0,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.noneSkipLast.rawValue)!
+redContext.setFillColor(CGColor(red:1,green:0,blue:0,alpha:1));redContext.fill(CGRect(x:0,y:0,width:200,height:100))
+zoomView.image=NSImage(cgImage:redContext.makeImage()!,size:CGSize(width:200,height:100))
+func renderZoom(_ zoom:CGFloat)->NSBitmapImageRep {
+    let bitmap=NSBitmapImageRep(bitmapDataPlanes:nil,pixelsWide:400,pixelsHigh:300,bitsPerSample:8,samplesPerPixel:4,hasAlpha:true,isPlanar:false,colorSpaceName:.deviceRGB,bytesPerRow:0,bitsPerPixel:0)!
+    zoomView.navigation.zoom=zoom
+    NSGraphicsContext.saveGraphicsState();NSGraphicsContext.current=NSGraphicsContext(bitmapImageRep:bitmap)
+    zoomView.draw(zoomView.bounds);NSGraphicsContext.restoreGraphicsState()
+    return bitmap
+}
+let fitRender=renderZoom(1),zoomRender=renderZoom(2)
+precondition(fitRender.colorAt(x:20,y:150)!.redComponent<0.1)
+precondition(fitRender.colorAt(x:200,y:150)!.redComponent>0.9)
+precondition(zoomRender.colorAt(x:20,y:150)!.redComponent>0.9)
+print("PASS: zoom draws across the full region while Fit retains its original rectangle")

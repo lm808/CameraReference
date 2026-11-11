@@ -19,6 +19,6 @@
 
 - Improve automatic placement across more panel widths without personal side-search tuning.
 - Investigate reliable main-view identification only if Lightroom exposes evidence; current SDK diagnostics do not identify it.
-- Broader RAW embedded-preview support and cropped RAW/JPEG aspect handling.
+- Broader RAW support beyond CR3/ARW, additional Sony camera samples and cropped RAW/JPEG aspect handling.
 
 Completed functionality belongs in README; implementation rationale in METHODS; historical evidence in VALIDATION and Git history. Pinch gestures were deliberately removed; Cmd-scroll is supported.

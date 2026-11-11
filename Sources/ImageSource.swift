@@ -3,7 +3,7 @@ import ImageIO
 import CoreImage
 import Darwin
 
-enum ImageOrigin: String { case standalone = "Standalone JPEG", embedded = "Embedded JpgFromRaw" }
+enum ImageOrigin: String { case standalone = "Standalone JPEG", embedded = "Embedded JPEG" }
 struct LoadedReference {
     let image: CGImage
     let origin: ImageOrigin
@@ -108,21 +108,52 @@ func runExifTool(raw: URL, executable: URL, cancellation: Cancellation, argument
     try cancellation.check()
     guard !buffer.exceeded else { throw ReferenceError.message("Embedded JPEG exceeds the memory limit.") }
     guard !aborted else { throw ReferenceError.message("Embedded JPEG extraction timed out.") }
-    guard process.terminationStatus == 0 else { throw ReferenceError.message("ExifTool could not extract JpgFromRaw.") }
+    guard process.terminationStatus == 0 else { throw ReferenceError.message("ExifTool could not read the requested embedded data.") }
     let bytes = buffer.take()
-    guard !bytes.isEmpty else { throw ReferenceError.message("No embedded JpgFromRaw is available.") }
+    guard !bytes.isEmpty else { throw ReferenceError.message("No requested embedded data is available.") }
     return bytes
 }
 
 func extractJPEG(raw: URL, executable: URL, cancellation: Cancellation,
                  timeout: TimeInterval = 12, byteLimit: Int = 128 * 1024 * 1024) throws -> Data {
-    try runExifTool(raw: raw, executable: executable, cancellation: cancellation,
-                    arguments: ["-b", "-JpgFromRaw"], timeout: timeout, byteLimit: byteLimit)
+    try extractEmbeddedJPEG(raw:raw,executable:executable,cancellation:cancellation,timeout:timeout,byteLimit:byteLimit).bytes
 }
 
-func embeddedImage(raw: URL, executable: URL, cancellation: Cancellation) throws -> (image: CGImage, extraction: TimeInterval, bytes: Data, orientation: UInt32?) {
+func extractEmbeddedJPEG(raw:URL,executable:URL,cancellation:Cancellation,
+                         timeout:TimeInterval=12,byteLimit:Int=128*1024*1024) throws -> (bytes:Data,tag:String) {
+    guard raw.pathExtension.lowercased()=="arw" else {
+        // Keep the established CR3 request path unchanged.
+        return (try runExifTool(raw:raw,executable:executable,cancellation:cancellation,
+                               arguments:["-b","-JpgFromRaw"],timeout:timeout,byteLimit:byteLimit),"JpgFromRaw")
+    }
+    let deadline=ProcessInfo.processInfo.systemUptime+timeout
+    var best:(bytes:Data,tag:String)?,bestPixels:Double=0
+    for tag in ["JpgFromRaw","PreviewImage"] {
+        try cancellation.check()
+        let remaining=deadline-ProcessInfo.processInfo.systemUptime
+        guard remaining>0 else { break }
+        do {
+            let data=try runExifTool(raw:raw,executable:executable,cancellation:cancellation,
+                                    arguments:["-b","-"+tag],timeout:remaining,byteLimit:byteLimit)
+            guard let source=CGImageSourceCreateWithData(data as CFData,nil),
+                  CGImageSourceGetType(source) as String? == "public.jpeg",
+                  let properties=CGImageSourceCopyPropertiesAtIndex(source,0,nil) as? [CFString:Any],
+                  let width=properties[kCGImagePropertyPixelWidth] as? Double,
+                  let height=properties[kCGImagePropertyPixelHeight] as? Double,
+                  width>0,height>0,width*height>bestPixels else { continue }
+            _ = try decodeJPEG(source) // Reject damaged/oversized candidates before choosing.
+            best=(data,tag);bestPixels=width*height
+        } catch { try cancellation.check() } // Missing/invalid tag may have a valid alternative.
+    }
+    try cancellation.check()
+    guard let best else { throw ReferenceError.message("No valid embedded ARW JPEG found in JpgFromRaw or PreviewImage.") }
+    return best
+}
+
+func embeddedImage(raw: URL, executable: URL, cancellation: Cancellation) throws -> (image: CGImage, extraction: TimeInterval, bytes: Data, orientation: UInt32?, tag:String) {
     let started = ProcessInfo.processInfo.systemUptime
-    let data = try extractJPEG(raw: raw, executable: executable, cancellation: cancellation)
+    let selected = try extractEmbeddedJPEG(raw:raw,executable:executable,cancellation:cancellation)
+    let data=selected.bytes
     var extraction = ProcessInfo.processInfo.systemUptime - started
     try cancellation.check()
     let source = CGImageSourceCreateWithData(data as CFData, nil)
@@ -130,7 +161,7 @@ func embeddedImage(raw: URL, executable: URL, cancellation: Cancellation) throws
     let properties = source.flatMap { CGImageSourceCopyPropertiesAtIndex($0, 0, nil) as? [CFString: Any] }
     // Some extracted JPEGs have no EXIF orientation of their own. Read the camera orientation,
     // without applying Lightroom's edits. No second process is needed if the JPEG already has it.
-    if properties?[kCGImagePropertyOrientation] != nil { return (image, extraction, data, nil) }
+    if properties?[kCGImagePropertyOrientation] != nil { return (image, extraction, data, nil,selected.tag) }
     let orientationStarted = ProcessInfo.processInfo.systemUptime
     let metadata = try runExifTool(raw: raw, executable: executable, cancellation: cancellation,
                                   arguments: ["-n", "-s3", "-Orientation"], byteLimit: 1024)
@@ -139,7 +170,7 @@ func embeddedImage(raw: URL, executable: URL, cancellation: Cancellation) throws
           let orientation = CGImagePropertyOrientation(rawValue: number) else {
         throw ReferenceError.message("Camera orientation is unavailable for this embedded JPEG.")
     }
-    if orientation == .up { return (image, extraction, data, number) }
+    if orientation == .up { return (image, extraction, data, number,selected.tag) }
     let base = CIImage(cgImage: image)
     let transform = base.orientationTransform(forExifOrientation: Int32(number))
     let extent = base.extent.applying(transform).standardized
@@ -153,7 +184,7 @@ func embeddedImage(raw: URL, executable: URL, cancellation: Cancellation) throws
     context.concatenate(transform)
     context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
     guard let result = context.makeImage() else { throw ReferenceError.message("Cannot orient the embedded JPEG.") }
-    return (result, extraction, data, number)
+    return (result, extraction, data, number,selected.tag)
 }
 
 func decodeJPEG(_ source: CGImageSource?) throws -> CGImage {
@@ -199,13 +230,14 @@ func loadReference(raw: URL, preferEmbedded: Bool, executable: URL?, cancellatio
                 stages.append(String(format:"Standalone decode %.0f ms",(ProcessInfo.processInfo.systemUptime-decodeStarted)*1000))
                 sourceFilename=jpeg.lastPathComponent
             case .embedded:
-                guard raw.pathExtension.lowercased() == "cr3" else {
-                    throw ReferenceError.message("Embedded extraction currently supports CR3 only.")
+                guard ["cr3","arw"].contains(raw.pathExtension.lowercased()) else {
+                    throw ReferenceError.message("Embedded extraction currently supports CR3 and ARW.")
                 }
                 guard let executable else { throw ReferenceError.message("ExifTool not found. Use Choose ExifTool in the menu.") }
                 let embedded = try embeddedImage(raw: raw, executable: executable, cancellation: cancellation)
                 image = embedded.image; extraction = embedded.extraction
                 bytes = embedded.bytes; orientation = embedded.orientation
+                stages.append("Embedded preview: \(embedded.tag)")
                 stages.append(String(format:"Embedded decode/orientation overhead %.0f ms",(ProcessInfo.processInfo.systemUptime-sourceStarted-embedded.extraction)*1000))
             }
             try cancellation.check()

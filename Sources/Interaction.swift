@@ -6,21 +6,34 @@ struct ImageNavigation {
     var pan = CGPoint.zero
     mutating func reset() { zoom = 1; pan = .zero }
     mutating func clamp(image: CGSize, viewport: CGSize) {
-        let fit = fittedSize(image: image, inside: viewport)
-        let x = max(0, fit.width*zoom-viewport.width)/2
-        let y = max(0, fit.height*zoom-viewport.height)/2
-        pan.x = min(x,max(-x,pan.x)); pan.y = min(y,max(-y,pan.y))
+        let rect=CGRect(origin:.zero,size:viewport)
+        clamp(image:image,fitRect:rect,viewport:rect)
     }
-    mutating func magnify(factor: CGFloat, at point: CGPoint, image: CGSize, viewport: CGRect) {
+    mutating func clamp(image:CGSize,fitRect:CGRect,viewport:CGRect) {
+        let fit=fittedSize(image:image,inside:fitRect.size)
+        func limit(_ offset:CGFloat,center:CGFloat,half:CGFloat,low:CGFloat,high:CGFloat)->CGFloat {
+            let minimum=high-center-half,maximum=low-center+half
+            // Keep original Fit alignment on axes where the image remains
+            // smaller than the drawing region; otherwise permit edge-to-edge pan.
+            return minimum<=maximum ? min(maximum,max(minimum,offset)):0
+        }
+        pan.x=limit(pan.x,center:fitRect.midX,half:fit.width*zoom/2,low:viewport.minX,high:viewport.maxX)
+        pan.y=limit(pan.y,center:fitRect.midY,half:fit.height*zoom/2,low:viewport.minY,high:viewport.maxY)
+    }
+    mutating func magnify(factor: CGFloat, at point: CGPoint, image: CGSize, viewport: CGRect, fitRect:CGRect? = nil) {
         guard factor.isFinite, factor > 0 else { return }
-        let previous = zoom
+        let fit=fitRect ?? viewport,previous=zoom
         zoom = min(64,max(0.05,zoom*factor))
-        pan.x = point.x-viewport.midX-(point.x-viewport.midX-pan.x)*zoom/previous
-        pan.y = point.y-viewport.midY-(point.y-viewport.midY-pan.y)*zoom/previous
-        clamp(image: image, viewport: viewport.size)
+        pan.x = point.x-fit.midX-(point.x-fit.midX-pan.x)*zoom/previous
+        pan.y = point.y-fit.midY-(point.y-fit.midY-pan.y)*zoom/previous
+        clamp(image:image,fitRect:fit,viewport:viewport)
     }
     mutating func move(dx: CGFloat, dy: CGFloat, image: CGSize, viewport: CGSize) {
-        pan.x += dx; pan.y += dy; clamp(image: image, viewport: viewport)
+        let rect=CGRect(origin:.zero,size:viewport)
+        move(dx:dx,dy:dy,image:image,fitRect:rect,viewport:rect)
+    }
+    mutating func move(dx:CGFloat,dy:CGFloat,image:CGSize,fitRect:CGRect,viewport:CGRect) {
+        pan.x += dx; pan.y += dy;clamp(image:image,fitRect:fitRect,viewport:viewport)
     }
 }
 

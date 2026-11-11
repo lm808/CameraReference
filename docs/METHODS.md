@@ -90,3 +90,11 @@ The geometry timer applies a frame-origin change only for a nonzero host transla
 ## Dialog and minimise handling (1.0.4 candidate)
 
 When Accessibility is already granted, bind a read-only AX window to the selected host by geometry and inspect minimise/focused dialog/sheet state with short messaging timeouts. Do not prompt from the timer. The fallback uses on-screen window IDs/opacity and new substantial titled Lightroom windows above the host, excluding known panes and untitled redraw surfaces. Window names are not logged. Dialog presence lowers to normal level; closing restores the accepted floating behaviour. Thumbnail-sized geometry suspends rather than translating the overlay into the Dock. Native confirmation is required, particularly when AX is unavailable.
+
+## Whole-region zoom and ARW (1.0.5)
+
+ReferenceView separates the Fit rectangle (imageViewport, original position and minimum margin) from its drawing boundary (the full overlay content area). ImageNavigation clamps pan against that boundary using the unchanged Fit scale/centre; pointer zoom and actual-pixel zoom still refer to the original fitted image. Returning to Fit resets pan/scale exactly. Floating views normally have identical Fit/drawing bounds.
+
+CR3 continues to request JpgFromRaw only. ARW probes JpgFromRaw then PreviewImage under a shared extraction time budget, chooses the largest decodable JPEG by pixel count, and reuses the existing orientation, RAM cache and export pipeline. Candidate bytes remain in memory; missing/invalid tags may fall back, cancellation propagates and per-image byte/decode limits remain enforced. Diagnostics report the selected tag. Embedded source labels are generic JPEG; export keeps the historical _JpgFromRaw suffix for compatibility.
+
+Optional real-file check (read-only; no image output): compile tests/arw-sample/main.swift with Sources/Core.swift, Sources/ImageSource.swift and Sources/Export.swift, then pass a local ARW path. Requires ExifTool. It checks extraction, orientation/export in memory, cache reuse and unchanged RAW hash/mtime. Do not commit the sample.

@@ -1,14 +1,16 @@
-# Camera Reference — 1.0.4
+# Camera Reference — 1.0.5
 
 Camera Reference is a macOS menu-bar companion for Lightroom Classic. It displays a camera JPEG over Lightroom’s working area, or in an independent floating window, so you can compare it with your RAW edit.
 
-It can read a matching standalone JPEG or extract the embedded JPEG from a Canon CR3 using ExifTool. It does not change the RAW file, Lightroom catalogue or Develop settings.
+It can read a matching standalone JPEG or extract the embedded JPEG from Canon CR3 or Sony ARW using ExifTool. It does not change the RAW file, Lightroom catalogue or Develop settings.
+
+ARW extraction checks `JpgFromRaw` and `PreviewImage`, choosing the largest valid JPEG by pixel dimensions. Available preview size depends on the camera/file; it may be much smaller than the RAW. The original CR3 extraction path is unchanged. Diagnostics identify the chosen tag. Export retains the existing `_JpgFromRaw.jpg` filename convention for either tag.
 
 ## Install
 
 Download the disk image for your Mac’s architecture from the repository’s GitHub Releases, when available. Drag **CameraReference.app** to **Applications**, install the included Lightroom bridge, then enable it in Lightroom’s Plugin Manager.
 
-See [installation and upgrades](docs/INSTALL.md) for the complete steps, dependencies and alpha signing limitations. The app requires macOS 13 or later; automatic detection, capture preview and calibration snapping require macOS 14 or later. The bridge has been developed/tested with Lightroom Classic 15.6; other releases need verification. ExifTool is required for CR3 extraction and lossless embedded-JPEG export.
+See [installation and upgrades](docs/INSTALL.md) for the complete steps, dependencies and alpha signing limitations. The app requires macOS 13 or later; automatic detection, capture preview and calibration snapping require macOS 14 or later. The bridge has been developed/tested with Lightroom Classic 15.6; other releases need verification. ExifTool is required for CR3/ARW extraction and lossless embedded-JPEG export.
 
 For development testing, run **release/CameraReference.app** after `bash scripts/stage.sh`. build/ is internal. This update requires bridge **0.5.2**. Stop old copies before consolidation; see the upgrade instructions.
 
@@ -34,6 +36,8 @@ If automatic placement is unavailable, choose **Set image region** and select th
 - An open floating display keeps its own photo when Lightroom selection changes. Closing/reopening loads the current selection.
 
 Initial floating size approximates a photo fitted into one side-by-side pane: half the Full working-area width and its full height. Both portrait and landscape use this rule.
+
+Zoomed overlays can draw and pan across their whole region; Fit keeps the original photo alignment and inset.
 
 ## Placement and speed
 

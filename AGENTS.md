@@ -19,7 +19,7 @@ The user runs only `release/CameraReference.app`, never build/. Keep build/ for 
 - `bash scripts/package.sh`: package the existing release/ payload as a DMG/checksum under ignored dist/. Uses hdiutil; may require sandbox approval. Does not install the app or publish anything. Existing DMG is not overwritten.
 - Verify signature/plist and `git diff --check` before committing. Run checks appropriate to the change; avoid repeating unchanged suites without reason.
 
-Use plain three-component versions in CFBundleShortVersionString (currently `1.0.4`); the menu and package script read that value. Preserve org.local.CameraReference until an explicit bundle-ID migration is planned.
+Use plain three-component versions in CFBundleShortVersionString (currently `1.0.5`); the menu and package script read that value. Preserve org.local.CameraReference until an explicit bundle-ID migration is planned.
 
 ## Source map and flow
 
@@ -51,6 +51,7 @@ Main flow: shortcut → bridge request/epoch → image load or RAM hit → manua
 - Split uses unchanged Full bounds, then bottom/left inset scanning. See docs/METHODS.md before changing this; prior alternate outer-bound logic regressed badly.
 - Preserve point/pixel and top-left/AppKit conversions; do not substitute display width for window crop.
 - Full mode and accepted manual placement must remain usable during split development.
+- Keep original Fit geometry separate from the whole-region zoom/pan boundary. Preserve the CR3 extraction path when adjusting ARW tag selection; RAW and extracted preview data remain read-only/in-memory.
 - Respect source/selection epochs, request IDs, cancellation and cache generations. Never display a late result for another request.
 - Clear region must not change auto/manual preference. Successful calibration turns auto off; cancellation changes nothing.
 - Keep visible overlays open through resize, detection failure, heartbeat/module uncertainty and changed selection. Invalidate cached placement for next invocation, not the current display. Follow known movement. Temporarily suspend for host invisibility/overview and restore even if selection or size changed. Explicit user dismissal or confirmed host closure releases it. Never use full-display containment as a movement requirement.

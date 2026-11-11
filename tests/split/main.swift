@@ -107,7 +107,7 @@ assert(fresh.sideSearchPercent == 40)
 try FileManager.default.removeItem(at:freshDirectory)
 print("PASS: Lightroom child windows do not cause reordering; foreign windows retain precedence; new installs default to 40")
 
-for (layout,expected) in [(OverlayLayout.full,"Full view (▣)"),(.left,"left (◧)"),(.right,"right (◨)"),(.upper,"upper pane (⬒)"),(.lower,"lower pane (⬓)")] {
+for (layout,expected) in [(OverlayLayout.full,"Full view ▣"),(.left,"left ◧"),(.right,"right ◨"),(.upper,"upper pane ⬒"),(.lower,"lower pane ⬓")] {
     let text=calibrationInstructions(layout:layout,automatic:true)
     assert(text.contains(expected) && text.contains("Cancelling keeps auto-detection and the saved region."))
 }

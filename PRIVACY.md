@@ -1,6 +1,6 @@
 # Privacy and data handling
 
-Camera Reference reads the Lightroom selection and a matching JPEG or embedded CR3 JPEG. The bridge exchanges local request/response files; selection responses include the selected source path. Heartbeat and revision files track bridge/module/selection state.
+Camera Reference reads the Lightroom selection and a matching JPEG or embedded CR3/ARW JPEG. The bridge exchanges local request/response files; selection responses include the selected source path. Heartbeat and revision files track bridge/module/selection state.
 
 Automatic placement and snapping capture the selected Lightroom window in memory. Background checks do this periodically while eligible; interval 0 disables them. The app does not perform OCR or save screenshots. Explicit capture preview is in-memory only.
 

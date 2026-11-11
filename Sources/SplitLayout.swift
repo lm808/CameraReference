@@ -76,11 +76,11 @@ func overlayNeedsOrdering(order:[Int],overlay:Int,lightroom:Int,lightroomWindows
 func calibrationInstructions(layout:OverlayLayout,automatic:Bool)->String {
     let expected:String
     switch layout {
-    case .full:expected="a Full view (▣)"
-    case .left:expected="side-by-side, overlay on left (◧)"
-    case .right:expected="side-by-side, overlay on right (◨)"
-    case .upper:expected="above-and-below, overlay on upper pane (⬒)"
-    case .lower:expected="above-and-below, overlay on lower pane (⬓)"
+    case .full:expected="a Full view ▣"
+    case .left:expected="side-by-side, overlay on left ◧"
+    case .right:expected="side-by-side, overlay on right ◨"
+    case .upper:expected="above-and-below, overlay on upper pane ⬒"
+    case .lower:expected="above-and-below, overlay on lower pane ⬓"
     }
     let mode=automatic ? "auto-detection":"manual mode"
     let guidance=automatic ? "• Auto-detection expects \(expected).\n• If different, change the layout in the menu.\n\n":""
