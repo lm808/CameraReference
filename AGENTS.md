@@ -10,7 +10,7 @@ Keep accepted daily-use and candidate builds in separate Git worktrees. Do not r
 
 For each delivered update increment the patch version (1.0.1 → 1.0.2). For a user-requested packaged feature release increment minor and reset patch (1.1.0). Increment major and reset minor/patch only when the user requests a major revamp (2.0.0). Never make a DMG unless explicitly requested.
 
-The user runs only `release/CameraReference.app`, never build/. Keep build/ for intermediate binaries/tests. After an update, refresh the ignored release/ staging folder with scripts/stage.sh; copy only changed components. Package that staged/tested payload when requested.
+The user runs only staged apps: stable `release/CameraReference.app` or candidate `release/CameraReference Testing.app`, never build/. Keep build/ for intermediate binaries/tests. After an update, refresh the ignored release/ staging folder with scripts/stage.sh; copy only changed components. Package that staged/tested payload when requested.
 
 - `bash build.sh`: native-architecture macOS app at `build/CameraReference.app` (ad-hoc signed).
 - `bash test.sh`: Swift regression executables and Lua stand-ins; requires Apple command-line tools and texlua.
@@ -19,7 +19,7 @@ The user runs only `release/CameraReference.app`, never build/. Keep build/ for 
 - `bash scripts/package.sh`: package the existing release/ payload as a DMG/checksum under ignored dist/. Uses hdiutil; may require sandbox approval. Does not install the app or publish anything. Existing DMG is not overwritten.
 - Verify signature/plist and `git diff --check` before committing. Run checks appropriate to the change; avoid repeating unchanged suites without reason.
 
-Use plain three-component versions in CFBundleShortVersionString (currently `1.0.9`); the menu and package script read that value. Stable keeps org.local.CameraReference. User authorised testing identity org.local.CameraReference.testing with a purple icon; candidate builds use bash build.sh --testing or bash scripts/stage.sh --testing. Both use the existing org.local.CameraReference preference domain and shared support/bridge folder; run only one app at a time. Do not rebuild main’s accepted staged app while working on candidates.
+Use plain three-component versions in CFBundleShortVersionString (currently `1.0.10`); the menu and package script read that value. Stable keeps org.local.CameraReference. User authorised testing identity org.local.CameraReference.testing with a purple icon; candidate builds use bash build.sh --testing or bash scripts/stage.sh --testing. Both use the existing org.local.CameraReference preference domain and shared support/bridge folder; run only one app at a time. Do not rebuild main’s accepted staged app while working on candidates.
 
 ## Source map and flow
 

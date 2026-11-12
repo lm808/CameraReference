@@ -161,3 +161,5 @@ Use `git worktree list` to see them. Once you no longer need a worktree, quit it
 Apple reference: [installing command-line tools](https://developer.apple.com/documentation/xcode/installing-the-command-line-tools/).
 
 For candidate worktrees, use `bash scripts/stage.sh --testing`. This selects the purple testing icon and separate bundle identity while preserving the shared settings domain. Use plain `bash scripts/stage.sh` for a requested stable build. Do not rebuild the accepted main app until candidate acceptance. Only one copy should run because the Lightroom bridge is shared.
+
+Testing staging now uses `release/CameraReference Testing.app` with executable CameraReferenceTesting and a large T badge. Stable staging keeps its original path. Build intermediates are not launch targets.

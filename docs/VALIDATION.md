@@ -362,3 +362,11 @@ Native testing build and `bash test.sh` passed, including immediate ordinary mov
 ## 1.0.9 automated validation
 
 Native testing build and bash test.sh passed, including immediate movement versus settled resize/restore sequences, diagnostic section headings and single timing emission. Shell syntax, staged signature/plist and diff checks passed. The generated purple icon was inspected locally. Testing bundle identity is org.local.CameraReference.testing; main remains clean with staged 1.0.6 unchanged. No application was launched, no permissions changed and no live UI interaction was performed. Native minimisation timing, diagnostic-window usability, off-screen placement/snapping and testing permissions remain in TESTING.md.
+
+## 1.0.9 permission blocker
+
+User could not successfully grant Screen Recording to the testing app; functional acceptance was blocked. No annotated checklist was supplied. Stable remains at 1.0.6.
+
+## 1.0.10 rebuild checks
+
+Native testing build, shell syntax, staged plist/signature and diff checks passed. Staged path is release/CameraReference Testing.app; bundle ID remains org.local.CameraReference.testing, executable is CameraReferenceTesting, version 1.0.10. T badge inspected at small icon size. Old ambiguously named testing payload moved into ignored build/retired-testing.*; main source and staged 1.0.6 remain untouched. No new Library folder or preference domain. Permission code compiled; native permission recovery has not been tested. No certificate was installed, no TCC reset or live UI interaction performed. Unchanged detection/geometry suites were not repeated for this identity/permission-message rebuild.

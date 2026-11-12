@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.10 — permission identification candidate
+
+Give testing a distinct on-disk app/executable name and large T badge. Permission messages identify the running copy and request native access once per launch. Preserve shared settings and stable identity; no TCC reset. Ad-hoc signing remains and permission recovery needs native confirmation.
+
 ## 1.0.9 — testing candidate
 
 Consolidate diagnostics into six selectable sections, remove duplicate timing and redundant monitoring action, and explain Develop-only capture. Restore off-screen detection/snapping with uncropped window capture. Prefer logical AX movement and settle resize/restoration geometry. Add purple, separately identified testing builds while preserving stable and shared preferences. Native acceptance pending.

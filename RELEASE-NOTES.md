@@ -1,10 +1,7 @@
-# CameraReference 1.0.9 — testing candidate
+# CameraReference Testing 1.0.10
 
-Main’s accepted 1.0.6 app remains untouched. Candidate release/CameraReference.app is now **Camera Reference Testing**, with a purple icon and separate bundle ID. Its permissions must be granted separately by the user; ad-hoc-signed updates may still need approval. Settings/config and bridge 0.5.2 are shared, so run one copy at a time.
+Open **release/CameraReference Testing.app**: purple icon with a large T, distinct executable name, unchanged testing bundle ID. Main’s accepted 1.0.6 app is untouched. Existing preferences/config/bridge remain shared; no new settings folder.
 
-- Bridge diagnostics: six selectable sections, scrollable details and Copy all; timing appears once.
-- Remove the standalone monitoring action. Capture tools clearly request Develop when invoked elsewhere.
-- Restore off-screen detection and Option-snapping using the no-sourceRect capture that passed preview comparison.
-- Prefer logical AX coordinates and wait for resize/restore geometry to settle, targeting the unwanted minimise-cycle movements. Early hiding is not claimed solved.
+Permission messages now identify the exact app and avoid repeated native requests in one launch. This is a rebuilt, unambiguously named candidate, not a confirmed TCC repair. Ad-hoc signing remains; no permission reset or weakened signing requirement was applied.
 
-Follow TESTING.md. No merge, DMG, app launch or live interaction by the agent.
+First verify Screen Recording for this exact new app and reopen it if requested. Leave stable’s entry intact. If still blocked, report diagnostics before attempting functional tests. The 1.0.9 functional changes are unchanged. No DMG, merge or live interaction by the agent.

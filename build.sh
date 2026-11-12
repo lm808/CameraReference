@@ -6,8 +6,10 @@ case "${1:-}" in
   --testing) testing=true ;;
   *) echo 'Usage: bash build.sh [--testing]' >&2; exit 2 ;;
 esac
+app_executable=CameraReference
+if "$testing"; then app_executable=CameraReferenceTesting; fi
 mkdir -p build/CameraReference.app/Contents/MacOS build/module-cache
-xcrun swiftc -target "$(uname -m)-apple-macosx13.0" -swift-version 5 -O -module-cache-path build/module-cache Sources/Interaction.swift Sources/Calibration.swift Sources/Shortcut.swift Sources/DetectionConfig.swift Sources/SplitLayout.swift Sources/Snapping.swift Sources/ViewportDetector.swift Sources/PhotoDetector.swift Sources/ScreenProbe.swift Sources/Permissions.swift Sources/Export.swift Sources/Core.swift Sources/ImageSource.swift Sources/Layout.swift Sources/Views.swift Sources/main.swift -o build/CameraReference.app/Contents/MacOS/CameraReference
+xcrun swiftc -target "$(uname -m)-apple-macosx13.0" -swift-version 5 -O -module-cache-path build/module-cache Sources/Interaction.swift Sources/Calibration.swift Sources/Shortcut.swift Sources/DetectionConfig.swift Sources/SplitLayout.swift Sources/Snapping.swift Sources/ViewportDetector.swift Sources/PhotoDetector.swift Sources/ScreenProbe.swift Sources/Permissions.swift Sources/Export.swift Sources/Core.swift Sources/ImageSource.swift Sources/Layout.swift Sources/Views.swift Sources/main.swift -o "build/CameraReference.app/Contents/MacOS/$app_executable"
 mkdir -p build/CameraReference.app/Contents/Resources
 cp Assets/AppIcon.icns build/CameraReference.app/Contents/Resources/AppIcon.icns
 cat > build/CameraReference.app/Contents/Info.plist <<'PLIST'
@@ -19,8 +21,8 @@ cat > build/CameraReference.app/Contents/Info.plist <<'PLIST'
 <key>CFBundleIconFile</key><string>AppIcon.icns</string>
 <key>CFBundleName</key><string>CameraReference</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>1.0.9</string>
-<key>CFBundleVersion</key><string>39</string>
+<key>CFBundleShortVersionString</key><string>1.0.10</string>
+<key>CFBundleVersion</key><string>40</string>
 <key>LSUIElement</key><true/>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>
@@ -28,9 +30,16 @@ cat > build/CameraReference.app/Contents/Info.plist <<'PLIST'
 PLIST
 if "$testing"; then
   cp Assets/TestingIcon.icns build/CameraReference.app/Contents/Resources/AppIcon.icns
+  /usr/libexec/PlistBuddy -c 'Set :CFBundleExecutable CameraReferenceTesting' build/CameraReference.app/Contents/Info.plist
   /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier org.local.CameraReference.testing' build/CameraReference.app/Contents/Info.plist
   /usr/libexec/PlistBuddy -c 'Set :CFBundleName CameraReference Testing' build/CameraReference.app/Contents/Info.plist
   /usr/libexec/PlistBuddy -c 'Add :CFBundleDisplayName string Camera Reference Testing' build/CameraReference.app/Contents/Info.plist
+fi
+# Remove only the obsolete generated executable when changing build flavour.
+if "$testing"; then
+  rm -f build/CameraReference.app/Contents/MacOS/CameraReference
+else
+  rm -f build/CameraReference.app/Contents/MacOS/CameraReferenceTesting
 fi
 codesign --force --sign - build/CameraReference.app
 printf 'Built %s/build/CameraReference.app\n' "$PWD"

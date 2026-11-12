@@ -18,6 +18,13 @@ for size in [16,32,128,256,512] {
   NSColor.white.withAlphaComponent(0.9).setStroke()
   let ring=NSBezierPath(ovalIn:NSRect(x:391,y:384,width:242,height:242));ring.lineWidth=18;ring.stroke()
   NSColor.white.setFill();NSBezierPath(roundedRect:NSRect(x:727,y:644,width:62,height:24),xRadius:8,yRadius:8).fill()
+  if testing {
+   NSColor.white.setFill()
+   NSBezierPath(roundedRect:NSRect(x:548,y:70,width:380,height:360),xRadius:65,yRadius:65).fill()
+   NSColor(calibratedRed:0.23,green:0.10,blue:0.40,alpha:1).setFill()
+   NSBezierPath(rect:NSRect(x:608,y:315,width:260,height:65)).fill()
+   NSBezierPath(rect:NSRect(x:704,y:123,width:68,height:220)).fill()
+  }
   image.unlockFocus()
   let bitmap=NSBitmapImageRep(bitmapDataPlanes:nil,pixelsWide:pixels,pixelsHigh:pixels,bitsPerSample:8,samplesPerPixel:4,hasAlpha:true,isPlanar:false,colorSpaceName:.deviceRGB,bytesPerRow:0,bitsPerPixel:0)!
   NSGraphicsContext.saveGraphicsState();NSGraphicsContext.current=NSGraphicsContext(bitmapImageRep:bitmap)
