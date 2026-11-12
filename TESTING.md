@@ -1,11 +1,9 @@
-# CameraReference 1.0.7 — candidate checks
+# CameraReference 1.0.8 — diagnostic checks
 
-Quit the current app and open **this worktree’s release/CameraReference.app**, confirming 1.0.7. Main’s release/ app remains the accepted 1.0.6 fallback. Bridge 0.5.2 is unchanged.
+Main stays at **1.0.6**. Quit the current app and open this candidate’s **release/CameraReference.app**. Bridge 0.5.2 is unchanged. Your 1.0.7 annotations are preserved verbatim in docs/VALIDATION.md. All live interaction is yours.
 
-- [ ] Fully on-screen: clear region in auto mode and invoke in Full, side-by-side and above/below. Fit and split placement remain correct for portrait/landscape.
-- [ ] Move Lightroom slightly off the left/right/bottom screen edge. **Clear region setting** to force fresh detection, then invoke. Placement should align with the full Lightroom viewport, clipped naturally at the screen edge. Repeat Full and split. Diagnostics should say window-only filter with an explicit content-local crop.
-- [ ] Move it back, clear region and invoke: diagnostics return to display-bound capture with correct placement. If available, repeat across two displays, including different scales.
-- [ ] With overlay visible, minimise using the yellow button and Cmd-M, then restore; repeat several times. No overlay remains near the Dock and it returns aligned. Diagnostics → Lifecycle reports whether minimise notifications are active. If unavailable, report that alongside the result; do not reset permissions.
-- [ ] Briefly check Mission Control, another app covering Lightroom, ordinary movement, split RAW clicking/panning and switching to Library. No flicker; Library still dismisses. Floating display remains independent.
-
-For any failure, copy Developer tools → Bridge diagnostics before invoking again. For shifted off-screen placement, also use Inspect screen layout / capture preview to check whether the entire parent window was captured. No screenshots are saved automatically. These native behaviours remain provisional until tested.
+- [ ] Show an overlay, then copy **Developer tools → Bridge diagnostics…**. It should distinguish missing Accessibility permission, failed window matching or specific notification registration errors. The diagnostics dialog dismisses the overlay, so invoke it again before testing.
+- [ ] If permission is missing, choose **Settings → Enable minimise monitoring…** and enable this candidate yourself in macOS Accessibility. Reopen the app if macOS requires it. Show the overlay; minimise/restore via yellow button and Cmd-M several times, then copy diagnostics. Report whether hiding occurs before/during/after animation and whether restoration succeeds. No reset of other permissions is needed.
+- [ ] With Lightroom fully on-screen, choose **Developer tools → Keep on-screen capture baseline…**. Keep its preview open. Move Lightroom slightly off-screen **without resizing or changing the photo/panels**, then choose **Preview captured Lightroom window…**. Compare the complete title bar, all window corners and panel edges in the two named previews. Report clipping/shift/stretch and copy Bridge diagnostics (contains both capture geometries). Close both previews afterward; no images are saved automatically.
+- [ ] Off-screen, clear region in auto mode and invoke: it should decline fresh detection and offer manual calibration, without producing a displaced overlay. Cancel, move Lightroom fully on-screen and invoke: normal Full/split detection still works. Existing overlays should continue following ordinary movement.
+- [ ] Briefly check no flicker while clicking/panning RAW, other apps covering Lightroom and Library dismissal. Do not merge until the outstanding behaviour is accepted.

@@ -15,6 +15,8 @@ struct ScreenProbeResult {
     var photoFrame:CGRect? = nil
     var uiFrame:CGRect? = nil
     var previewImage:CGImage? = nil
+    var displayContainedCapture=false
+    var placementUnavailableReason:String? = nil
 }
 struct EdgeRaster {
     let width: Int, height: Int
@@ -88,18 +90,20 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
             return ScreenProbeResult(candidate:nil,summary:"Waiting for stable window geometry.",geometryChanged:true)
         }
         let display=content.displays.first(where:{ windowCaptureSourceRect(window:originFrame,display:$0.frame) != nil })
-        // Preserve the accepted display crop for contained windows. For clipped
-        // windows capture the complete surface, never stretch the visible fragment.
+        // A single-window sourceRect is not a proven crop. Keep that path
+        // diagnostic-only until native pixel alignment is verified.
+        if display == nil && !previewCapture {
+            return ScreenProbeResult(candidate:nil,summary:"Fresh automatic placement is unavailable while Lightroom extends beyond one display: the window-only capture alignment is not verified. Move it fully on-screen or calibrate manually. Existing overlays are retained.\nWindow: \(originFrame). Use Keep on-screen capture baseline and Preview captured Lightroom window to compare pixels.",windowID:window.windowID,windowFrame:originFrame,placementUnavailableReason:"Move Lightroom fully onto one display for fresh auto-detection, or calibrate manually.")
+        }
         let filter=display.map { SCContentFilter(display:$0,including:[window]) }
             ?? SCContentFilter(desktopIndependentWindow:window)
         let extent=display?.frame ?? filter.contentRect
-        guard let sourceRect=windowCaptureSourceRect(window:originFrame,display:extent) else {
-            return ScreenProbeResult(candidate:nil,summary:"Capture content does not contain the complete Lightroom window. No guessed placement applied. Window: \(originFrame); filter content: \(filter.contentRect).")
-        }
-        let captureMode=display == nil ? "window-only filter, explicit content-local crop":"display-bound window filter, explicit crop"
-        let captureKey="\(captureMode):\(extent):\(sourceRect)"
+        let sourceRect=display.flatMap { windowCaptureSourceRect(window:originFrame,display:$0.frame) }
+        let captureMode=display == nil ? "window-only diagnostic (no source crop; alignment unverified)":"display-bound window filter, explicit crop"
+        let cropDescription=sourceRect.map(String.init(describing:)) ?? "not set for single-window capture"
+        let captureKey="\(captureMode):\(display?.displayID ?? 0):\(extent):\(cropDescription)"
         let config=SCStreamConfiguration()
-        config.sourceRect=sourceRect
+        if let sourceRect { config.sourceRect=sourceRect }
         config.scalesToFit=true
         config.ignoreShadowsDisplay=true
         let nativeScale=min(max(1,Double(filter.pointPixelScale)),min(6000/window.frame.width,4000/window.frame.height))
@@ -114,8 +118,9 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         guard sameWindowGeometry(originFrame,currentCaptureWindowFrame(window.windowID)) else {
             return ScreenProbeResult(candidate:nil,summary:"Window changed during capture.",geometryChanged:true)
         }
+        let captureSummary="Capture mode: \(captureMode).\nWindow (top-left points): \(originFrame).\nFilter content rect: \(filter.contentRect).\nCapture extent: \(extent). Source crop: \(cropDescription).\nRequested output: \(config.width) × \(config.height); actual: \(image.width) × \(image.height) pixels; filter scale: \(filter.pointPixelScale).\nChild windows: \(ProcessInfo.processInfo.isOperatingSystemAtLeast(OperatingSystemVersion(majorVersion:14,minorVersion:2,patchVersion:0)) ? "included":"system default"). No image saved."
         if previewCapture {
-            return ScreenProbeResult(candidate:nil,summary:"Captured Lightroom window: \(image.width) × \(image.height) pixels. Explicit window crop, same capture path as detection/calibration; child windows included on macOS 14.2+. In-memory preview only; closing releases it.",previewImage:image)
+            return ScreenProbeResult(candidate:nil,summary:captureSummary+"\nIn-memory preview only. Compare complete window corners and panel edges against an on-screen baseline; bitmap dimensions alone do not prove alignment.",windowID:window.windowID,windowFrame:originFrame,previewImage:image,displayContainedCapture:display != nil)
         }
         guard let raster=EdgeRaster(image:image) else { return ScreenProbeResult(candidate:nil,summary:"Could not inspect the captured pixels.") }
         if forCalibration {
@@ -145,7 +150,7 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         let childMode:String
         if #available(macOS 14.2,*) { childMode="included" } else { childMode="system default" }
         let timing=String(format:"Stage timing: enumerate %.0f ms; stability/config %.0f ms; capture %.0f ms; raster %.0f ms; detector %.0f ms.\n",(enumerationEnded-probeStarted)*1000,(captureStarted-enumerationEnded)*1000,(captureEnded-captureStarted)*1000,(detectionStarted-captureEnded)*1000,(ProcessInfo.processInfo.systemUptime-detectionStarted)*1000)
-        let header=timing+"Capture mode: \(captureMode).\nCapture extent (top-left): \(extent).\nSource crop (capture-local): \(sourceRect).\nSide search: left 0…\(settings.sideSearchPercent)%, right \(100-settings.sideSearchPercent)…100%.\nAnalysis raster: \(raster.width) × \(raster.height).\nChild windows: \(childMode).\nUI-boundary detection (no OCR; no image saved).\nWindow: \(Int(window.frame.width)) × \(Int(window.frame.height)) pt.\nWindow origin (top-left): \(window.frame.origin).\nFilter content rect: \(filter.contentRect).\nPrimary display: \(CGDisplayBounds(CGMainDisplayID())).\nCapture: \(image.width) × \(image.height) pixels.\n"
+        let header=timing+"Capture mode: \(captureMode).\nCapture extent (top-left): \(extent).\nSource crop (capture-local): \(cropDescription).\nSide search: left 0…\(settings.sideSearchPercent)%, right \(100-settings.sideSearchPercent)…100%.\nAnalysis raster: \(raster.width) × \(raster.height).\nChild windows: \(childMode).\nUI-boundary detection (no OCR; no image saved).\nWindow: \(Int(window.frame.width)) × \(Int(window.frame.height)) pt.\nWindow origin (top-left): \(window.frame.origin).\nFilter content rect: \(filter.contentRect).\nPrimary display: \(CGDisplayBounds(CGMainDisplayID())).\nCapture: \(image.width) × \(image.height) pixels.\n"
         var candidate:CGRect?,photoFrame:CGRect?,uiFrame:CGRect?
         var key:String?
         var placementSummary=""

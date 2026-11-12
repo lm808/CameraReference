@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.8 — diagnostic candidate
+
+Expose specific Accessibility permission/binding/notification failures and an explicit minimise-monitoring setup action. Retain an on-screen capture baseline alongside the latest preview. Reject known-unreliable fresh off-screen placement while preserving existing overlays and on-screen detection. Native comparison/notification timing remains unverified; main stays at 1.0.6.
+
 ## 1.0.7 — candidate
 
 Add explicitly cropped window-only capture for off-screen windows, preserving contained-window capture. Add optional Accessibility minimise notifications, binding retries and common-mode lifecycle polling. Native acceptance pending.

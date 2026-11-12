@@ -245,3 +245,93 @@ User accepted 1.0.6 ("Looks good, merge into main branch"); main was fast-forwar
 ## 1.0.7 candidate validation
 
 `bash test.sh` passed: existing Full/split raster, bridge, preview and geometry regressions plus off-screen content-local crop/child-extent/coordinate checks. After adding a missed-restore safeguard, the core suite was rebuilt and rerun separately. Native build, staged signature/plist and diff checks passed. These synthetic tests do not establish native ScreenCaptureKit child composition or Lightroom notification delivery. No app was launched or Lightroom manipulated; user acceptance remains pending in TESTING.md. Main’s accepted 1.0.6 payload remains untouched.
+
+## User results for 1.0.7
+
+Not accepted for merge. Verbatim checklist and diagnostics supplied by the user:
+
+```text
+# CameraReference 1.0.7 — candidate checks
+
+Quit the current app and open **this worktree’s release/CameraReference.app**, confirming 1.0.7. Main’s release/ app remains the accepted 1.0.6 fallback. Bridge 0.5.2 is unchanged.
+
+- [ ] Fully on-screen: clear region in auto mode and invoke in Full, side-by-side and above/below. Fit and split placement remain correct for portrait/landscape.
+- [Detection succeeds but placement is offset. I will not expect it to work when an entire panel is off screen. Unless there is a way of capturing the whole window even if partially offscreen] Move Lightroom slightly off the left/right/bottom screen edge. **Clear region setting** to force fresh detection, then invoke. Placement should align with the full Lightroom viewport, clipped naturally at the screen edge. Repeat Full and split. Diagnostics should say window-only filter with an explicit content-local crop.
+
+Storage: consolidated under CameraReference.
+Overlay floating while Lightroom is active.
+Lifecycle: minimise notifications unavailable; dialog false; minimised unavailable; window-list fallback.
+Window maintenance since show: moves 0; ordering changes 1; level changes 1.
+Stage timing: enumerate 18 ms; stability/config 152 ms; capture 57 ms; raster 19 ms; detector 58 ms.
+Capture mode: window-only filter, explicit content-local crop.
+Capture extent (top-left): (-122.0, 30.0, 2560.0, 1349.0).
+Source crop (capture-local): (0.0, 0.0, 2560.0, 1349.0).
+Side search: left 0…40.0%, right 60.0…100%.
+Analysis raster: 2560 × 1349.
+Child windows: included.
+UI-boundary detection (no OCR; no image saved).
+Window: 2560 × 1349 pt.
+Window origin (top-left): (-122.0, 30.0).
+Filter content rect: (-122.0, 30.0, 2560.0, 1349.0).
+Primary display: (0.0, 0.0, 2560.0, 1440.0).
+Capture: 2560 × 1349 pixels.
+Searched for UI borders.
+Rectangle search: L [184, 805], R [2121, 2126, 2402, 2407, 2422], T [30, 62, 120, 138], B [1179, 1197, 1235, 1238, 1241, 1273, 1276, 1284]; 320 checked, 6 supported.
+Single-photo mode: UI bounds (184.0, 120.0, 1937.0, 1077.0). Internal divider search disabled.
+Sides L/R/T/B: ui/ui/ui/ui. Fit inset: 18.0 pt. Calculated photo: (683.33056640625, 168.0, 694.3388671875, 1041.0).
+Final overlay region (AppKit): (62.0, 213.0, 1937.0, 1077.0).
+Photo frame (AppKit): (683.33056640625, 231.0, 694.3388671875, 1041.0).
+Overlay panel requested (AppKit): (61.0, 212.0, 1939.0, 1079.0). Actual: (61.0, 212.0, 1939.0, 1079.0).
+Overlay content bounds: (0.0, 0.0, 1939.0, 1079.0). Photo viewport (view): (622.33056640625, 19.0, 694.3388671875, 1041.0). Panel visible: true. Display scale: 1.0.
+Background check paused: Lightroom is off-screen or spans displays.
+
+Timing: Bridge 105 ms; JPEG load/decode 9 ms; RAM cache hit; source files revalidated; capture and detection 303 ms; total to panel shown 446 ms
+
+Bridge 105 ms; JPEG load/decode 9 ms; RAM cache hit; source files revalidated; capture and detection 303 ms; total to panel shown 446 ms
+
+- [x ] Move it back, clear region and invoke: diagnostics return to display-bound capture with correct placement. If available, repeat across two displays, including different scales.
+
+- [Still not quite working. Why can't it be dismissed before minimising then restored afterwards? ] With overlay visible, minimise using the yellow button and Cmd-M, then restore; repeat several times. No overlay remains near the Dock and it returns aligned. Diagnostics → Lifecycle reports whether minimise notifications are active. If unavailable, report that alongside the result; do not reset permissions.
+
+Storage: consolidated under CameraReference.
+Overlay floating while Lightroom is active.
+Lifecycle: minimise notifications unavailable; dialog false; minimised unavailable; window-list fallback.
+Window maintenance since show: moves 0; ordering changes 1; level changes 1.
+Stage timing: enumerate 18 ms; stability/config 152 ms; capture 57 ms; raster 19 ms; detector 58 ms.
+Capture mode: window-only filter, explicit content-local crop.
+Capture extent (top-left): (-122.0, 30.0, 2560.0, 1349.0).
+Source crop (capture-local): (0.0, 0.0, 2560.0, 1349.0).
+Side search: left 0…40.0%, right 60.0…100%.
+Analysis raster: 2560 × 1349.
+Child windows: included.
+UI-boundary detection (no OCR; no image saved).
+Window: 2560 × 1349 pt.
+Window origin (top-left): (-122.0, 30.0).
+Filter content rect: (-122.0, 30.0, 2560.0, 1349.0).
+Primary display: (0.0, 0.0, 2560.0, 1440.0).
+Capture: 2560 × 1349 pixels.
+Searched for UI borders.
+Rectangle search: L [184, 805], R [2121, 2126, 2402, 2407, 2422], T [30, 62, 120, 138], B [1179, 1197, 1235, 1238, 1241, 1273, 1276, 1284]; 320 checked, 6 supported.
+Single-photo mode: UI bounds (184.0, 120.0, 1937.0, 1077.0). Internal divider search disabled.
+Sides L/R/T/B: ui/ui/ui/ui. Fit inset: 18.0 pt. Calculated photo: (683.33056640625, 168.0, 694.3388671875, 1041.0).
+Final overlay region (AppKit): (62.0, 213.0, 1937.0, 1077.0).
+Photo frame (AppKit): (683.33056640625, 231.0, 694.3388671875, 1041.0).
+Overlay panel requested (AppKit): (61.0, 212.0, 1939.0, 1079.0). Actual: (61.0, 212.0, 1939.0, 1079.0).
+Overlay content bounds: (0.0, 0.0, 1939.0, 1079.0). Photo viewport (view): (622.33056640625, 19.0, 694.3388671875, 1041.0). Panel visible: true. Display scale: 1.0.
+Background check paused: Lightroom is off-screen or spans displays.
+
+Timing: Bridge 105 ms; JPEG load/decode 9 ms; RAM cache hit; source files revalidated; capture and detection 303 ms; total to panel shown 446 ms
+
+Bridge 105 ms; JPEG load/decode 9 ms; RAM cache hit; source files revalidated; capture and detection 303 ms; total to panel shown 446 ms
+
+- [x ] Briefly check Mission Control, another app covering Lightroom, ordinary movement, split RAW clicking/panning and switching to Library. No flicker; Library still dismisses. Floating display remains independent.
+
+For any failure, copy Developer tools → Bridge diagnostics before invoking again. For shifted off-screen placement, also use Inspect screen layout / capture preview to check whether the entire parent window was captured. No screenshots are saved automatically. These native behaviours remain provisional until tested.
+
+```
+
+## 1.0.8 diagnostic candidate
+
+Native build and the final `bash test.sh` run passed, including new AX geometry ambiguity/read-failure/error-description checks and existing capture, Full/split, bridge, preview and navigation regressions. Staged signature/plist and `git diff --check` passed. An earlier test compilation overlapped a source edit; the full suite was rerun after edits stopped.
+
+Live inspection was blocked by Computer Use permission. No live test result was obtained; the user explicitly requires all live interaction to remain theirs, now recorded in AGENTS.md. This version does not establish whether Accessibility is granted to the running app, whether notification arrival precedes animation, or how off-screen pixels map to the parent. It exposes those distinctions and preserves a comparison baseline in memory. Native evidence is pending in TESTING.md. Main and its 1.0.6 staged app remain unchanged.

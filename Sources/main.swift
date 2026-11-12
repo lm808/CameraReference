@@ -6,6 +6,9 @@ import ApplicationServices
 enum Destination: String { case overlay, window, check, detect }
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemValidation, NSMenuDelegate {
     var capturePreview:CapturePreviewController?
+    var captureBaseline:CapturePreviewController?
+    var captureBaselineGeometry:(CGWindowID,CGRect)?
+    var captureBaselineSummary=""
     var saving = false
     let saveToast=SaveToastController()
     var floatingTitle="Camera Reference"
@@ -58,10 +61,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var overlayHost:HostWindowSnapshot?
     var overlayAccessibility:LightroomHostAccessibility?
     var nextAccessibilityBind:TimeInterval=0
+    var accessibilityBindingStatus="Host binding not attempted; show an overlay first."
+    var lifecycleTrace:[String]=[]
+    var lastLifecycleEvent=""
+    func recordLifecycle(_ event:String) {
+        guard event != lastLifecycleEvent else { return }
+        lastLifecycleEvent=event
+        lifecycleTrace.append(String(format:"%.3f ",ProcessInfo.processInfo.systemUptime)+event)
+        lifecycleTrace=Array(lifecycleTrace.suffix(12))
+    }
     func bindOverlayAccessibility(pid:pid_t,frame:CGRect) {
         guard overlayAccessibility == nil,ProcessInfo.processInfo.systemUptime>=nextAccessibilityBind else { return }
         nextAccessibilityBind=ProcessInfo.processInfo.systemUptime+1
-        overlayAccessibility=LightroomHostAccessibility(pid:pid,hostFrame:frame)
+        overlayAccessibility=LightroomHostAccessibility(pid:pid,hostFrame:frame,diagnostic:&accessibilityBindingStatus)
         overlayAccessibility?.onMinimized={ [weak self] in self?.suspendOverlay(reason:"Lightroom minimise notification") }
     }
     var overlayBaselineWindows=Set<CGWindowID>()
@@ -72,7 +84,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         bindOverlayAccessibility(pid:owner.processIdentifier,frame:saved.frame)
         let windows=lightroomWindowMetadata(pid:owner.processIdentifier)
         overlayDialogVisible=(overlayAccessibility?.hasDialog ?? false) || (windows.map { hasNewLightroomDialog(windows:$0,host:saved.id,baseline:overlayBaselineWindows) } ?? false)
-        overlayLifecycleStatus="Lifecycle: minimise notifications \(overlayAccessibility?.watchesMinimize == true ? "active":"unavailable"); dialog \(overlayDialogVisible); minimised \(overlayAccessibility?.minimized.map(String.init) ?? "unavailable"); \(overlayAccessibility == nil ? "window-list fallback":"Accessibility + window list")."
+        let minimized=overlayAccessibility?.minimized
+        overlayLifecycleStatus="Lifecycle: minimise notifications \(overlayAccessibility?.watchesMinimize == true ? "active":"unavailable"); dialog \(overlayDialogVisible); minimised \(minimized.map(String.init) ?? "unavailable"); \(overlayAccessibility == nil ? "window-list fallback":"Accessibility + window list")."
+        overlayLifecycleStatus += "\n" + accessibilityBindingStatus + "\n" + (overlayAccessibility?.diagnostic ?? "No AX observer; window-list fallback.")
     }
     var overlayEpoch:String?
     var overlaySuspended=false
@@ -85,6 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func suspendOverlay(reason:String="Space transition") {
         guard let panel else { return }
         overlayVisibilityStatus="Overlay suspended: \(reason)."
+        recordLifecycle("suspend: \(reason)")
         cancelPanelCheck();overlaySuspended=true
         overlayResumeAfter=ProcessInfo.processInfo.systemUptime+0.4
         panel.orderOut(nil)
@@ -114,7 +129,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 overlayMoveCount += 1
             }
             overlayHost=current
-            if overlaySuspended { overlaySuspended=false;_ = orderOverlayAboveLightroom(initial:true) }
+            if overlaySuspended {
+                recordLifecycle("restore: host visible and settled")
+                overlaySuspended=false;_ = orderOverlayAboveLightroom(initial:true)
+            }
         }
     }
     let imageCache=SelectionImageCache()
@@ -397,6 +415,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         add("Set image region…", #selector(calibrate), to: settings)
         settings.addItem(.separator())
         shortcutItem = add("Keyboard shortcuts…", #selector(changeShortcut), to: settings)
+        add("Enable minimise monitoring…", #selector(enableMinimizeMonitoring), to: settings)
 
         settings.addItem(.separator())
         add("Edit config file", #selector(openDetectionConfig), to: settings)
@@ -408,6 +427,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         add("Show last result / timing…", #selector(showResult), to: developer)
         add("Inspect Lightroom view state…", #selector(inspectViewState), to: developer)
         add("Inspect Accessibility layout…", #selector(inspectLayout), to: developer)
+        add("Keep on-screen capture baseline…", #selector(keepCaptureBaseline), to: developer)
         add("Preview captured Lightroom window…", #selector(previewCapture), to: developer)
         add("Find viewing area…", #selector(inspectScreen), to: developer)
         add("Bridge diagnostics…", #selector(showDiagnostics), to: developer)
@@ -698,6 +718,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         view.refresh = { [weak self] in self?.reloadOverlay() }
         view.image = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
         p.contentView = view; panel = p;overlayMoveCount=0;overlayOrderCount=0;overlayLevelChangeCount=0;
+        lifecycleTrace=[];lastLifecycleEvent="";recordLifecycle("overlay created")
         guard orderOverlayAboveLightroom(initial:true) else { hide();report("Lightroom window unavailable; invoke again when it is visible.");return nil }
         let requested=region.insetBy(dx:-1,dy:-1)
         p.setFrame(requested,display:true)
@@ -846,6 +867,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             DispatchQueue.main.async { self?.report(result);self?.showResult() }
         }
     }
+    @objc func enableMinimizeMonitoring() {
+        guard FeaturePermission.accessibility.ensure() else { return }
+        nextAccessibilityBind=0
+        updateOverlayLifecycle()
+        report(overlayHost == nil ? "Accessibility granted. Show an overlay, then test minimise/restore and read Bridge diagnostics.":overlayLifecycleStatus)
+    }
     @objc func inspectLayout() {
         hide(); guard FeaturePermission.accessibility.ensure() else { return }
         report("Inspecting Lightroom’s accessible layout…")
@@ -950,14 +977,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.report("Region cleared for this layout/pane. Automatic detection preference unchanged.")
         }
     }
-    @objc func previewCapture() {
+    @objc func keepCaptureBaseline() { showCapturePreview(keepBaseline:true) }
+    @objc func previewCapture() { showCapturePreview(keepBaseline:false) }
+    func showCapturePreview(keepBaseline:Bool) {
         guard !regionResetting else { return }
-        hide();calibration?.finish(nil);capturePreview?.close();capturePreview=nil
+        hide();calibration?.finish(nil)
+        if !keepBaseline { capturePreview?.close();capturePreview=nil }
         guard #available(macOS 14.0,*),FeaturePermission.screenCapture.ensure() else { return }
         startPhotoDetection(imageSize:.zero,previewCapture:true) { [weak self] result in
             guard let self else { return }
-            if let image=result.previewImage { self.capturePreview=CapturePreviewController(image:image) }
-            else { self.report(result.summary);self.showResult() }
+            guard let image=result.previewImage,let frame=result.windowFrame,let id=result.windowID else {
+                self.report(result.summary);self.showResult();return
+            }
+            if keepBaseline {
+                guard result.displayContainedCapture else {
+                    self.report("Move Lightroom fully onto one display, then keep the baseline. No baseline was replaced.");self.showResult();return
+                }
+                self.captureBaseline?.close()
+                self.captureBaselineGeometry=(id,frame);self.captureBaselineSummary=result.summary
+                self.captureBaseline=CapturePreviewController(image:image,title:"On-screen baseline") { [weak self] in
+                    self?.captureBaselineGeometry=nil;self?.captureBaselineSummary=""
+                }
+            } else {
+                if let (baselineID,baselineFrame)=self.captureBaselineGeometry {
+                    let sameSize=abs(frame.width-baselineFrame.width)<0.5 && abs(frame.height-baselineFrame.height)<0.5
+                    let comparison=baselineID==id && sameSize
+                        ? "Same window and point size as baseline. Compare panel edges and full window corners; no alignment correction inferred."
+                        : "Baseline window or size differs: capture a new on-screen baseline before comparing."
+                    self.lastLayout += "\nComparison: " + comparison + "\nOn-screen baseline:\n" + self.captureBaselineSummary
+                }
+                self.capturePreview=CapturePreviewController(image:image,title:"Latest capture")
+            }
         }
     }
     @objc func inspectScreen() {
@@ -999,7 +1049,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         startPhotoDetection(imageSize:CGSize(width:image.width,height:image.height)) { [weak self] result in
             guard let self, self.isLightroom(), self.currentModule()=="develop" else { return }
             if let expectedEpoch,self.selectionEpoch() != expectedEpoch { self.imageCache.observe(self.selectionEpoch());self.report("Selection changed during capture; invoke again.");return }
-            guard let area=result.candidate else { self.askForCalibration(workingAreaTooNarrow:result.workingAreaTooNarrow); return }
+            guard let area=result.candidate else { self.askForCalibration(workingAreaTooNarrow:result.workingAreaTooNarrow,reason:result.placementUnavailableReason); return }
             self.rememberPlacement(result,epoch:expectedEpoch,settings:settings,layout:self.overlayLayout)
             guard let view=self.display(image,in:area,photoFrame:result.photoFrame) else { return }
             view.exportSnapshot=snapshot
@@ -1007,11 +1057,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.report("Reference shown using UI viewing-area bounds.")
         }
     }
-    func askForCalibration(workingAreaTooNarrow:Bool = false) {
+    func askForCalibration(workingAreaTooNarrow:Bool = false,reason:String? = nil) {
         let alert=NSAlert();alert.icon=NSApp.applicationIconImage
         alert.messageText="Cannot reliably identify viewing area."
         let automatic=UserDefaults.standard.bool(forKey:regionKey("automaticBounds"))
-        alert.informativeText=(workingAreaTooNarrow ? "Working area too narrow—enlarge it or calibrate manually.\n\n":"") + calibrationInstructions(layout:overlayLayout,automatic:automatic)
+        alert.informativeText=(reason.map { $0 + "\n\n" } ?? "") + (workingAreaTooNarrow ? "Working area too narrow—enlarge it or calibrate manually.\n\n":"") + calibrationInstructions(layout:overlayLayout,automatic:automatic)
         alert.addButton(withTitle:"Calibrate manually…"); alert.addButton(withTitle:"Cancel")
         NSApp.activate(ignoringOtherApps:true)
         if alert.runModal() == .alertFirstButtonReturn {
@@ -1077,7 +1127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let date = attributes?[.modificationDate] as? Date
         let age = date.map { "\(max(0, Int(Date().timeIntervalSince($0)))) seconds ago" } ?? "not received"
         let state = (try? String(contentsOf: folder.appendingPathComponent("status.txt"), encoding: .utf8)) ?? "No plugin status. The bridge may not have started."
-        return "\(versionTitle)\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + storageStatus + "\n" + overlayVisibilityStatus + "\n" + overlayLifecycleStatus + "\nWindow maintenance since show: moves \(overlayMoveCount); ordering changes \(overlayOrderCount); level changes \(overlayLevelChangeCount).\n" + lastLayout + "\n" + panelCheckStatus + "\n\nTiming: " + lastTiming
+        return "\(versionTitle)\nApp: \(Bundle.main.bundleURL.path)\nAccessibility permission: \(AXIsProcessTrusted() ? "granted":"not granted")\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + storageStatus + "\n" + overlayVisibilityStatus + "\n" + overlayLifecycleStatus + "\nLifecycle trace (uptime seconds): " + lifecycleTrace.joined(separator:"; ") + "\nWindow maintenance since show: moves \(overlayMoveCount); ordering changes \(overlayOrderCount); level changes \(overlayLevelChangeCount).\n" + lastLayout + "\n" + panelCheckStatus + "\n\nTiming: " + lastTiming
     }
     @objc func showDiagnostics() {
         let saved = lastResult
@@ -1138,7 +1188,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     @objc func cancel() { calibration?.finish(nil); hide(); report("Ready.") }
-    @objc func quit() { cancelPanelCheck();imageCache.clear(); calibration?.finish(nil); cancelScreenInspection(); hide(); cancelRequest(); floating?.close(); NSApp.terminate(nil) }
+    @objc func quit() { cancelPanelCheck();imageCache.clear(); calibration?.finish(nil); cancelScreenInspection(); hide(); cancelRequest(); captureBaseline?.close(); capturePreview?.close(); floating?.close(); NSApp.terminate(nil) }
 
 }
 let app = NSApplication.shared

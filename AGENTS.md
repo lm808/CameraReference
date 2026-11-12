@@ -2,7 +2,7 @@
 
 ## Collaboration
 
-Discussion is not permission to implement. This user explicitly asks to hold work until a go-ahead; read the current request carefully. Preserve user test annotations before replacing a checklist. Do not push, publish a release, install/launch the app or change Lightroom unless authorised. Do not spawn subagents unless requested. Licensing is undecided; do not choose one on the user's behalf.
+Discussion is not permission to implement. This user explicitly asks to hold work until a go-ahead; read the current request carefully. Preserve user test annotations before replacing a checklist. Do not push, publish a release, install/launch the app or change Lightroom unless authorised. Do not spawn subagents unless requested. Do not request or use Computer Use; leave all live interaction, app launches, Lightroom window manipulation and permission changes to the user. Use code inspection and automated checks only. Licensing is undecided; do not choose one on the user's behalf.
 
 Keep accepted daily-use and candidate builds in separate Git worktrees. Do not rebuild the daily-use release/ when working on a candidate. Merge only after user acceptance; do not call a candidate verified from automated tests alone.
 
@@ -19,7 +19,7 @@ The user runs only `release/CameraReference.app`, never build/. Keep build/ for 
 - `bash scripts/package.sh`: package the existing release/ payload as a DMG/checksum under ignored dist/. Uses hdiutil; may require sandbox approval. Does not install the app or publish anything. Existing DMG is not overwritten.
 - Verify signature/plist and `git diff --check` before committing. Run checks appropriate to the change; avoid repeating unchanged suites without reason.
 
-Use plain three-component versions in CFBundleShortVersionString (currently `1.0.7`); the menu and package script read that value. Preserve org.local.CameraReference until an explicit bundle-ID migration is planned.
+Use plain three-component versions in CFBundleShortVersionString (currently `1.0.8`); the menu and package script read that value. Preserve org.local.CameraReference until an explicit bundle-ID migration is planned.
 
 ## Source map and flow
 

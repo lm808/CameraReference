@@ -201,6 +201,31 @@ func hostMinimizedState(polled:Bool?,notified:Bool?,notificationAge:TimeInterval
     return polled ?? notified
 }
 
+func accessibilityStatus(_ error:AXError)->String {
+    let label:String
+    switch error {
+    case .success: label="success"
+    case .apiDisabled: label="Accessibility API disabled"
+    case .cannotComplete: label="cannot complete (app busy or timeout)"
+    case .invalidUIElement: label="invalid window element"
+    case .attributeUnsupported: label="attribute unsupported"
+    case .notificationUnsupported: label="notification unsupported"
+    case .notificationAlreadyRegistered: label="already registered"
+    case .noValue: label="no value"
+    default: label="AX error"
+    }
+    return "\(label) (\(error.rawValue))"
+}
+
+// Do not bind to an arbitrary overlapping child window when geometry is ambiguous.
+func uniqueHostFrameMatch(_ frames:[CGRect?],target:CGRect)->Int? {
+    let matches=frames.indices.filter { i in
+        guard let frame=frames[i] else { return false }
+        return abs(frame.minX-target.minX)<2 && abs(frame.minY-target.minY)<2 && abs(frame.width-target.width)<2 && abs(frame.height-target.height)<2
+    }
+    return matches.count == 1 ? matches[0]:nil
+}
+
 // Bounded, read-only AX lifecycle checks when already authorised. No permission
 // prompts from the timer; window-list metadata remains the fallback.
 final class LightroomHostAccessibility {
@@ -210,26 +235,44 @@ final class LightroomHostAccessibility {
     private var notifiedMinimized:Bool?
     private var notificationTime:TimeInterval=0
     var onMinimized:(()->Void)?
-    var watchesMinimize:Bool { observer != nil }
+    private(set) var watchesMinimize=false
+    private(set) var observerStatus="notifications not attempted"
+    private(set) var minimizeAttributeStatus="not read"
+    private var miniCount=0,restoreCount=0
+    private var eventHistory:[String]=[]
+    var diagnostic:String {
+        "\(observerStatus); AXMinimized: \(minimizeAttributeStatus); events mini/restore \(miniCount)/\(restoreCount)" + (eventHistory.isEmpty ? "":"\nAX event history (uptime seconds): " + eventHistory.joined(separator:"; "))
+    }
     deinit {
         if let observer { CFRunLoopRemoveSource(CFRunLoopGetMain(),AXObserverGetRunLoopSource(observer),.commonModes) }
     }
     private func watchMinimize(pid:pid_t) {
         var created:AXObserver?
-        guard AXObserverCreate(pid,{ _,_,notification,context in
+        let createResult=AXObserverCreate(pid,{ _,_,notification,context in
             guard let context else { return }
             let owner=Unmanaged<LightroomHostAccessibility>.fromOpaque(context).takeUnretainedValue()
             owner.notificationTime=ProcessInfo.processInfo.systemUptime
             if notification as String == kAXWindowMiniaturizedNotification {
-                owner.notifiedMinimized=true;owner.onMinimized?()
+                owner.notifiedMinimized=true;owner.miniCount += 1
+                owner.eventHistory.append(String(format:"%.3f mini received",owner.notificationTime))
+                owner.onMinimized?()
             } else if notification as String == kAXWindowDeminiaturizedNotification {
-                owner.notifiedMinimized=false
+                owner.notifiedMinimized=false;owner.restoreCount += 1
+                owner.eventHistory.append(String(format:"%.3f restore received",owner.notificationTime))
             }
-        },&created) == .success,let created else { return }
+            owner.eventHistory=Array(owner.eventHistory.suffix(8))
+        },&created)
+        guard createResult == .success,let created else {
+            observerStatus="observer creation: " + accessibilityStatus(createResult);return
+        }
         let context=Unmanaged.passUnretained(self).toOpaque()
         let mini=AXObserverAddNotification(created,host,kAXWindowMiniaturizedNotification as CFString,context)
         let restore=AXObserverAddNotification(created,host,kAXWindowDeminiaturizedNotification as CFString,context)
-        guard mini == .success,restore == .success else { return }
+        watchesMinimize=mini == .success
+        observerStatus="notifications mini: \(accessibilityStatus(mini)); restore: \(accessibilityStatus(restore))"
+        // Retain whichever public notification Lightroom supports. Attribute
+        // polling still handles a missing restore/minimise notification.
+        guard mini == .success || restore == .success else { return }
         observer=created
         CFRunLoopAddSource(CFRunLoopGetMain(),AXObserverGetRunLoopSource(created),.commonModes)
     }
@@ -250,22 +293,38 @@ final class LightroomHostAccessibility {
               AXValueGetValue(unsafeBitCast(s,to:AXValue.self),.cgSize,&size) else { return nil }
         return CGRect(origin:point,size:size)
     }
-    init?(pid:pid_t,hostFrame:CGRect) {
-        guard AXIsProcessTrusted() else { return nil }
+    init?(pid:pid_t,hostFrame:CGRect,diagnostic:inout String) {
+        guard AXIsProcessTrusted() else {
+            diagnostic="Accessibility permission not granted to this app. Use Settings → Enable minimise monitoring…";return nil
+        }
         let app=AXUIElementCreateApplication(pid)
         AXUIElementSetMessagingTimeout(app,0.03)
-        guard let windows=Self.read(app,kAXWindowsAttribute) as? [AXUIElement] else { return nil }
+        var value:CFTypeRef?
+        let status=AXUIElementCopyAttributeValue(app,kAXWindowsAttribute as CFString,&value)
+        guard status == .success,let windows=value as? [AXUIElement] else {
+            diagnostic="AXWindows read: \(accessibilityStatus(status)); no window list";return nil
+        }
         let cg=CGRect(x:hostFrame.minX,y:CGDisplayBounds(CGMainDisplayID()).height-hostFrame.maxY,width:hostFrame.width,height:hostFrame.height)
-        guard let match=windows.prefix(16).first(where:{ window in
-            guard let r=Self.frame(window) else { return false }
-            return abs(r.minX-cg.minX)<2 && abs(r.minY-cg.minY)<2 && abs(r.width-cg.width)<2 && abs(r.height-cg.height)<2
-        }) else { return nil }
-        application=app;host=match;AXUIElementSetMessagingTimeout(host,0.03)
+        let candidates=Array(windows.prefix(16))
+        let frames=candidates.map { window -> CGRect? in
+            AXUIElementSetMessagingTimeout(window,0.03)
+            return Self.frame(window)
+        }
+        guard let index=uniqueHostFrameMatch(frames,target:cg) else {
+            let details=frames.map { $0.map(String.init(describing:)) ?? "unreadable frame" }.joined(separator:"; ")
+            diagnostic="No unique AX window geometry match. Expected \(cg); \(windows.count) windows, examined \(frames.count): \(details)";return nil
+        }
+        application=app;host=candidates[index];AXUIElementSetMessagingTimeout(host,0.03)
+        diagnostic="AX host bound by unique geometry match (\(frames.count) examined)."
         watchMinimize(pid:pid)
     }
     var minimized:Bool? {
-        hostMinimizedState(polled:(Self.read(host,kAXMinimizedAttribute) as? NSNumber)?.boolValue,
-                           notified:notifiedMinimized,notificationAge:ProcessInfo.processInfo.systemUptime-notificationTime)
+        var value:CFTypeRef?
+        let result=AXUIElementCopyAttributeValue(host,kAXMinimizedAttribute as CFString,&value)
+        let polled=(value as? NSNumber)?.boolValue
+        minimizeAttributeStatus=accessibilityStatus(result) + "; value " + (polled.map(String.init) ?? "unavailable")
+        return hostMinimizedState(polled:polled,notified:notifiedMinimized,
+                                  notificationAge:ProcessInfo.processInfo.systemUptime-notificationTime)
     }
     var hasDialog:Bool {
         if let children=Self.read(host,kAXChildrenAttribute) as? [AXUIElement],

@@ -168,7 +168,9 @@ final class SaveToastController {
 final class CapturePreviewController:NSObject,NSWindowDelegate {
     private var window:NSWindow?
     private var view:ReferenceView?
-    init(image:CGImage) {
+    private var onClose:(()->Void)?
+    init(image:CGImage,title:String="Captured Lightroom",onClose:(()->Void)? = nil) {
+        self.onClose=onClose
         super.init()
         let screen=NSScreen.main?.visibleFrame ?? CGRect(x:0,y:0,width:1200,height:800)
         let size=fittedSize(image:CGSize(width:image.width,height:image.height),inside:CGSize(width:screen.width*0.8,height:screen.height*0.8))
@@ -178,13 +180,16 @@ final class CapturePreviewController:NSObject,NSWindowDelegate {
         let v=ReferenceView(frame:CGRect(origin:.zero,size:size));v.allowsReferenceActions=false
         v.autoresizingMask=[.width,.height]
         v.image=NSImage(cgImage:image,size:CGSize(width:image.width,height:image.height))
-        v.zoomChanged={ [weak w] percent in w?.title=String(format:"Captured Lightroom — %.1f%% — memory only",percent) }
+        v.zoomChanged={ [weak w] percent in w?.title=String(format:"%@ — %.1f%% — memory only",title,percent) }
         v.toolTip="Exact captured image. Command-scroll to zoom; drag to pan; double-click to Fit. Close to release."
         w.contentView=v;window=w;view=v;w.center()
         NSApp.activate(ignoringOtherApps:true);w.makeKeyAndOrderFront(nil)
     }
     func windowWillClose(_ notification:Notification) { release() }
-    private func release() { view?.releaseContent();view=nil;window?.contentView=nil;window=nil }
+    private func release() {
+        view?.releaseContent();view=nil;window?.contentView=nil;window=nil
+        let callback=onClose;onClose=nil;callback?()
+    }
     func close() { window?.close();release() }
     deinit { close() }
 }

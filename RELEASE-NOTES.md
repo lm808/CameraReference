@@ -1,9 +1,10 @@
-# CameraReference 1.0.7 — candidate
+# CameraReference 1.0.8 — diagnostic candidate
 
-Run this worktree’s release/CameraReference.app. Main retains accepted 1.0.6; bridge 0.5.2 and config defaults are unchanged.
+Main remains at accepted 1.0.6. Run only the candidate worktree’s release/CameraReference.app for these tests. Bridge 0.5.2 and config values are unchanged.
 
-- Partially off-screen/spanning windows use an explicit window-only crop. Fully contained windows retain the accepted display capture and unchanged Full/split detection.
-- When Accessibility is already authorised, listen for minimise/restore notifications and retry missing host binding. Lifecycle polling continues during window interactions. No new permission prompt.
-- Diagnostics identify capture mode and minimise-notification availability.
+- Settings → Enable minimise monitoring requests Accessibility only when selected.
+- Bridge diagnostics identify permission, AX window matching, individual notification failures and event timing.
+- Developer tools can retain an on-screen capture baseline beside the latest preview, in RAM only.
+- Fresh off-screen detection is declined because 1.0.7’s window-only pixels produced shifted placement. Existing overlays/cached translation and the accepted on-screen detector remain unchanged. Manual calibration is still offered.
 
-Native off-screen and minimise/restore testing is required; see TESTING.md. Window-list fallback remains when notifications are unavailable. No DMG, installation or merge.
+This build gathers the missing native evidence; it does not claim either outstanding issue is solved. Follow TESTING.md. No merge, installation, live interaction or DMG by the agent.

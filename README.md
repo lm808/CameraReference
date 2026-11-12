@@ -1,4 +1,4 @@
-# Camera Reference — 1.0.7
+# Camera Reference — 1.0.8
 
 Camera Reference is a macOS menu-bar companion for Lightroom Classic. It displays a camera JPEG over Lightroom’s working area, or in an independent floating window, so you can compare it with your RAW edit.
 
@@ -47,6 +47,10 @@ The overlay floats while Lightroom is active, preventing Lightroom clicks from c
 
 Background checks detect internal panel changes while Lightroom is active. They default to every **3 seconds**, use a lower-resolution capture, and are cancelled for foreground requests. Set the interval to **0** to disable them; use Clear region after panel changes in that case.
 
+For minimise troubleshooting, **Settings → Enable minimise monitoring…** requests Accessibility explicitly. **Developer tools → Bridge diagnostics…** reports permission, window binding, notification-registration results and a short event history. Minimise timing still requires native verification.
+
+To compare capture alignment, use **Developer tools → Keep on-screen capture baseline…** with Lightroom fully on-screen. Keep that preview open, move Lightroom without resizing, then use **Preview captured Lightroom window…**. The two named previews retain pixels only in RAM; close them to release the images. Compare full window corners and panel edges. Diagnostics include both geometries and warn if the window/size changed.
+
 ## Settings
 
 GUI preferences and calibration state remain in macOS-managed preferences. Advanced settings are in:
@@ -59,7 +63,7 @@ Open it through **Settings → Edit config file**. Existing `detection.conf` is 
 
 ## Limitations and help
 
-Placement assumes Lightroom Fit and a supported, clearly bounded viewport. Crop, lens/perspective corrections and RAW/JPEG aspect differences can prevent exact alignment. Split wipe views and automatic synchronisation with Lightroom’s zoom/pan are not supported. Partially off-screen windows use a window-only capture with an explicit crop; wholly contained windows retain the established display capture. Native acceptance of this fallback is pending.
+Placement assumes Lightroom Fit and a supported, clearly bounded viewport. Crop, lens/perspective corrections and RAW/JPEG aspect differences can prevent exact alignment. Split wipe views and automatic synchronisation with Lightroom’s zoom/pan are not supported. Fresh automatic placement requires Lightroom fully on one display. Window-only capture produced shifted placement in native tests and is now diagnostic-only. Existing overlays and reusable placements still follow ordinary movement; manual calibration remains available.
 
 See [troubleshooting and uninstalling](docs/TROUBLESHOOTING.md), [privacy](PRIVACY.md), [current acceptance tests](TESTING.md), and [release notes](RELEASE-NOTES.md). Report failures with app/bridge versions, layout/pane, diagnostics and a screenshot if you are comfortable sharing it.
 

@@ -11,3 +11,5 @@ GUI preferences, calibration and advanced configuration are stored locally. The 
 There is no app telemetry, analytics or automatic network update mechanism. macOS permissions and security decisions remain managed by the operating system.
 
 Migration preserves unknown files and differing conflicts beside their destination with a .migrated suffix. Old backups from previous versions may contain paths; review them before sharing. Known obsolete protocol files are discarded, not replayed.
+
+Optional minimise monitoring uses read-only Accessibility access, requested only by an explicit menu action. Diagnostics include window geometry, API status and a bounded event timeline; no window titles or photo pixels are logged. A retained capture baseline and latest preview are memory-only and released on close or quit.
