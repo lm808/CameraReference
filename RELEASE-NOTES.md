@@ -1,7 +1,7 @@
-# CameraReference Testing 1.0.13
+# CameraReference Testing 1.0.14
 
-Run `release/CameraReference Testing.app`. Main stays at accepted **1.0.6**, bridge at **0.5.3**. Shared settings and identities are unchanged.
+Run `release/CameraReference Testing.app`. Main stays at **1.0.6**; bridge stays at **0.5.3**. Existing settings, identities and minimise behaviour are unchanged.
 
-This diagnostic update fixes the swallowed error that prevented investigation of off-screen capture. Bridge diagnostics now preserves the original error domain/code, underlying cause and capture context. Frame failures identify conversion, missing metadata, rejected geometry or crop failure. Capture-preview timing no longer appends to an earlier invocation.
+**Preview captured Lightroom window…** now shows the raw frame before geometry validation or normalization. Padding and displacement remain visible for diagnosis even when placement would reject the frame. Movement checks no longer discard acquired preview images. Overlay placement and calibration snapping retain their safeguards.
 
-**Off-screen placement is not yet fixed.** Repeat one failing invocation and send Copy all as described in TESTING.md. Capture geometry and detection are unchanged. The user accepted brief minimise lingering; no additional input monitoring or lifecycle changes were added. No merge or DMG.
+Actual capture/permission/conversion errors still report an error when no image is available. Preview captures afresh; it does not retain an earlier failed attempt. No image is saved automatically. Off-screen reliability is not declared fixed. See TESTING.md for a short check during normal use. No DMG or merge.

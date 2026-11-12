@@ -1055,7 +1055,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                         : "Baseline window or size differs: capture a new on-screen baseline before comparing."
                     self.lastLayout += "\nComparison: " + comparison + "\nOn-screen baseline:\n" + self.captureBaselineSummary
                 }
-                self.capturePreview=CapturePreviewController(image:image,title:"Latest capture")
+                self.capturePreview=CapturePreviewController(image:image,title:"Raw capture — unvalidated")
             }
         }
     }
@@ -1159,7 +1159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         updateToggleTitle()
         guard supportedLightroomModule(currentModule()),screenModule==currentModule() else { report("Module changed; detection cancelled. Invoke again in Library or Develop."); return }
         if result.geometryChanged { report(result.summary);lastLayout=result.summary;return }
-        if let windowID=result.windowID, !sameWindowGeometry(result.windowFrame,currentCaptureWindowFrame(windowID)) {
+        if result.previewImage == nil,let windowID=result.windowID, !sameWindowGeometry(result.windowFrame,currentCaptureWindowFrame(windowID)) {
             invalidateAutomaticGeometry();lastLayout=result.summary+"\nRejected before display: Lightroom window geometry changed.";report(lastLayout);return
         }
         if result.previewImage == nil { lastProbe=result }; lastLayout=result.summary; report(result.summary)

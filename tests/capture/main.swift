@@ -95,3 +95,22 @@ assert(failure.contains("CameraReference.Capture (2): Required frame geometry me
 assert(failure.contains("Frame screen rect: nil") && failure.contains("Window: (-132,101,2560,1349)"))
 assert(!failure.contains("Check permission"))
 print("PASS: capture failure boundary preserves original/underlying errors and geometry context")
+
+let rawContext=CGContext(data:nil,width:100,height:80,bitsPerComponent:8,bytesPerRow:400,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue)!
+let rawFrame=rawContext.makeImage()!
+let rawParent=CGRect(x:-20,y:50,width:100,height:80)
+for missingMetadata in [false,true] {
+    let bounds:CGRect?=missingMetadata ? nil:CGRect(x:0,y:0,width:100,height:60)
+    let preview=try prepareWindowFrame(image:rawFrame,window:rawParent,screen:rawParent,bounds:bounds,scale:1,preview:true)
+    assert(preview.image === rawFrame && preview.image.width==100 && preview.image.height==80)
+    assert(preview.detail.contains("RAW PREVIEW"))
+    do {
+        _ = try prepareWindowFrame(image:rawFrame,window:rawParent,screen:rawParent,bounds:bounds,scale:1,preview:false)
+        fatalError("Invalid geometry must not reach placement")
+    } catch { assert((error as NSError).domain=="CameraReference.Capture") }
+}
+let paddedPreview=try prepareWindowFrame(image:rawFrame,window:rawParent,screen:rawParent,bounds:CGRect(x:10,y:8,width:80,height:64),scale:1,preview:true)
+assert(paddedPreview.image === rawFrame)
+let placementFrame=try prepareWindowFrame(image:rawFrame,window:rawParent,screen:rawParent,bounds:CGRect(x:10,y:8,width:80,height:64),scale:1,preview:false)
+assert(placementFrame.image.width==80 && placementFrame.image.height==64)
+print("PASS: raw preview preserves original bitmap despite invalid/missing metadata; placement alone validates and crops")

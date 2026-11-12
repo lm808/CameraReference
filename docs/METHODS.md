@@ -146,3 +146,9 @@ Before translating an overlay, compare CG presentation size with AX logical size
 The outer capture handler must preserve error domain/code and localized description, including up to three nested causes, together with capture mode, parent/filter geometry and requested dimensions. Do not replace all failures with permission advice. Frame failures distinguish conversion status, missing metadata, geometric rejection and crop failure; retain the expected parent, actual buffer dimensions and frame rectangles/scales. This is necessary to diagnose off-screen failures without altering capture geometry speculatively. Capture preview starts independent performance timing.
 
 The user accepts brief minimise lingering; further command/input monitoring is deferred. The 1.0.12 shrinking check did not demonstrate earlier suspension in the supplied trace. Keep current lifecycle behaviour without claiming synchronised minimisation.
+
+## Diagnostic previews are not placement (1.0.14)
+
+Independent-window preview returns the original converted image before checking frame geometry. Missing rectangles/scales or inconsistent parent bounds are reported as metadata, not grounds for withholding a preview. No crop or normalization is applied. Pre/post-capture stability and final display geometry checks still protect placement, but do not discard an acquired preview. Cancellation, module/request guards and actual capture failures remain in force. A raw preview must never populate placement state; candidate remains nil and lastProbe is not updated. The on-screen baseline retains the existing display crop.
+
+The preview is a new capture, not a retained image from an earlier failure. Native abnormal-frame evidence is still needed; do not infer a reliable pixel correction from inconsistent metadata alone.

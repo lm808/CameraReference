@@ -82,3 +82,5 @@ Builds require Apple command-line tools; Lua bridge tests use texlua. Packaging 
 Licensing is undecided for this alpha; no open-source licence has been selected yet.
 
 Library and Develop use separate saved calibration keys within the same GUI preferences file. Library starts in automatic placement mode; Develop settings are preserved. Use Library Loupe for single-photo alignment—Grid/Survey/Compare placement is not validated. AX-based viewport detection and a guessed 50/50 split remain deferred.
+
+Diagnostic capture previews show the raw image even when geometry checks would reject overlay placement. Use **Developer tools → Preview captured Lightroom window…** to inspect padding or displacement, then copy Bridge diagnostics. A preview captures afresh and stays in RAM; it is not proof that placement is valid.

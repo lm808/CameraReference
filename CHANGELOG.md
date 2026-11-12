@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.14 — raw preview
+
+Allow diagnostic previews to show the original captured frame despite missing/inconsistent geometry or window movement. Do not crop/normalize independent-window previews. Overlay placement and snapping retain validation. Intermittent off-screen placement remains under investigation.
+
 ## 1.0.13 — diagnostic candidate
 
 Preserve original capture errors, codes and geometry through the outer failure handler. Distinguish missing frame metadata, conversion failure, rejected geometry and failed image cropping. Capture previews reset stale performance timing. Off-screen placement remains unresolved pending this evidence; remaining minimise lingering accepted.

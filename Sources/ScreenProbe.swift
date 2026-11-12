@@ -83,12 +83,12 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         }
         let enumerationEnded=ProcessInfo.processInfo.systemUptime
         let originFrame=window.frame
-        guard sameWindowGeometry(originFrame,currentCaptureWindowFrame(window.windowID)) else {
+        guard previewCapture || sameWindowGeometry(originFrame,currentCaptureWindowFrame(window.windowID)) else {
             return ScreenProbeResult(candidate:nil,summary:"Capture window geometry changed.",geometryChanged:true)
         }
         try await Task.sleep(nanoseconds:150_000_000)
         try Task.checkCancellation()
-        guard sameWindowGeometry(originFrame,currentCaptureWindowFrame(window.windowID)) else {
+        guard previewCapture || sameWindowGeometry(originFrame,currentCaptureWindowFrame(window.windowID)) else {
             return ScreenProbeResult(candidate:nil,summary:"Waiting for stable window geometry.",geometryChanged:true)
         }
         let display=content.displays.first(where:{ windowCaptureSourceRect(window:originFrame,display:$0.frame) != nil })
@@ -99,7 +99,7 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
             ?? SCContentFilter(desktopIndependentWindow:window)
         let extent=display?.frame ?? filter.contentRect
         let sourceRect=display.flatMap { windowCaptureSourceRect(window:originFrame,display:$0.frame) }
-        let captureMode=display == nil ? "window-only filter, metadata-normalized parent (no source crop)":"display-bound window filter, explicit crop"
+        let captureMode=display == nil ? (previewCapture ? "window-only filter, raw unvalidated preview (no source crop)":"window-only filter, metadata-normalized parent (no source crop)"):"display-bound window filter, explicit crop"
         let cropDescription=sourceRect.map(String.init(describing:)) ?? "not set for single-window capture"
         let captureKey="\(captureMode):\(display?.displayID ?? 0):\(extent):\(cropDescription)"
         let config=SCStreamConfiguration()
@@ -116,7 +116,7 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         let image:CGImage
         let frameDetail:String
         if display == nil {
-            let frame=try await WindowCaptureFrame.capture(filter:filter,config:config,window:originFrame)
+            let frame=try await WindowCaptureFrame.capture(filter:filter,config:config,window:originFrame,preview:previewCapture)
             image=frame.image;frameDetail=frame.detail
         } else {
             image=try await SCScreenshotManager.captureImage(contentFilter:filter,configuration:config)
@@ -124,10 +124,11 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         }
         let captureEnded=ProcessInfo.processInfo.systemUptime
         try Task.checkCancellation()
-        guard sameWindowGeometry(originFrame,currentCaptureWindowFrame(window.windowID)) else {
+        guard previewCapture || sameWindowGeometry(originFrame,currentCaptureWindowFrame(window.windowID)) else {
             return ScreenProbeResult(candidate:nil,summary:"Window changed during capture.",geometryChanged:true)
         }
-        let captureSummary=frameDetail+"\nCapture mode: \(captureMode).\nWindow (top-left points): \(originFrame).\nFilter content rect: \(filter.contentRect).\nCapture extent: \(extent). Source crop: \(cropDescription).\nRequested output: \(config.width) × \(config.height); actual: \(image.width) × \(image.height) pixels; filter scale: \(filter.pointPixelScale).\nChild windows: \(ProcessInfo.processInfo.isOperatingSystemAtLeast(OperatingSystemVersion(majorVersion:14,minorVersion:2,patchVersion:0)) ? "included":"system default"). No image saved."
+        let movementNote=sameWindowGeometry(originFrame,currentCaptureWindowFrame(window.windowID)) ? "":"Window moved during capture; raw preview retained for diagnosis.\n"
+        let captureSummary=movementNote+frameDetail+"\nCapture mode: \(captureMode).\nWindow (top-left points): \(originFrame).\nFilter content rect: \(filter.contentRect).\nCapture extent: \(extent). Source crop: \(cropDescription).\nRequested output: \(config.width) × \(config.height); actual: \(image.width) × \(image.height) pixels; filter scale: \(filter.pointPixelScale).\nChild windows: \(ProcessInfo.processInfo.isOperatingSystemAtLeast(OperatingSystemVersion(majorVersion:14,minorVersion:2,patchVersion:0)) ? "included":"system default"). No image saved."
         if previewCapture {
             return ScreenProbeResult(candidate:nil,summary:captureSummary+"\nIn-memory preview only. Compare complete window corners and panel edges against an on-screen baseline; bitmap dimensions alone do not prove alignment.",windowID:window.windowID,windowFrame:originFrame,previewImage:image,displayContainedCapture:display != nil)
         }
@@ -261,12 +262,13 @@ func parentWindowPixelCrop(window:CGRect,screenRect:CGRect,boundingRect:CGRect,s
 @available(macOS 14.0, *)
 // Mutable completion state is protected by lock; window is immutable.
 private final class WindowCaptureFrame:NSObject,SCStreamOutput,SCStreamDelegate,@unchecked Sendable {
-    struct Frame { let image:CGImage;let detail:String }
+    typealias Frame=WindowFrameImage
     private let lock=NSLock()
     private var outcome:Result<Frame,Error>?
     private var continuation:CheckedContinuation<Frame,Error>?
     private let window:CGRect
-    init(window:CGRect) { self.window=window }
+    private let preview:Bool
+    init(window:CGRect,preview:Bool) { self.window=window;self.preview=preview }
     private func finish(_ result:Result<Frame,Error>) {
         lock.lock()
         guard outcome == nil else { lock.unlock();return }
@@ -290,9 +292,12 @@ private final class WindowCaptureFrame:NSObject,SCStreamOutput,SCStreamDelegate,
     func stream(_ stream:SCStream,didOutputSampleBuffer sampleBuffer:CMSampleBuffer,of type:SCStreamOutputType) {
         guard type == .screen,sampleBuffer.isValid else { return }
         lock.lock();let done=outcome != nil;lock.unlock();guard !done else { return }
-        guard let attachments=CMSampleBufferGetSampleAttachmentsArray(sampleBuffer,createIfNecessary:false) as? [[SCStreamFrameInfo:Any]],
-              let info=attachments.first,let status=info[.status] as? Int,status==SCFrameStatus.complete.rawValue,
-              let buffer=sampleBuffer.imageBuffer else { return }
+        let attachments=CMSampleBufferGetSampleAttachmentsArray(sampleBuffer,createIfNecessary:false) as? [[SCStreamFrameInfo:Any]]
+        let info=attachments?.first ?? [:]
+        if !preview {
+            guard let status=info[.status] as? Int,status==SCFrameStatus.complete.rawValue else { return }
+        }
+        guard let buffer=sampleBuffer.imageBuffer else { return }
         func rect(_ key:SCStreamFrameInfo)->CGRect? {
             guard let dict=info[key] as? [String:Any] else { return nil }
             return CGRect(dictionaryRepresentation:dict as CFDictionary)
@@ -308,19 +313,14 @@ private final class WindowCaptureFrame:NSObject,SCStreamOutput,SCStreamDelegate,
         guard conversionStatus==noErr,let image=converted else {
             fail("Pixel-buffer conversion failed (OSStatus \(conversionStatus)).");return
         }
-        guard let bounds,let screen,let scale else {
-            fail("Required frame geometry metadata is missing.");return
-        }
-        guard let crop=parentWindowPixelCrop(window:window,screenRect:screen,boundingRect:bounds,scale:scale,imageSize:CGSize(width:image.width,height:image.height)) else {
-            fail("Window capture geometry rejected: parent containment, scale consistency or pixel-buffer bounds check failed.");return
-        }
-        guard let normalized=image.cropping(to:crop) else {
-            fail("Parent image crop failed at \(crop).");return
-        }
-        finish(.success(Frame(image:normalized,detail:"\(detail)\nParent pixel crop: \(crop); surface: \(image.width) × \(image.height); normalized: \(normalized.width) × \(normalized.height).")))
+        do {
+            let prepared=try prepareWindowFrame(image:image,window:window,screen:screen,bounds:bounds,scale:scale.map { CGFloat($0) },preview:preview)
+            finish(.success(Frame(image:prepared.image,detail:detail+"\n"+prepared.detail)))
+        } catch { fail(error.localizedDescription) }
     }
-    static func capture(filter:SCContentFilter,config:SCStreamConfiguration,window:CGRect) async throws -> Frame {
-        let output=WindowCaptureFrame(window:window)
+
+    static func capture(filter:SCContentFilter,config:SCStreamConfiguration,window:CGRect,preview:Bool) async throws -> Frame {
+        let output=WindowCaptureFrame(window:window,preview:preview)
         config.queueDepth=1;config.pixelFormat=kCVPixelFormatType_32BGRA
         let stream=SCStream(filter:filter,configuration:config,delegate:output)
         try stream.addStreamOutput(output,type:.screen,sampleHandlerQueue:DispatchQueue(label:"CameraReference.window-frame"))
@@ -349,4 +349,22 @@ func captureFailureSummary(_ error:Error,context:String)->String {
     }
     lines.append("No capture was saved.")
     return lines.joined(separator:"\n")
+}
+
+struct WindowFrameImage { let image:CGImage;let detail:String }
+// Preview is evidence, never placement input. Preserve every captured pixel even
+// if metadata is absent or contradictory. Placement still requires normalization.
+func prepareWindowFrame(image:CGImage,window:CGRect,screen:CGRect?,bounds:CGRect?,scale:CGFloat?,preview:Bool) throws -> WindowFrameImage {
+    if preview {
+        return WindowFrameImage(image:image,detail:"RAW PREVIEW: geometry validation bypassed; no crop or normalization. Not approved for placement.")
+    }
+    func failure(_ message:String)->NSError {
+        NSError(domain:"CameraReference.Capture",code:2,userInfo:[NSLocalizedDescriptionKey:message])
+    }
+    guard let bounds,let screen,let scale else { throw failure("Required frame geometry metadata is missing.") }
+    guard let crop=parentWindowPixelCrop(window:window,screenRect:screen,boundingRect:bounds,scale:scale,imageSize:CGSize(width:image.width,height:image.height)) else {
+        throw failure("Window capture geometry rejected: parent containment, scale consistency or pixel-buffer bounds check failed.")
+    }
+    guard let normalized=image.cropping(to:crop) else { throw failure("Parent image crop failed at \(crop).") }
+    return WindowFrameImage(image:normalized,detail:"Parent pixel crop: \(crop); surface: \(image.width) × \(image.height); normalized: \(normalized.width) × \(normalized.height).")
 }

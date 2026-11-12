@@ -548,3 +548,13 @@ Do not merge until accepted. Off-screen capture normalization and earlier minimi
 User subsequently accepted the remaining brief minimise orphan/linger as a limitation. Per-module layout and on-screen checks passed. Off-screen capture fails even with slight clipping; its actual error was swallowed by the outer handler. 1.0.13 exposes that error without changing capture geometry.
 
 1.0.13 automated validation: full bash test.sh suite passed, including injected nested capture errors retained through the reporting boundary. Testing app compiled without warnings. No live capture or Lightroom interaction performed. Off-screen root cause still awaits native diagnostic evidence.
+
+## Native follow-up — 1.0.13 and original 1.0.10
+
+The unchanged 1.0.10 comparison build also displaced off-screen placement at (-28,50,2438,1303). 1.0.13 rejected that geometry: content bounds 2438 × 963.725 and content scale 0.726244. Right clipping also failed (content height 1038.481; scale 0.796992). Later, after Lightroom restart but at a different size/position, both left and right clipping worked with a 2348 × 1264 bitmap matching the parent and content scale 1. AX window count changed from 32 to 15; causation is unproven. Subsequent side-by-side failure recovered after further interactions without diagnostics, so off-screen reliability remains unresolved. User intends to gather edge cases during use and requested raw previews regardless of geometry rejection.
+
+## 1.0.14 raw preview separation
+
+Preview returns the original captured CGImage before metadata validation/normalization, including missing metadata and malformed geometry. Window movement does not reject an already acquired diagnostic preview. Normal placement and snapping keep their guards. Synthetic checks verify original image identity/dimensions on preview and rejection/cropping on placement. Native intermittent failure reproduction is left to the user. No runtime setting changes or live app interaction.
+
+1.0.14 automated checks: full bash test.sh passed, including unchanged-image preview with absent/invalid geometry and retained placement rejection/cropping. Testing build succeeded; no live UI checks performed. User constrained this update to raw-preview behaviour only and will consider a merge after brief native testing.
