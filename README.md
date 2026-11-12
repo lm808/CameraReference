@@ -21,7 +21,7 @@ For candidate testing, run **release/CameraReference Testing.app** after `bash s
 3. Use **Show overlay**, or **Control–Option–Command–J**, to toggle the camera reference.
 4. Use **Show floating display**, or **Control–Option–Command–F**, for an independent reference. Change either shortcut in **Settings → Keyboard shortcuts**.
 
-The layout section appears only when **Automatic viewing area** is enabled. Select **Full**, **Side-by-side → Left/Right**, or **Above-and-below → Upper/Lower** to match Lightroom. This selection guides detection; it does not change Lightroom’s view.
+The layout section appears only when **Automatic viewing area** is enabled. Select **Full**, **Side-by-side → Left/Right**, or **Above-and-below → Upper/Lower** to match Lightroom. This selection guides detection; it does not change Lightroom’s view. Library and Develop remember their own layout and pane.
 
 If automatic placement is unavailable, choose **Set image region** and select the entire photo backdrop between panels (or the chosen split pane), including its margins. Hold **Option** to snap to edges. Successful calibration switches to manual mode; cancelling preserves your previous settings.
 

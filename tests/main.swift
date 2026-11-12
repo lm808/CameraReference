@@ -511,3 +511,22 @@ assert(modulePrefs.object(forKey:"library.region")==nil)
 assert(modulePrefs.object(forKey:"library.automaticBounds") as? Bool == false)
 modulePrefs.removeObject(forKey:"region");modulePrefs.removeObject(forKey:"library.automaticBounds")
 print("PASS: Library region clearing preserves Develop region and automatic preference")
+
+let moduleLayoutDefaults=UserDefaults(suiteName:"CameraReference-tests-layout-"+UUID().uuidString)!
+// Use enum values to keep the test about module storage, not raw spelling.
+let splitMode=OverlayLayout.allCases.first(where:{$0 != .full})!
+moduleLayoutDefaults.set(splitMode.rawValue,forKey:overlayLayoutPreferenceKey(module:"develop"))
+assert(savedOverlayLayout(moduleLayoutDefaults,module:"library") == .full)
+assert(savedOverlayLayout(moduleLayoutDefaults,module:"develop") == splitMode)
+moduleLayoutDefaults.set(OverlayLayout.allCases.last!.rawValue,forKey:overlayLayoutPreferenceKey(module:"library"))
+assert(savedOverlayLayout(moduleLayoutDefaults,module:"develop") == splitMode)
+assert(savedOverlayLayout(moduleLayoutDefaults,module:"library") == OverlayLayout.allCases.last!)
+moduleLayoutDefaults.removeObject(forKey:"overlayLayout");moduleLayoutDefaults.removeObject(forKey:"library.overlayLayout")
+let logicalHost=CGRect(x:-132,y:101,width:2560,height:1349)
+assert(!hostPresentationIsShrinking(reported:logicalHost.offsetBy(dx:-400,dy:40),logical:logicalHost,saved:logicalHost))
+let animatedHost=CGRect(x:100,y:300,width:2304,height:1214.1)
+assert(hostPresentationIsShrinking(reported:animatedHost,logical:logicalHost,saved:logicalHost))
+assert(!hostPresentationIsShrinking(reported:animatedHost,logical:animatedHost,saved:logicalHost))
+assert(!hostPresentationIsShrinking(reported:CGRect(x:0,y:101,width:2428,height:1349),logical:logicalHost,saved:logicalHost))
+assert(!hostPresentationIsShrinking(reported:.zero,logical:logicalHost,saved:logicalHost))
+print("PASS: independent module layout preferences; animation evidence excludes movement, clipping and matching logical resize")

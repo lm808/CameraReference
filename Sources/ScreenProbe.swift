@@ -1,5 +1,6 @@
 import AppKit
 import ScreenCaptureKit
+import VideoToolbox
 
 struct ScreenProbeResult {
     let candidate:CGRect?
@@ -90,14 +91,14 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
             return ScreenProbeResult(candidate:nil,summary:"Waiting for stable window geometry.",geometryChanged:true)
         }
         let display=content.displays.first(where:{ windowCaptureSourceRect(window:originFrame,display:$0.frame) != nil })
-        // User compared 1.0.8's uncropped preview against an on-screen baseline.
-        // Preserve this path for off-screen detection and calibration; never set
-        // a display-local sourceRect on the independent window filter.
+        // Keep the accepted display crop. Independent-window capture must use
+        // frame metadata to locate its parent pixels; never apply a display-local
+        // sourceRect to that filter.
         let filter=display.map { SCContentFilter(display:$0,including:[window]) }
             ?? SCContentFilter(desktopIndependentWindow:window)
         let extent=display?.frame ?? filter.contentRect
         let sourceRect=display.flatMap { windowCaptureSourceRect(window:originFrame,display:$0.frame) }
-        let captureMode=display == nil ? "window-only filter, full surface (no source crop)":"display-bound window filter, explicit crop"
+        let captureMode=display == nil ? "window-only filter, metadata-normalized parent (no source crop)":"display-bound window filter, explicit crop"
         let cropDescription=sourceRect.map(String.init(describing:)) ?? "not set for single-window capture"
         let captureKey="\(captureMode):\(display?.displayID ?? 0):\(extent):\(cropDescription)"
         let config=SCStreamConfiguration()
@@ -110,13 +111,21 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         config.showsCursor=false; config.capturesAudio=false; config.ignoreShadowsSingleWindow=true
         if #available(macOS 14.2, *) { config.includeChildWindows=true }
         let captureStarted=ProcessInfo.processInfo.systemUptime
-        let image=try await SCScreenshotManager.captureImage(contentFilter:filter,configuration:config)
+        let image:CGImage
+        let frameDetail:String
+        if display == nil {
+            let frame=try await WindowCaptureFrame.capture(filter:filter,config:config,window:originFrame)
+            image=frame.image;frameDetail=frame.detail
+        } else {
+            image=try await SCScreenshotManager.captureImage(contentFilter:filter,configuration:config)
+            frameDetail="Display-bound crop; frame normalization not needed."
+        }
         let captureEnded=ProcessInfo.processInfo.systemUptime
         try Task.checkCancellation()
         guard sameWindowGeometry(originFrame,currentCaptureWindowFrame(window.windowID)) else {
             return ScreenProbeResult(candidate:nil,summary:"Window changed during capture.",geometryChanged:true)
         }
-        let captureSummary="Capture mode: \(captureMode).\nWindow (top-left points): \(originFrame).\nFilter content rect: \(filter.contentRect).\nCapture extent: \(extent). Source crop: \(cropDescription).\nRequested output: \(config.width) × \(config.height); actual: \(image.width) × \(image.height) pixels; filter scale: \(filter.pointPixelScale).\nChild windows: \(ProcessInfo.processInfo.isOperatingSystemAtLeast(OperatingSystemVersion(majorVersion:14,minorVersion:2,patchVersion:0)) ? "included":"system default"). No image saved."
+        let captureSummary=frameDetail+"\nCapture mode: \(captureMode).\nWindow (top-left points): \(originFrame).\nFilter content rect: \(filter.contentRect).\nCapture extent: \(extent). Source crop: \(cropDescription).\nRequested output: \(config.width) × \(config.height); actual: \(image.width) × \(image.height) pixels; filter scale: \(filter.pointPixelScale).\nChild windows: \(ProcessInfo.processInfo.isOperatingSystemAtLeast(OperatingSystemVersion(majorVersion:14,minorVersion:2,patchVersion:0)) ? "included":"system default"). No image saved."
         if previewCapture {
             return ScreenProbeResult(candidate:nil,summary:captureSummary+"\nIn-memory preview only. Compare complete window corners and panel edges against an on-screen baseline; bitmap dimensions alone do not prove alignment.",windowID:window.windowID,windowFrame:originFrame,previewImage:image,displayContainedCapture:display != nil)
         }
@@ -148,7 +157,7 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         let childMode:String
         if #available(macOS 14.2,*) { childMode="included" } else { childMode="system default" }
         let timing=String(format:"Stage timing: enumerate %.0f ms; stability/config %.0f ms; capture %.0f ms; raster %.0f ms; detector %.0f ms.\n",(enumerationEnded-probeStarted)*1000,(captureStarted-enumerationEnded)*1000,(captureEnded-captureStarted)*1000,(detectionStarted-captureEnded)*1000,(ProcessInfo.processInfo.systemUptime-detectionStarted)*1000)
-        let header=timing+"Capture mode: \(captureMode).\nCapture extent (top-left): \(extent).\nSource crop (capture-local): \(cropDescription).\nSide search: left 0…\(settings.sideSearchPercent)%, right \(100-settings.sideSearchPercent)…100%.\nAnalysis raster: \(raster.width) × \(raster.height).\nChild windows: \(childMode).\nUI-boundary detection (no OCR; no image saved).\nWindow: \(Int(window.frame.width)) × \(Int(window.frame.height)) pt.\nWindow origin (top-left): \(window.frame.origin).\nFilter content rect: \(filter.contentRect).\nPrimary display: \(CGDisplayBounds(CGMainDisplayID())).\nCapture: \(image.width) × \(image.height) pixels.\n"
+        let header=timing+frameDetail+"\nCapture mode: \(captureMode).\nCapture extent (top-left): \(extent).\nSource crop (capture-local): \(cropDescription).\nSide search: left 0…\(settings.sideSearchPercent)%, right \(100-settings.sideSearchPercent)…100%.\nAnalysis raster: \(raster.width) × \(raster.height).\nChild windows: \(childMode).\nUI-boundary detection (no OCR; no image saved).\nWindow: \(Int(window.frame.width)) × \(Int(window.frame.height)) pt.\nWindow origin (top-left): \(window.frame.origin).\nFilter content rect: \(filter.contentRect).\nPrimary display: \(CGDisplayBounds(CGMainDisplayID())).\nCapture: \(image.width) × \(image.height) pixels.\n"
         var candidate:CGRect?,photoFrame:CGRect?,uiFrame:CGRect?
         var key:String?
         var placementSummary=""
@@ -228,4 +237,90 @@ func scanInsetDivider(in raster:EdgeRaster,viewport:CGRect,layout:OverlayLayout,
     let detail="Full viewport \(viewport); \(name) inset \(inset) raster pixels, offsets \(first)…\(last), \(offsets.count) traces; \(valid.count) thin-line candidates."
     guard valid.count==1,groups.count==1 else { return (nil,detail+" Missing/ambiguous divider; calibrate manually.") }
     return (CGFloat(valid[0].first!+valid[0].last!)/2,detail)
+}
+
+// Map the reported content surface to the parent window, excluding compositor
+// padding/child extent. All rectangles here are top-left based.
+func parentWindowPixelCrop(window:CGRect,screenRect:CGRect,boundingRect:CGRect,scale:CGFloat,imageSize:CGSize)->CGRect? {
+    let values=[window.minX,window.minY,window.width,window.height,screenRect.minX,screenRect.minY,screenRect.width,screenRect.height,boundingRect.minX,boundingRect.minY,boundingRect.width,boundingRect.height,scale,imageSize.width,imageSize.height]
+    guard values.allSatisfy({$0.isFinite}),window.width>0,window.height>0,screenRect.width>0,screenRect.height>0,
+          boundingRect.width>0,boundingRect.height>0,scale>0,
+          screenRect.insetBy(dx:-1,dy:-1).contains(window) else { return nil }
+    let pixels=CGRect(x:boundingRect.minX*scale,y:boundingRect.minY*scale,width:boundingRect.width*scale,height:boundingRect.height*scale)
+    let sx=pixels.width/screenRect.width,sy=pixels.height/screenRect.height
+    guard abs(sx/sy-1)<0.01 else { return nil }
+    let crop=CGRect(x:pixels.minX+(window.minX-screenRect.minX)*sx,
+                    y:pixels.minY+(window.minY-screenRect.minY)*sy,width:window.width*sx,height:window.height*sy).integral
+    let surface=CGRect(origin:.zero,size:imageSize)
+    guard surface.insetBy(dx:-1,dy:-1).contains(crop) else { return nil }
+    return crop.intersection(surface)
+}
+
+@available(macOS 14.0, *)
+// Mutable completion state is protected by lock; window is immutable.
+private final class WindowCaptureFrame:NSObject,SCStreamOutput,SCStreamDelegate,@unchecked Sendable {
+    struct Frame { let image:CGImage;let detail:String }
+    private let lock=NSLock()
+    private var outcome:Result<Frame,Error>?
+    private var continuation:CheckedContinuation<Frame,Error>?
+    private let window:CGRect
+    init(window:CGRect) { self.window=window }
+    private func finish(_ result:Result<Frame,Error>) {
+        lock.lock()
+        guard outcome == nil else { lock.unlock();return }
+        outcome=result;let waiting=continuation;continuation=nil
+        lock.unlock();waiting?.resume(with:result)
+    }
+    func cancel() { finish(.failure(CancellationError())) }
+    func wait() async throws -> Frame {
+        try await withTaskCancellationHandler(operation:{
+            try await withCheckedThrowingContinuation { waiting in
+                lock.lock()
+                if let result=outcome { lock.unlock();waiting.resume(with:result);return }
+                continuation=waiting;lock.unlock()
+                DispatchQueue.global().asyncAfter(deadline:.now()+3) { [weak self] in
+                    self?.finish(.failure(NSError(domain:"CameraReference.Capture",code:1,userInfo:[NSLocalizedDescriptionKey:"No complete window capture frame arrived within 3 seconds."])))
+                }
+            }
+        },onCancel:{ self.cancel() })
+    }
+    func stream(_ stream:SCStream,didStopWithError error:Error) { finish(.failure(error)) }
+    func stream(_ stream:SCStream,didOutputSampleBuffer sampleBuffer:CMSampleBuffer,of type:SCStreamOutputType) {
+        guard type == .screen,sampleBuffer.isValid else { return }
+        lock.lock();let done=outcome != nil;lock.unlock();guard !done else { return }
+        guard let attachments=CMSampleBufferGetSampleAttachmentsArray(sampleBuffer,createIfNecessary:false) as? [[SCStreamFrameInfo:Any]],
+              let info=attachments.first,let status=info[.status] as? Int,status==SCFrameStatus.complete.rawValue,
+              let buffer=sampleBuffer.imageBuffer else { return }
+        func rect(_ key:SCStreamFrameInfo)->CGRect? {
+            guard let dict=info[key] as? [String:Any] else { return nil }
+            return CGRect(dictionaryRepresentation:dict as CFDictionary)
+        }
+        let bounds=rect(.boundingRect),screen=rect(.screenRect),content=rect(.contentRect)
+        let scale=(info[.scaleFactor] as? NSNumber)?.doubleValue
+        let detail="Frame screen rect: \(String(describing:screen)); bounding rect: \(String(describing:bounds)); content rect: \(String(describing:content)); scale: \(String(describing:scale)); content scale: \(String(describing:info[.contentScale]))."
+        var image:CGImage?
+        guard VTCreateCGImageFromCVPixelBuffer(buffer,options:nil,imageOut:&image)==noErr,let image,
+              let bounds,let screen,let scale,
+              let crop=parentWindowPixelCrop(window:window,screenRect:screen,boundingRect:bounds,scale:scale,imageSize:CGSize(width:image.width,height:image.height)),
+              let normalized=image.cropping(to:crop) else {
+            finish(.failure(NSError(domain:"CameraReference.Capture",code:2,userInfo:[NSLocalizedDescriptionKey:"Window capture geometry could not be verified. \(detail)"])));return
+        }
+        finish(.success(Frame(image:normalized,detail:"\(detail)\nParent pixel crop: \(crop); surface: \(image.width) × \(image.height); normalized: \(normalized.width) × \(normalized.height).")))
+    }
+    static func capture(filter:SCContentFilter,config:SCStreamConfiguration,window:CGRect) async throws -> Frame {
+        let output=WindowCaptureFrame(window:window)
+        config.queueDepth=1;config.pixelFormat=kCVPixelFormatType_32BGRA
+        let stream=SCStream(filter:filter,configuration:config,delegate:output)
+        try stream.addStreamOutput(output,type:.screen,sampleHandlerQueue:DispatchQueue(label:"CameraReference.window-frame"))
+        do {
+            try Task.checkCancellation()
+            try await stream.startCapture()
+            let frame=try await output.wait()
+            try? await stream.stopCapture()
+            try Task.checkCancellation()
+            return frame
+        } catch {
+            output.cancel();try? await stream.stopCapture();throw error
+        }
+    }
 }

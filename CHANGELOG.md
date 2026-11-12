@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.12 — testing candidate
+
+Remember layout/pane per module without changing existing Develop settings. Normalize off-screen window capture using frame metadata before placement/snapping; preserve on-screen capture. Suspend an overlay when the presentation shrinks while AX layout stays fixed, in addition to minimise notifications. Native off-screen and minimise acceptance pending.
+
 ## 1.0.11 — testing candidate
 
 Allow Library and Develop only; dismiss overlays and invalidate placement on module changes. Preserve separate module calibrations in the shared preferences file. Bridge 0.5.3 required. Search main/focused AX windows then all returned frames within a time budget instead of first 16. Library placement and native AX binding need acceptance.

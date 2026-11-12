@@ -1,9 +1,9 @@
-# CameraReference Testing 1.0.11
+# CameraReference Testing 1.0.12
 
-Main remains at accepted 1.0.6. Run release/CameraReference Testing.app (purple T). Settings/config remain shared; Library and Develop calibration keys are separate within the same preferences file.
+Main remains at accepted 1.0.6. Run `release/CameraReference Testing.app` (purple T). Shared settings/config and testing identity are unchanged. Bridge remains **0.5.3**.
 
-- Library and Develop supported; other modules rejected with an explicit message. Use Library Loupe for photo alignment.
-- Overlay dismisses on module changes; pending work is cancelled and placement re-detected. Existing floating display stays independent.
-- AX host lookup checks main/focused window references, then all returned windows within a time budget, verifying geometry rather than taking the first 16.
+- Library and Develop remember separate layout/pane selections. Existing Develop values remain in place; Library defaults to Full if unset.
+- Off-screen capture uses a short-lived, one-frame stream with reported geometry to remove padding/child extent before detection and snapping. On-screen capture and Full/split detection remain unchanged. Invalid geometry offers calibration rather than guessing coordinates.
+- Minimise monitoring also suspends when the presentation shrinks while the logical AX window size stays fixed. This may catch animation before the minimise notification; native timing is not yet verified.
 
-**Manually update/reload the included bridge to 0.5.3** before Library testing. Protocol remains compatible with stable 1.0.6. Native Library placement/AX matching require acceptance; AX viewport inference and 50/50 split fallback are deferred. No DMG, merge, installation or live interaction by the agent.
+Use TESTING.md for native acceptance. No merge, DMG, installation or live app interaction performed by the agent.

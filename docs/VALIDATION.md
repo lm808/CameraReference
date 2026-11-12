@@ -396,3 +396,39 @@ Chat: no downward jump observed. AX list exposed 24 windows but only 16 examined
 ## 1.0.11 validation
 
 Audit found explicit module guards, not a Develop-only photo/extraction API dependency. Testing build and full bash test.sh passed. Lua stand-ins now accept Library overlay/floating requests and reject Map/Book/Print/Slideshow/Web, including floating requests outside allowed modules. Swift checks cover confirmed module transitions versus unknown heartbeat, Library region clearing without changing Develop or mode preference, and a host at index 23. Existing detector/geometry/image/preview checks passed. Signature/plist, staged bridge 0.5.3 and diff checks passed. Main remains clean with app 1.0.6. No bridge installation, app launch, permissions changes or live interaction by the agent. Library placement and AX native matching remain pending.
+
+## User results — 1.0.11 (preserved verbatim)
+
+# CameraReference Testing 1.0.11
+
+Main remains 1.0.6. Quit it before running this worktree’s release/CameraReference Testing.app. **Update/reload the staged CameraReference.lrplugin manually; verify bridge 0.5.3.** Same purple T identity and shared settings/config. All live interaction is yours.
+
+- [x ] In Library Loupe, select RAW: overlay, floating display, capture preview and Find viewing area work. Check portrait/landscape at Fit, automatic placement and manual calibration. Library Grid/Survey/Compare alignment is not claimed supported.
+- [x ] Switch Library ↔ Develop with overlay visible: it dismisses. Reinvoke in the new module: fresh placement aligns, without using the other module’s calibration. Repeated toggles within the module still reuse valid caches.
+- [x ] Switch modules while JPEG/capture/calibration is pending: no late overlay or calibration is saved in the new module. Switch to Map/Book/Print/Slideshow/Web: no new reference invocation; an explicit Library/Develop prompt appears. Existing floating display stays independent.
+- [x. If the menu item selection is not remembered for the two modules, then switching back and forth with different views won't work. ] Clear Library region: Develop’s region and preferences remain intact. Return to Develop: Full/split placement, shortcuts and calibration still behave as before. Library defaults auto on only when its preference is absent.
+- [Still lingers. but otherwise no bad behaviour. ] Diagnostics after show: AX host is bound via main/focused or all-window search, even with >16 AX windows. Minimise/restore repeatedly; report counters/geometry source and any remaining linger/jump.
+OVERLAY VISIBILITY & MINIMISATION
+Overlay floating while Lightroom is active.
+Geometry source: Accessibility logical frame
+Lifecycle: minimise notifications active; dialog false; minimised false; Accessibility + window list.
+AX host bound via main/focused window, geometry verified (1 examined; 32 listed).
+notifications mini: success (0); restore: success (0); AXMinimized: success (0); value false; events mini/restore 1/1
+AX event history (uptime seconds): 714411.176 mini received; 714412.379 restore received
+Moves: 4; ordering changes: 2; level changes: 1.
+
+Event history (uptime seconds):
+714403.618 overlay created
+714411.176 suspend: Lightroom minimise notification
+714411.302 suspend: Lightroom minimised or thumbnail transition
+714412.902 restore: host visible and settled
+
+- [Off screen snapping and placement no longer working. As discussed.] Briefly repeat off-screen placement/snapping, ordinary movement, no flicker, app covering and sectioned diagnostics. Do not merge yet.
+
+Use Copy all after failures before invoking again. Prior test annotations are preserved in docs/VALIDATION.md. This build does not add AX-derived photo bounds or guessed split dividers.
+
+## 1.0.12 candidate
+
+Read-only comparison found ScreenProbe, ViewportDetector and Views unchanged between 1.0.10 and 1.0.11. User reports off-screen regression in both modules; bitmap padding is suspected, not proven to be caused by child windows. New off-screen path uses one SCStream frame and its boundingRect/scaleFactor/screenRect to normalize the parent surface. Synthetic checks cover padding, Retina scaling, child-union extents and invalid metadata; native results remain pending. Minimise shrinking-presentation evidence also requires native confirmation; AX notifications alone can arrive late.
+
+Automated checks: bash test.sh passed all Swift/Lua suites, including new module-layout isolation, animation evidence and padded capture geometry cases. Testing build compiled successfully. No live capture, permission changes or Lightroom interaction were performed; main/release remains untouched.

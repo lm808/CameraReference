@@ -69,3 +69,20 @@ for origin in [CGPoint(x:-120,y:33),CGPoint(x:800,y:-50),CGPoint(x:1200,y:700)] 
     assert(appKitRect(appKitRect(mapped,primaryHeight:982),primaryHeight:982) == host)
 }
 print("PASS: hypothetical local crop arithmetic preserves dimensions and coordinates (not native capture validation)")
+
+// Synthetic compositor padding: parent content is scaled and offset inside a
+// larger bitmap. Normalise before detector/snapping maps pixels to screen points.
+let parent=CGRect(x:-132,y:101,width:2560,height:1349)
+let padded=CGRect(x:600,y:40,width:1920,height:1011.75)
+let crop=parentWindowPixelCrop(window:parent,screenRect:parent,boundingRect:padded,scale:1,imageSize:CGSize(width:2560,height:1349))!
+assert(crop == padded.integral)
+let retina=parentWindowPixelCrop(window:parent,screenRect:parent,boundingRect:padded,scale:2,imageSize:CGSize(width:5120,height:2698))!
+assert(retina == CGRect(x:1200,y:80,width:3840,height:2023.5).integral)
+let union=parent.insetBy(dx:-100,dy:-50)
+let unionPixels=CGRect(x:10,y:20,width:union.width,height:union.height)
+assert(parentWindowPixelCrop(window:parent,screenRect:union,boundingRect:unionPixels,scale:1,imageSize:CGSize(width:3000,height:1600)) == CGRect(x:110,y:70,width:2560,height:1349))
+assert(parentWindowPixelCrop(window:parent,screenRect:parent.offsetBy(dx:132,dy:0),boundingRect:padded,scale:1,imageSize:CGSize(width:2560,height:1349)) == nil)
+assert(parentWindowPixelCrop(window:parent,screenRect:parent,boundingRect:padded,scale:2,imageSize:CGSize(width:2560,height:1349)) == nil)
+assert(parentWindowPixelCrop(window:parent,screenRect:parent,boundingRect:padded,scale:0,imageSize:CGSize(width:2560,height:1349)) == nil)
+assert(parentWindowPixelCrop(window:parent,screenRect:parent,boundingRect:CGRect(x:0,y:0,width:1000,height:1000),scale:1,imageSize:CGSize(width:2560,height:1349)) == nil)
+print("PASS: padded/Retina/child-union parent crops; reject clipped, out-of-surface and distorted metadata")

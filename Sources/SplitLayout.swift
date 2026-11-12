@@ -86,3 +86,11 @@ func calibrationInstructions(layout:OverlayLayout,automatic:Bool)->String {
     let guidance=automatic ? "• Auto-detection expects \(expected).\n• If different, change the layout in the menu.\n\n":""
     return guidance + "To calibrate manually, select the photo backdrop for the overlay, including the inset margins.\n\n• Selecting a region switches to manual mode.\n• Cancelling keeps \(mode) and the saved region."
 }
+
+// Keep the historical Develop key; Library starts at Full without overwriting it.
+func overlayLayoutPreferenceKey(module:String?)->String {
+    module == "library" ? "library.overlayLayout":"overlayLayout"
+}
+func savedOverlayLayout(_ defaults:UserDefaults,module:String?)->OverlayLayout {
+    OverlayLayout(rawValue:defaults.string(forKey:overlayLayoutPreferenceKey(module:module)) ?? "full") ?? .full
+}

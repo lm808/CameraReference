@@ -412,3 +412,14 @@ func hostIsPresentationThumbnail(_ frame:CGRect)->Bool {
     // animation/thumbnail geometry, not a new photo viewport to follow.
     frame.width<300 || frame.height<180
 }
+
+// A stable AX layout with a smaller, proportionately scaled CG presentation is
+// animation evidence. Movement/off-screen clipping alone is never sufficient.
+func hostPresentationIsShrinking(reported:CGRect,logical:CGRect,saved:CGRect)->Bool {
+    guard logical.width>0,logical.height>0,
+          abs(logical.width-saved.width)<2,abs(logical.height-saved.height)<2,
+          reported.width>0,reported.height>0,
+          logical.width-reported.width>2,logical.height-reported.height>2 else { return false }
+    let sx=reported.width/logical.width,sy=reported.height/logical.height
+    return abs(sx-sy)<0.025
+}

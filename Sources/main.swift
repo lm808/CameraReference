@@ -120,6 +120,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let logical=overlayAccessibility?.layoutFrame
         let current=reported.map { HostWindowSnapshot(id:$0.id,frame:logical ?? $0.frame,onScreen:$0.onScreen) }
         overlayGeometrySource=logical == nil ? "window list":"Accessibility logical frame"
+        if let logical,let reported,hostPresentationIsShrinking(reported:reported.frame,logical:logical,saved:saved.frame) {
+            suspendOverlay(reason:"host presentation shrinking during minimise");return
+        }
         if overlayAccessibility?.minimized == true || (current.map { hostIsPresentationThumbnail($0.frame) } ?? false) {
             suspendOverlay(reason:"Lightroom minimised or thumbnail transition");return
         }
@@ -152,7 +155,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     let imageCache=SelectionImageCache()
-    var overlayLayout:OverlayLayout = OverlayLayout(rawValue:CameraPreferences.shared.string(forKey:"overlayLayout") ?? "full") ?? .full
+    var overlayLayout:OverlayLayout {
+        get { savedOverlayLayout(CameraPreferences.shared,module:currentModule() ?? observedModule) }
+        set { CameraPreferences.shared.set(newValue.rawValue,forKey:overlayLayoutPreferenceKey(module:currentModule() ?? observedModule)) }
+    }
     var layoutItems=[OverlayLayout:NSMenuItem]()
     var layoutGroups=[Int:NSMenuItem]()
     var layoutSeparator:NSMenuItem?
@@ -330,7 +336,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     @objc func selectLayout(_ sender:NSMenuItem) {
         guard let raw=sender.representedObject as? String,let mode=OverlayLayout(rawValue:raw),mode != overlayLayout else { return }
         cancelScreenInspection();cancelRequest();hide();calibration?.finish(nil)
-        overlayLayout=mode;CameraPreferences.shared.set(mode.rawValue,forKey:"overlayLayout")
+        overlayLayout=mode
         CameraPreferences.shared.set(true,forKey:regionKey("automaticBounds"))
         invalidateAutomaticGeometry();updateLayoutMenu()
         autoItem.state=CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) ? .on:.off
@@ -499,7 +505,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 self.updateLayoutMenu()
                 self.autoItem?.state=CameraPreferences.shared.bool(forKey:self.regionKey("automaticBounds")) ? .on:.off
             }
-            if let module { self.observedModule=module }
+            if let module {
+                if self.observedModule == nil {
+                    self.updateLayoutMenu()
+                    self.autoItem?.state=CameraPreferences.shared.bool(forKey:self.regionKey("automaticBounds")) ? .on:.off
+                }
+                self.observedModule=module
+            }
             self.workspaceOverview=(self.panel != nil || self.placementMemory != nil) && workspaceOverviewIsVisible()
             self.observeWindowGeometry()
             if self.panel != nil { _ = self.orderOverlayAboveLightroom() }

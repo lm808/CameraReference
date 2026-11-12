@@ -1,12 +1,11 @@
-# CameraReference Testing 1.0.11
+# CameraReference Testing 1.0.12
 
-Main remains 1.0.6. Quit it before running this worktree’s release/CameraReference Testing.app. **Update/reload the staged CameraReference.lrplugin manually; verify bridge 0.5.3.** Same purple T identity and shared settings/config. All live interaction is yours.
+Main stays at 1.0.6. Quit the stable app, then run this worktree’s `release/CameraReference Testing.app` (purple T). Bridge remains **0.5.3**; no plugin update if already loaded. All live interaction is yours. Prior annotations are preserved in docs/VALIDATION.md.
 
-- [ ] In Library Loupe, select RAW: overlay, floating display, capture preview and Find viewing area work. Check portrait/landscape at Fit, automatic placement and manual calibration. Library Grid/Survey/Compare alignment is not claimed supported.
-- [ ] Switch Library ↔ Develop with overlay visible: it dismisses. Reinvoke in the new module: fresh placement aligns, without using the other module’s calibration. Repeated toggles within the module still reuse valid caches.
-- [ ] Switch modules while JPEG/capture/calibration is pending: no late overlay or calibration is saved in the new module. Switch to Map/Book/Print/Slideshow/Web: no new reference invocation; an explicit Library/Develop prompt appears. Existing floating display stays independent.
-- [ ] Clear Library region: Develop’s region and preferences remain intact. Return to Develop: Full/split placement, shortcuts and calibration still behave as before. Library defaults auto on only when its preference is absent.
-- [ ] Diagnostics after show: AX host is bound via main/focused or all-window search, even with >16 AX windows. Minimise/restore repeatedly; report counters/geometry source and any remaining linger/jump.
-- [ ] Briefly repeat off-screen placement/snapping, ordinary movement, no flicker, app covering and sectioned diagnostics. Do not merge yet.
+- [ ] Choose Full in Library and a split pane in Develop. Switch back and forth, then relaunch: each module remembers its own selection. Existing Develop calibration/preferences remain intact. Clear region still leaves auto/manual mode unchanged.
+- [ ] On-screen: Full and split placement, repeated toggles and Option snapping still work in Library Loupe and Develop.
+- [ ] With the same window size, keep an on-screen capture baseline, move Lightroom slightly off each edge (also left + bottom together), then preview. Latest capture should show just the complete Lightroom window, without the extra padding. Try fresh placement and Option snapping in both modules. Copy diagnostics if it fails; look for Frame screen rect / bounding rect / Parent pixel crop or a geometry-verification error.
+- [ ] Minimise/restore with an overlay visible: check whether lingering is reduced, with no downward jump or orphan overlay. Copy lifecycle history if it persists. Move partly off-screen and resize normally: overlay remains usable; ordinary clicks do not flicker.
+- [ ] Switch Library ↔ Develop and another app; check dismissal on module change, other apps covering the overlay, and normal restoration after Mission Control.
 
-Use Copy all after failures before invoking again. Prior test annotations are preserved in docs/VALIDATION.md. This build does not add AX-derived photo bounds or guessed split dividers.
+Do not merge until accepted. Off-screen capture normalization and earlier minimise suspension are candidates, not confirmed native fixes.
