@@ -1,14 +1,12 @@
-# CameraReference Testing 1.0.10
+# CameraReference Testing 1.0.11
 
-Keep main’s accepted 1.0.6 app. Quit it before opening this worktree’s **release/CameraReference Testing.app**. Confirm **Camera Reference Testing 1.0.10**, purple icon with a large T. This new testing identity needs its own Screen Recording and optional Accessibility approval; stable’s entry should remain. Settings/config and bridge 0.5.2 are shared. All live interaction is yours.
+Main remains 1.0.6. Quit it before running this worktree’s release/CameraReference Testing.app. **Update/reload the staged CameraReference.lrplugin manually; verify bridge 0.5.3.** Same purple T identity and shared settings/config. All live interaction is yours.
 
-- [ ] Existing shortcuts, layout and calibration/config preferences remain. Stable and Testing are distinguishable in macOS permission settings. If Accessibility is missing, Developer tools → Inspect Accessibility layout… requests it.
-- [ ] Show overlay; minimise/restore repeatedly without moving Lightroom. Check no downward jump and whether moves remains zero. In diagnostics, report geometry source and whether any lingering/late reappearance remains. Early hiding is still under investigation.
-- [ ] Clear region in auto mode, move Lightroom slightly off-screen and invoke: fresh Full/split placement aligns. Test portrait/landscape. Manual calibration Option-snapping works on visible edges. Return on-screen and verify accepted placement remains correct.
-- [ ] Bridge diagnostics has six selectable sections, scrollable text and Copy all. Performance appears once; the standalone monitoring menu action is gone.
-- [ ] In Library, baseline/preview/Find viewing area show “Switch Lightroom to Develop.” In Develop they work. Preview baseline still remains available for comparison.
-- [ ] Briefly check ordinary window following/resizing, no flicker during RAW pan/clicks, app covering, Library dismissal and floating display. Main remains unchanged until acceptance.
+- [ ] In Library Loupe, select RAW: overlay, floating display, capture preview and Find viewing area work. Check portrait/landscape at Fit, automatic placement and manual calibration. Library Grid/Survey/Compare alignment is not claimed supported.
+- [ ] Switch Library ↔ Develop with overlay visible: it dismisses. Reinvoke in the new module: fresh placement aligns, without using the other module’s calibration. Repeated toggles within the module still reuse valid caches.
+- [ ] Switch modules while JPEG/capture/calibration is pending: no late overlay or calibration is saved in the new module. Switch to Map/Book/Print/Slideshow/Web: no new reference invocation; an explicit Library/Develop prompt appears. Existing floating display stays independent.
+- [ ] Clear Library region: Develop’s region and preferences remain intact. Return to Develop: Full/split placement, shortcuts and calibration still behave as before. Library defaults auto on only when its preference is absent.
+- [ ] Diagnostics after show: AX host is bound via main/focused or all-window search, even with >16 AX windows. Minimise/restore repeatedly; report counters/geometry source and any remaining linger/jump.
+- [ ] Briefly repeat off-screen placement/snapping, ordinary movement, no flicker, app covering and sectioned diagnostics. Do not merge yet.
 
-Copy all diagnostics after any failure, before invoking the overlay again. Prior annotations and chat findings are preserved in docs/VALIDATION.md.
-
-**Permission gate first:** add the exact newly named CameraReference Testing.app to Screen Recording, leaving stable untouched, then quit/reopen Testing if required. If it still reports no permission, stop functional tests and copy App & permissions diagnostics. The rebuild does not yet prove that macOS will accept the grant.
+Use Copy all after failures before invoking again. Prior test annotations are preserved in docs/VALIDATION.md. This build does not add AX-derived photo bounds or guessed split dividers.

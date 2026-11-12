@@ -321,17 +321,43 @@ final class LightroomHostAccessibility {
             diagnostic="AXWindows read: \(accessibilityStatus(status)); no window list";return nil
         }
         let cg=CGRect(x:hostFrame.minX,y:CGDisplayBounds(CGMainDisplayID()).height-hostFrame.maxY,width:hostFrame.width,height:hostFrame.height)
-        let candidates=Array(windows.prefix(16))
-        let frames=candidates.map { window -> CGRect? in
-            AXUIElementSetMessagingTimeout(window,0.03)
-            return Self.frame(window)
+        let deadline=ProcessInfo.processInfo.systemUptime+0.15
+        // Public main/focused references are useful when AXWindows contains many
+        // Lightroom panels. Verify exact host geometry before using either.
+        var priority:[AXUIElement]=[]
+        for key in [kAXMainWindowAttribute,kAXFocusedWindowAttribute] {
+            if let window=Self.element(Self.read(app,key)),!priority.contains(where:{CFEqual($0,window)}) { priority.append(window) }
         }
-        guard let index=uniqueHostFrameMatch(frames,target:cg) else {
-            let details=frames.map { $0.map(String.init(describing:)) ?? "unreadable frame" }.joined(separator:"; ")
-            diagnostic="No unique AX window geometry match. Expected \(cg); \(windows.count) windows, examined \(frames.count): \(details)";return nil
+        var match:AXUIElement?
+        var source="main/focused window"
+        for window in priority {
+            AXUIElementSetMessagingTimeout(window,0.01)
+            if let rect=Self.frame(window),uniqueHostFrameMatch([rect],target:cg) != nil { match=window;break }
         }
-        application=app;host=candidates[index];AXUIElementSetMessagingTimeout(host,0.03)
-        diagnostic="AX host bound by unique geometry match (\(frames.count) examined)."
+        var examined=priority.count
+        if match == nil {
+            var frames:[CGRect?]=[]
+            for window in windows {
+                guard ProcessInfo.processInfo.systemUptime<deadline else {
+                    diagnostic="AX window search exceeded 150 ms budget; examined \(frames.count) of \(windows.count). No guessed host binding.";return nil
+                }
+                AXUIElementSetMessagingTimeout(window,0.01)
+                frames.append(Self.frame(window))
+            }
+            examined=frames.count
+            // Search all returned frames, largest first, retaining exact geometry
+            // and ambiguity checks rather than assuming largest always means host.
+            let ranked=frames.indices.sorted { (frames[$0].map{$0.width*$0.height} ?? 0) > (frames[$1].map{$0.width*$0.height} ?? 0) }
+            let ordered=ranked.map{frames[$0]}
+            guard let index=uniqueHostFrameMatch(ordered,target:cg) else {
+                let details=ranked.prefix(8).map { frames[$0].map(String.init(describing:)) ?? "unreadable" }.joined(separator:"; ")
+                diagnostic="No unique AX host match. Expected \(cg); examined all \(frames.count) windows. Largest frames: \(details)";return nil
+            }
+            match=windows[ranked[index]];source="all-window area-ranked search"
+        }
+        guard let match else { return nil }
+        application=app;host=match;AXUIElementSetMessagingTimeout(host,0.03)
+        diagnostic="AX host bound via \(source), geometry verified (\(examined) examined; \(windows.count) listed)."
         watchMinimize(pid:pid)
     }
     var layoutFrame:CGRect? {

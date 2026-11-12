@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.11 — testing candidate
+
+Allow Library and Develop only; dismiss overlays and invalidate placement on module changes. Preserve separate module calibrations in the shared preferences file. Bridge 0.5.3 required. Search main/focused AX windows then all returned frames within a time budget instead of first 16. Library placement and native AX binding need acceptance.
+
 ## 1.0.10 — permission identification candidate
 
 Give testing a distinct on-disk app/executable name and large T badge. Permission messages identify the running copy and request native access once per launch. Preserve shared settings and stable identity; no TCC reset. Ad-hoc signing remains and permission recovery needs native confirmation.

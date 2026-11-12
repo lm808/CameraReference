@@ -22,3 +22,6 @@
 - Broader RAW support beyond CR3/ARW, additional Sony camera samples and cropped RAW/JPEG aspect handling.
 
 Completed functionality belongs in README; implementation rationale in METHODS; historical evidence in VALIDATION and Git history. Pinch gestures were deliberately removed; Cmd-scroll is supported.
+
+- Validate Library Loupe placement and Library/Develop transition handling in 1.0.11; unsupported module requests must remain blocked.
+- Later: investigate AX panel-derived viewport bounds and explicit 50/50 split fallback; preserve capture detection until accepted.

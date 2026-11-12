@@ -370,3 +370,29 @@ User could not successfully grant Screen Recording to the testing app; functiona
 ## 1.0.10 rebuild checks
 
 Native testing build, shell syntax, staged plist/signature and diff checks passed. Staged path is release/CameraReference Testing.app; bundle ID remains org.local.CameraReference.testing, executable is CameraReferenceTesting, version 1.0.10. T badge inspected at small icon size. Old ambiguously named testing payload moved into ignored build/retired-testing.*; main source and staged 1.0.6 remain untouched. No new Library folder or preference domain. Permission code compiled; native permission recovery has not been tested. No certificate was installed, no TCC reset or live UI interaction performed. Unchanged detection/geometry suites were not repeated for this identity/permission-message rebuild.
+
+## User acceptance of 1.0.10 candidate
+
+```text
+# CameraReference Testing 1.0.10
+
+Keep main’s accepted 1.0.6 app. Quit it before opening this worktree’s **release/CameraReference Testing.app**. Confirm **Camera Reference Testing 1.0.10**, purple icon with a large T. This new testing identity needs its own Screen Recording and optional Accessibility approval; stable’s entry should remain. Settings/config and bridge 0.5.2 are shared. All live interaction is yours.
+
+- [Discussed. ] Existing shortcuts, layout and calibration/config preferences remain. Stable and Testing are distinguishable in macOS permission settings. If Accessibility is missing, Developer tools → Inspect Accessibility layout… requests it.
+- [x ] Show overlay; minimise/restore repeatedly without moving Lightroom. Check no downward jump and whether moves remains zero. In diagnostics, report geometry source and whether any lingering/late reappearance remains. Early hiding is still under investigation.
+- [x ] Clear region in auto mode, move Lightroom slightly off-screen and invoke: fresh Full/split placement aligns. Test portrait/landscape. Manual calibration Option-snapping works on visible edges. Return on-screen and verify accepted placement remains correct.
+- [x ] Bridge diagnostics has six selectable sections, scrollable text and Copy all. Performance appears once; the standalone monitoring menu action is gone.
+- [x. This should show up whenever I invoke in Library. The actual wanted behaviour is that it should be usable in both Library and Develop. However when I swich module the overlay should disappear. Unless there are some functionality that you have to have develop enabled. In the case we want do disable usage under Library, then it should prompt the user to swich to Develop whenever appropriate.] In Library, baseline/preview/Find viewing area show “Switch Lightroom to Develop.” In Develop they work. Preview baseline still remains available for comparison.
+- [x ] Briefly check ordinary window following/resizing, no flicker during RAW pan/clicks, app covering, Library dismissal and floating display. Main remains unchanged until acceptance.
+
+Copy all diagnostics after any failure, before invoking the overlay again. Prior annotations and chat findings are preserved in docs/VALIDATION.md.
+
+**Permission gate first:** add the exact newly named CameraReference Testing.app to Screen Recording, leaving stable untouched, then quit/reopen Testing if required. If it still reports no permission, stop functional tests and copy App & permissions diagnostics. The rebuild does not yet prove that macOS will accept the grant.
+
+```
+
+Chat: no downward jump observed. AX list exposed 24 windows but only 16 examined; binding failed. User wants Library and Develop only, with overlay dismissed on module changes. AX-derived viewport geometry and 50/50 split remain deferred.
+
+## 1.0.11 validation
+
+Audit found explicit module guards, not a Develop-only photo/extraction API dependency. Testing build and full bash test.sh passed. Lua stand-ins now accept Library overlay/floating requests and reject Map/Book/Print/Slideshow/Web, including floating requests outside allowed modules. Swift checks cover confirmed module transitions versus unknown heartbeat, Library region clearing without changing Develop or mode preference, and a host at index 23. Existing detector/geometry/image/preview checks passed. Signature/plist, staged bridge 0.5.3 and diff checks passed. Main remains clean with app 1.0.6. No bridge installation, app launch, permissions changes or live interaction by the agent. Library placement and AX native matching remain pending.

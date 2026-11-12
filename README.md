@@ -1,4 +1,4 @@
-# Camera Reference — 1.0.10
+# Camera Reference — 1.0.11
 
 Camera Reference is a macOS menu-bar companion for Lightroom Classic. It displays a camera JPEG over Lightroom’s working area, or in an independent floating window, so you can compare it with your RAW edit.
 
@@ -12,12 +12,12 @@ Download the disk image for your Mac’s architecture from the repository’s Gi
 
 See [installation and upgrades](docs/INSTALL.md) for the complete steps, dependencies and alpha signing limitations. The app requires macOS 13 or later; automatic detection, capture preview and calibration snapping require macOS 14 or later. The bridge has been developed/tested with Lightroom Classic 15.6; other releases need verification. ExifTool is required for CR3/ARW extraction and lossless embedded-JPEG export.
 
-For candidate testing, run **release/CameraReference Testing.app** after `bash scripts/stage.sh --testing`. The purple Camera Reference Testing app has a separate permissions identity; stable retains its teal icon. Run only one copy at a time; settings and the bridge are shared. Ad-hoc signing can still require permission approval after testing updates. build/ is internal. This update requires bridge **0.5.2**. Stop old copies before consolidation; see the upgrade instructions.
+For candidate testing, run **release/CameraReference Testing.app** after `bash scripts/stage.sh --testing`. The purple Camera Reference Testing app has a separate permissions identity; stable retains its teal icon. Run only one copy at a time; settings and the bridge are shared. Ad-hoc signing can still require permission approval after testing updates. build/ is internal. This update requires bridge **0.5.3**. Stop old copies before consolidation; see the upgrade instructions.
 
 ## Use
 
 1. Start Camera Reference and the Lightroom bridge. In Lightroom, choose **File → Plug-in Extras → Start / restart Camera Reference bridge** if needed.
-2. Select a photo in **Develop**, with Lightroom’s image zoom set to **Fit**.
+2. Select a photo in **Library Loupe or Develop**, with Lightroom’s image zoom set to **Fit**.
 3. Use **Show overlay**, or **Control–Option–Command–J**, to toggle the camera reference.
 4. Use **Show floating display**, or **Control–Option–Command–F**, for an independent reference. Change either shortcut in **Settings → Keyboard shortcuts**.
 
@@ -43,7 +43,7 @@ Zoomed overlays can draw and pan across their whole region; Fit keeps the origin
 
 The current selected photo’s JPEG bytes and decoded image are cached in RAM. Automatic UI bounds are reused for repeated toggles; window movement translates them, while resize, selection and relevant settings changes invalidate reuse. No disk image cache is created.
 
-The overlay floats while Lightroom is active, preventing Lightroom clicks from covering it. When another app becomes active, it drops to normal window level so other applications can cover it. It follows Lightroom movement. In this alpha, overview/Space/minimisation transitions suspend it rather than release its image; return to the host window permits restoration, even after resize or selection changes. Partial off-screen movement uses normal clipping. Placement uncertainty invalidates the cache for the next invocation without dismissing the visible overlay. Switching to Library dismisses the overlay; returning to Develop does not reopen it. The floating display stays open. You can also dismiss the overlay manually. These behaviours still need native acceptance on your display setup.
+The overlay floats while Lightroom is active, preventing Lightroom clicks from covering it. When another app becomes active, it drops to normal window level so other applications can cover it. It follows Lightroom movement. In this alpha, overview/Space/minimisation transitions suspend it rather than release its image; return to the host window permits restoration, even after resize or selection changes. Partial off-screen movement uses normal clipping. Placement uncertainty invalidates the cache for the next invocation without dismissing the visible overlay. Switching modules dismisses the overlay; invoke again in Library or Develop. Other modules are not supported. The floating display stays open. You can also dismiss the overlay manually. These behaviours still need native acceptance on your display setup.
 
 Background checks detect internal panel changes while Lightroom is active. They default to every **3 seconds**, use a lower-resolution capture, and are cancelled for foreground requests. Set the interval to **0** to disable them; use Clear region after panel changes in that case.
 
@@ -80,3 +80,5 @@ Builds require Apple command-line tools; Lua bridge tests use texlua. Packaging 
 [AGENTS.md](AGENTS.md) maps the source and development rules. [Methods](docs/METHODS.md) records why the implementation works; [validation](docs/VALIDATION.md) separates measured evidence from native acceptance still pending. [Backlog](docs/BACKLOG.md) tracks future work; [changelog](CHANGELOG.md) records releases.
 
 Licensing is undecided for this alpha; no open-source licence has been selected yet.
+
+Library and Develop use separate saved calibration keys within the same GUI preferences file. Library starts in automatic placement mode; Develop settings are preserved. Use Library Loupe for single-photo alignment—Grid/Survey/Compare placement is not validated. AX-based viewport detection and a guessed 50/50 split remain deferred.

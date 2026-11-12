@@ -488,3 +488,26 @@ let diagnostic=diagnosticReport([DiagnosticSection(title:"Performance",body:"123
 assert(diagnostic.components(separatedBy:"123 ms").count==2)
 assert(diagnostic.contains("PERFORMANCE") && diagnostic.contains("PLACEMENT"))
 print("PASS: sectioned diagnostic report retains headings and emits performance once")
+
+assert(supportedLightroomModule("library") && supportedLightroomModule("develop"))
+for module in ["map","book","print","slideshow","web",""] { assert(!supportedLightroomModule(module)) }
+assert(!supportedLightroomModule(nil))
+assert(confirmedModuleChange(previous:"library",current:"develop"))
+assert(confirmedModuleChange(previous:"develop",current:"map"))
+assert(!confirmedModuleChange(previous:"develop",current:nil))
+assert(!confirmedModuleChange(previous:"library",current:"library"))
+var manyFrames:[CGRect?]=(0..<24).map { CGRect(x:CGFloat($0)*10,y:0,width:50,height:20) }
+manyFrames[23]=hostMatch
+assert(uniqueHostFrameMatch(manyFrames,target:hostMatch)==23)
+print("PASS: Library/Develop allowlist, confirmed transitions versus heartbeat uncertainty, host beyond first 16 frames")
+
+let modulePrefs=UserDefaults(suiteName:"CameraReference.ModuleTests.\(UUID().uuidString)")!
+modulePrefs.set("develop-region",forKey:"region")
+modulePrefs.set("library-region",forKey:"library.region")
+modulePrefs.set(false,forKey:"library.automaticBounds")
+clearRegionPreferences(modulePrefs,modulePrefix:"library.")
+assert(modulePrefs.string(forKey:"region")=="develop-region")
+assert(modulePrefs.object(forKey:"library.region")==nil)
+assert(modulePrefs.object(forKey:"library.automaticBounds") as? Bool == false)
+modulePrefs.removeObject(forKey:"region");modulePrefs.removeObject(forKey:"library.automaticBounds")
+print("PASS: Library region clearing preserves Develop region and automatic preference")

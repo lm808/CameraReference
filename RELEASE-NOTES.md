@@ -1,7 +1,9 @@
-# CameraReference Testing 1.0.10
+# CameraReference Testing 1.0.11
 
-Open **release/CameraReference Testing.app**: purple icon with a large T, distinct executable name, unchanged testing bundle ID. Main’s accepted 1.0.6 app is untouched. Existing preferences/config/bridge remain shared; no new settings folder.
+Main remains at accepted 1.0.6. Run release/CameraReference Testing.app (purple T). Settings/config remain shared; Library and Develop calibration keys are separate within the same preferences file.
 
-Permission messages now identify the exact app and avoid repeated native requests in one launch. This is a rebuilt, unambiguously named candidate, not a confirmed TCC repair. Ad-hoc signing remains; no permission reset or weakened signing requirement was applied.
+- Library and Develop supported; other modules rejected with an explicit message. Use Library Loupe for photo alignment.
+- Overlay dismisses on module changes; pending work is cancelled and placement re-detected. Existing floating display stays independent.
+- AX host lookup checks main/focused window references, then all returned windows within a time budget, verifying geometry rather than taking the first 16.
 
-First verify Screen Recording for this exact new app and reopen it if requested. Leave stable’s entry intact. If still blocked, report diagnostics before attempting functional tests. The 1.0.9 functional changes are unchanged. No DMG, merge or live interaction by the agent.
+**Manually update/reload the included bridge to 0.5.3** before Library testing. Protocol remains compatible with stable 1.0.6. Native Library placement/AX matching require acceptance; AX viewport inference and 50/50 split fallback are deferred. No DMG, merge, installation or live interaction by the agent.

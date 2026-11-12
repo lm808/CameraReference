@@ -26,13 +26,13 @@ local generation = {}
 _G.cameraReferenceGeneration = generation
 _G.cameraReferenceRunning = true
 _G.cameraReferenceFolder = folder
-_G.cameraReferenceStatus = 'Starting bridge 0.5.2'
+_G.cameraReferenceStatus = 'Starting bridge 0.5.3'
 Tasks.startAsyncTask(function()
     local ok, err = Tasks.pcall(function()
       FunctionContext.callWithContext("CameraReferenceSelection", function(context)
         local created, why = Files.createAllDirectories(folder)
         if not created then error('Cannot create bridge folder: ' .. tostring(why)) end
-        _G.cameraReferenceStatus = 'Running 0.5.2'
+        _G.cameraReferenceStatus = 'Running 0.5.3'
         write('status.txt', _G.cameraReferenceStatus)
         local request = Paths.child(folder, 'request.txt')
         Files.delete(Paths.child(folder, 'response.txt')) -- Remove any reply left by an earlier crashed session.
@@ -94,8 +94,9 @@ Tasks.startAsyncTask(function()
                 last = token
                 local responseEpoch = sampleSelection()
                 local success, payload = Tasks.pcall(function()
-                    if mode ~= 'window' and View.getCurrentModuleName() ~= 'develop' then
-                        return 'ERR\n' .. hex('Select a photograph in Develop.')
+                    local module = View.getCurrentModuleName()
+                    if module ~= 'develop' and module ~= 'library' then
+                        return 'ERR\n' .. hex('Switch Lightroom to Library or Develop.')
                     end
                     local photo = Application.activeCatalog():getTargetPhoto()
                     if not photo then return 'ERR\n' .. hex('No active photograph.') end

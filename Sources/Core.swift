@@ -102,3 +102,11 @@ func consolidateSupportDirectory(applicationSupport:URL, now:Date = Date()) thro
     }
     return true
 }
+
+func supportedLightroomModule(_ module:String?)->Bool {
+    module == "library" || module == "develop"
+}
+func confirmedModuleChange(previous:String?,current:String?)->Bool {
+    guard let previous,let current else { return false }
+    return previous != current
+}

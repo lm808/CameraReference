@@ -1,13 +1,15 @@
 -- Cooperative SDK stand-ins; actual Lightroom loading remains a manual test.
 local root = assert(arg[1], 'Pass project root')
 local token = '11111111-1111-1111-1111-111111111111'
-for _, scenario in ipairs({'ok', 'dng', 'library', 'none', 'notraw', 'sdkerror', 'writeerror', 'pending', 'restart', 'windowlibrary', 'modulechange', 'cleanup', 'selection', 'noobserver', 'observererror'}) do
+for _, scenario in ipairs({'ok', 'dng', 'library', 'none', 'notraw', 'sdkerror', 'writeerror', 'pending', 'restart', 'windowlibrary', 'map', 'windowmap', 'print', 'slideshow', 'book', 'web', 'modulechange', 'cleanup', 'selection', 'noobserver', 'observererror'}) do
     local files, tasks, responses = {}, {}, 0
     local currentModule = (scenario == 'library' or scenario == 'windowlibrary') and 'library' or 'develop'
+    if scenario == 'windowmap' then currentModule='map' end
+    if scenario == 'map' or scenario == 'print' or scenario == 'slideshow' or scenario == 'book' or scenario == 'web' then currentModule=scenario end
     local selectionCallback
     local clock = 1000
     local originalTime = os.time; os.time = function() return clock end
-    local message = token .. '\n' .. (scenario == 'windowlibrary' and 'window' or 'overlay')
+    local message = token .. '\n' .. ((scenario == 'windowlibrary' or scenario == 'windowmap') and 'window' or 'overlay')
     local originalIO = io
     _G.cameraReferenceStatus = nil
     _PLUGIN = { path = root .. '/CameraReference.lrplugin' }
@@ -78,7 +80,7 @@ for _, scenario in ipairs({'ok', 'dng', 'library', 'none', 'notraw', 'sdkerror',
         assert(responses == 1, 'Expected exactly one response')
         assert(files['response.txt']:find(token,1,true) == 1)
         assert(files['response.txt']:sub(-5) == '\nEND\n')
-        local success = scenario == 'ok' or scenario == 'dng' or scenario == 'pending' or scenario == 'restart' or scenario == 'windowlibrary' or scenario == 'modulechange' or scenario == 'cleanup' or scenario == 'selection' or scenario == 'noobserver' or scenario == 'observererror'
+        local success = scenario == 'library' or scenario == 'ok' or scenario == 'dng' or scenario == 'pending' or scenario == 'restart' or scenario == 'windowlibrary' or scenario == 'modulechange' or scenario == 'cleanup' or scenario == 'selection' or scenario == 'noobserver' or scenario == 'observererror'
         assert(files['response.txt']:find(success and '\nOK\n' or '\nERR\n',1,true))
     end
     if scenario == 'modulechange' then

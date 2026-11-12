@@ -42,7 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         nextLegacyCheck=ProcessInfo.processInfo.systemUptime+5
         do {
             legacyBridgeConsolidated=try consolidateSupportDirectory(applicationSupport:folder.deletingLastPathComponent().deletingLastPathComponent())
-            storageStatus=legacyBridgeConsolidated ? "Storage: consolidated under CameraReference." : "Storage migration waiting: stop the old bridge and reload bridge 0.5.2. The old bridge folder is still active."
+            storageStatus=legacyBridgeConsolidated ? "Storage: consolidated under CameraReference." : "Storage migration waiting: stop the old bridge and reload bridge 0.5.3. The old bridge folder is still active."
         } catch { storageStatus="Storage migration deferred: \(error.localizedDescription)" }
     }
     let folder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/CameraReference/Bridge")
@@ -52,8 +52,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var autoItem: NSMenuItem!
     var cancellation: Cancellation?
     var destination: Destination?
+    var pendingModule:String?
     var moduleTimer: Timer?
     var lastModuleSample: (String, Date)?
+    var observedModule:String?
+    var placementModule:String?
+    var screenModule:String?
     var lastLayout = "Automatic detection has not been tested."
     var status: NSStatusItem!
     var detail: NSMenuItem!
@@ -154,7 +158,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var layoutSeparator:NSMenuItem?
     var placementMemory:PlacementMemory?
     func regionKey(_ key:String,layout:OverlayLayout? = nil)->String {
-        regionPreferenceKey(key,layout:layout ?? overlayLayout)
+        let base=regionPreferenceKey(key,layout:layout ?? overlayLayout)
+        return currentModule() == "library" ? "library."+base:base
     }
     var floatingHotKey: EventHotKeyRef?
     var floatingShortcut=(UInt32(kVK_ANSI_F),UInt32(controlKey | optionKey | cmdKey))
@@ -204,7 +209,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func checkPanelBoundariesIfDue() {
         guard #available(macOS 14.0,*),ProcessInfo.processInfo.systemUptime>=nextPanelCheck,
               panelCheckTask==nil,screenTask==nil,pending==nil,calibration==nil,!recording,!regionResetting,
-              !workspaceOverview,!overlaySuspended,isLightroom(),currentModule()=="develop",CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
+              !workspaceOverview,!overlaySuspended,isLightroom(),supportedLightroomModule(currentModule()),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
               let memory=placementMemory,memory.layout==overlayLayout,let imageSize=lastImageSize,
               selectionEpoch()==memory.epoch else { return }
         guard let host=hostWindowSnapshot(memory.windowID),host.onScreen,
@@ -342,7 +347,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         return translated
     }
     func cachedUI(epoch:String?,settings:DetectionConfig,layout:OverlayLayout)->CGRect? {
-        guard let memory=placementMemory,let current=lightroomWindowFrame(),
+        guard placementModule==currentModule(),let memory=placementMemory,let current=lightroomWindowFrame(),
               let cg=currentCaptureWindowFrame(memory.windowID),sameWindowGeometry(current,appKitRect(cg,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)),
               let ui=memory.translated(window:current,windowID:memory.windowID,epoch:epoch,settingsKey:settings.key,layout:layout),
               NSScreen.screens.contains(where:{$0.frame.intersects(ui)}) else { return nil }
@@ -352,6 +357,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     func rememberPlacement(_ result:ScreenProbeResult,epoch:String?,settings:DetectionConfig,layout:OverlayLayout) {
         guard let ui=result.uiFrame,let window=result.windowFrame,let id=result.windowID,let epoch else { return }
+        placementModule=currentModule()
         placementMemory=PlacementMemory(ui:ui,window:appKitRect(window,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height),windowID:id,epoch:epoch,settingsKey:settings.key,layout:layout,background:result.background)
     }
     func showUI(_ image:CGImage,ui:CGRect,snapshot:ExportSnapshot?,settings:DetectionConfig) {
@@ -380,7 +386,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             askForCalibration();return
         }
         if let ui=cachedUI(epoch:epoch,settings:settings,layout:.full) { show(ui);return }
-        guard currentModule()=="develop",#available(macOS 14.0,*),FeaturePermission.screenCapture.ensure() else { report("Calibrate a UI working area, or open Develop to size the floating photo.");return }
+        guard supportedLightroomModule(currentModule()),#available(macOS 14.0,*),FeaturePermission.screenCapture.ensure() else { report("Calibrate a UI working area, or open Library or Develop to size the floating photo.");return }
         startPhotoDetection(imageSize:imageSize,layout:.full) { [weak self] probe in
             guard let self else { return }
             if let epoch,self.selectionEpoch() != epoch { self.report("Selection changed during capture; invoke again.");return }
@@ -401,6 +407,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             NSApp.activate(ignoringOtherApps:true);alert.runModal();NSApp.terminate(nil);return
         }
         if let url=Bundle.main.url(forResource:"AppIcon",withExtension:"icns") { NSApp.applicationIconImage=NSImage(contentsOf:url) }
+        CameraPreferences.shared.register(defaults:Dictionary(uniqueKeysWithValues:OverlayLayout.allCases.map {
+            ("library."+regionPreferenceKey("automaticBounds",layout:$0),true)
+        }))
         // Carry only calibration and shortcut settings forward; no photo paths or images.
         if !CameraPreferences.shared.bool(forKey: "migrated03") {
             if let old = CameraPreferences.shared.persistentDomain(forName: "org.local.JPEGReference") {
@@ -482,15 +491,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let epoch=self.selectionEpoch()
             self.imageCache.observe(epoch)
             let module=self.currentModule()
-            if let memory=self.placementMemory,memory.epoch != epoch || module != "develop" { self.placementMemory=nil }
-            // A confirmed Library switch dismisses even a suspended overlay and
-            // cancels an in-flight overlay request. Missing/stale heartbeats do neither.
-            if module == "library" {
-                if self.panel != nil || self.destination == .overlay { self.hide() }
-                // Detection also requires Develop; discard its callback so a
-                // quick return cannot resurrect an overlay from the old request.
-                if self.screenInspectionID != nil { self.cancelScreenInspection() }
+            if let memory=self.placementMemory,memory.epoch != epoch || !supportedLightroomModule(module) { self.placementMemory=nil }
+            if confirmedModuleChange(previous:self.observedModule,current:module) {
+                self.hide();self.cancelRequest();self.cancelScreenInspection()
+                self.calibration?.finish(nil);self.calibrationTask?.cancel()
+                self.invalidateAutomaticGeometry()
+                self.updateLayoutMenu()
+                self.autoItem?.state=CameraPreferences.shared.bool(forKey:self.regionKey("automaticBounds")) ? .on:.off
             }
+            if let module { self.observedModule=module }
             self.workspaceOverview=(self.panel != nil || self.placementMemory != nil) && workspaceOverviewIsVisible()
             self.observeWindowGeometry()
             if self.panel != nil { _ = self.orderOverlayAboveLightroom() }
@@ -614,11 +623,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     @objc func checkPhoto() { request(.check) }
     func request(_ target: Destination) {
-        guard !regionResetting else { return }
+        guard !regionResetting,requireSupportedModule() else { return }
         cancelPanelCheck();nextPanelCheck=ProcessInfo.processInfo.systemUptime+reloadDetectionConfig().panelCheckIntervalSeconds
         cancelScreenInspection(); cancelRequest()
         let token = UUID().uuidString, work = Cancellation()
-        pending = token; destination = target; cancellation = work
+        pending = token; destination = target; cancellation = work; pendingModule=currentModule()
         updateToggleTitle()
         let invoked = ProcessInfo.processInfo.systemUptime
         invocationStart=invoked
@@ -637,7 +646,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 guard response.success else { self.failed(response.value, target: target); return }
                 self.load(response.value, token: token, target: target, work: work, invoked: invoked)
             } else if Date() >= deadline {
-                self.failed("Plugin timed out. Reload the updated bridge 0.5.2 in Lightroom’s Plug-in Manager, then use File → Plug-in Extras → Start / restart Camera Reference bridge.", target: target)
+                self.failed("Plugin timed out. Reload the updated bridge 0.5.3 in Lightroom’s Plug-in Manager, then use File → Plug-in Extras → Start / restart Camera Reference bridge.", target: target)
             }
         }
     }
@@ -658,6 +667,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         return lines.count==4 && lines[0]==token && lines[2]=="END" ? lines[1]:nil
     }
     func load(_ path: String, token: String, target: Destination, work: Cancellation, invoked: TimeInterval) {
+        let requestedModule=pendingModule
         let loadStarted=ProcessInfo.processInfo.systemUptime
         let bridgeMS=(loadStarted-invoked)*1000
         let prefer = CameraPreferences.shared.bool(forKey: "preferEmbedded")
@@ -677,7 +687,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                     loaded=LoadedReference(image:cached.image,origin:cached.origin,elapsed:ProcessInfo.processInfo.systemUptime-started,extraction:nil,usedFallback:cached.usedFallback,embeddedBytes:cached.embeddedBytes,cameraOrientation:cached.cameraOrientation,sourceFilename:cached.sourceFilename,stages:"RAM cache hit; source files revalidated")
                 } else {
                     loaded=try loadReference(raw:raw,preferEmbedded:prefer,executable:executable,cancellation:work)
-                    loaded.stages += epoch == nil ? "; RAM cache unavailable: reload bridge 0.5.2 or check heartbeat":"; RAM cache miss"
+                    loaded.stages += epoch == nil ? "; RAM cache unavailable: reload bridge 0.5.3 or check heartbeat":"; RAM cache miss"
                     if let epoch,let signature,selectionEpoch()==epoch,!work.isCancelled,
                        referenceFileSignature(raw:raw,preferEmbedded:prefer,executable:executable)==signature {
                         imageCache.insert(loaded,key:signature,epoch:epoch)
@@ -689,6 +699,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             }
             DispatchQueue.main.async {
                 guard self.pending == token, !work.isCancelled else { return }
+                guard supportedLightroomModule(self.currentModule()),self.currentModule()==requestedModule else {
+                    self.cancelRequest();self.report("Module changed; invoke again in Library or Develop.");return
+                }
                 if let epoch, self.selectionEpoch() != epoch {
                     self.imageCache.observe(self.selectionEpoch());self.cancelRequest()
                     self.report("Selection changed while loading; invoke again for the current photo.");return
@@ -709,7 +722,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                     self.report(loaded.origin.rawValue + (loaded.usedFallback ? " (fallback)" : "") + String(format: " · ready in %.0f ms", elapsed * 1000) + extraction)
                     let snapshot=loaded.embeddedBytes.map { ExportSnapshot(raw:URL(fileURLWithPath:path),bytes:$0,orientation:loaded.cameraOrientation) }
                     if target == .overlay {
-                        guard self.isLightroom(), self.currentModule() == "develop" else { self.report("Overlay cancelled: Develop is no longer active."); return }
+                        guard self.isLightroom(), supportedLightroomModule(self.currentModule()) else { self.report("Overlay cancelled: Library or Develop is no longer active."); return }
                         self.resolveOverlay(loaded.image,snapshot:snapshot,selectionEpoch:epoch)
                     } else if target == .detect {
                         self.startPhotoDetection(imageSize:CGSize(width:loaded.image.width,height:loaded.image.height))
@@ -824,7 +837,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         view.toolTip="Two-finger scroll: pan. Command-scroll: zoom. Drag: pan (floating at Fit: move window). Double-click: reload and Fit. Right-click: Fit / 100% / Save."
     }
     func reloadOverlay() {
-        guard panel != nil, currentModule()=="develop" else { return }
+        guard panel != nil, supportedLightroomModule(currentModule()) else { return }
         hide(); request(.overlay)
     }
     func validateMenuItem(_ item:NSMenuItem) -> Bool { true }
@@ -925,12 +938,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     @objc func calibrate() { beginCalibration() }
     func beginCalibration(proposal requestedProposal:CGRect? = nil, useManualOnAccept:Bool = false) {
+        guard requireSupportedModule() else { return }
         guard !regionResetting else { return }
         cancelPanelCheck()
         cancelScreenInspection(); hide(); cancelRequest(); calibration?.finish(nil)
         let settings=reloadDetectionConfig()
         let proposal=requestedProposal == nil ? nil:lastProbe?.uiFrame
         let selectionKind="ui"
+        let calibrationModule=currentModule()
         let controller=CalibrationController();controller.snapRadius=settings.snapDistancePoints; calibration=controller
         if overlayLayout != .full { controller.instruction="Select the entire \(overlayLayout.label.lowercased()) pane backdrop between panels and divider, including photo margins. ⌥ snaps; Esc cancels." }
         controller.completed = { [weak self] result in
@@ -939,6 +954,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.calibrationTimer?.invalidate();self.calibrationTimer=nil
             self.calibration=nil
             if let result {
+                guard self.currentModule()==calibrationModule else { self.report("Module changed; calibration was not saved.");return }
                 guard let window=lightroomWindowFrame(),window.contains(result) else {
                     self.report("Select the UI backdrop inside the Lightroom window. Previous calibration retained.");return
                 }
@@ -980,7 +996,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         calibrationTimer?.invalidate();calibrationTimer=nil
         cancelPanelCheck()
         cancelScreenInspection();cancelRequest();hide();saveToast.close();capturePreview?.close();capturePreview=nil
-        clearRegionPreferences(CameraPreferences.shared,layout:overlayLayout)
+        clearRegionPreferences(CameraPreferences.shared,layout:overlayLayout,modulePrefix:currentModule() == "library" ? "library.":"")
         placementMemory=nil
         acceptedSplitKey=nil;lastProbe=nil;lastImageSize=nil
         lastLayout="No region data. Detection/calibration starts fresh."
@@ -991,17 +1007,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.report("Region cleared for this layout/pane. Automatic detection preference unchanged.")
         }
     }
-    func requireDevelopForCapture()->Bool {
-        guard currentModule() != "develop" else { return true }
+    func requireSupportedModule()->Bool {
+        guard !supportedLightroomModule(currentModule()) else { return true }
         let alert=NSAlert();alert.icon=NSApp.applicationIconImage
-        alert.messageText="Switch Lightroom to Develop"
-        alert.informativeText="Capture and viewing-area tools require the Develop module. Switch there, then try again."
+        alert.messageText="Switch Lightroom to Library or Develop"
+        alert.informativeText="Camera Reference supports Library and Develop only. Switch to either module, then try again. In Library, use Loupe for single-photo placement."
         NSApp.activate(ignoringOtherApps:true);alert.runModal();return false
     }
     @objc func keepCaptureBaseline() { showCapturePreview(keepBaseline:true) }
     @objc func previewCapture() { showCapturePreview(keepBaseline:false) }
     func showCapturePreview(keepBaseline:Bool) {
-        guard !regionResetting,requireDevelopForCapture() else { return }
+        guard !regionResetting,requireSupportedModule() else { return }
         hide();calibration?.finish(nil)
         if !keepBaseline { capturePreview?.close();capturePreview=nil }
         guard #available(macOS 14.0,*),FeaturePermission.screenCapture.ensure() else { return }
@@ -1032,11 +1048,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     @objc func inspectScreen() {
-        guard !regionResetting,requireDevelopForCapture() else { return }
+        guard !regionResetting,requireSupportedModule() else { return }
         guard screenTask == nil else { report("Screen inspection is already running."); return }
         guard #available(macOS 14.0, *) else { report("Screen-based inspection requires macOS 14 or newer. Manual calibration remains available."); showResult(); return }
         hide(); calibration?.finish(nil)
-        guard currentModule()=="develop" else { report("Select a photograph in Lightroom Develop before screen inspection."); return }
+        guard supportedLightroomModule(currentModule()) else { report("Select a photograph in Lightroom Library or Develop before screen inspection."); return }
         guard FeaturePermission.screenCapture.ensure() else { return }
         request(.detect) // Obtain the current JPEG aspect ratio, never a previous photo's.
     }
@@ -1068,7 +1084,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             report("Automatic detection needs Screen Recording permission. Turn it off to use manual calibration."); return
         }
         startPhotoDetection(imageSize:CGSize(width:image.width,height:image.height)) { [weak self] result in
-            guard let self, self.isLightroom(), self.currentModule()=="develop" else { return }
+            guard let self, self.isLightroom(), supportedLightroomModule(self.currentModule()) else { return }
             if let expectedEpoch,self.selectionEpoch() != expectedEpoch { self.imageCache.observe(self.selectionEpoch());self.report("Selection changed during capture; invoke again.");return }
             guard let area=result.candidate else { self.askForCalibration(workingAreaTooNarrow:result.workingAreaTooNarrow,reason:result.placementUnavailableReason); return }
             self.rememberPlacement(result,epoch:expectedEpoch,settings:settings,layout:self.overlayLayout)
@@ -1090,7 +1106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         } else { report("Overlay cancelled; calibration was not changed.") }
     }
     func startPhotoDetection(imageSize:CGSize,previewCapture:Bool=false,layout requestedLayout:OverlayLayout? = nil,completion:((ScreenProbeResult)->Void)? = nil) {
-        guard #available(macOS 14.0, *), currentModule()=="develop" else { report("Detection cancelled: Develop is no longer active."); return }
+        guard #available(macOS 14.0, *), supportedLightroomModule(currentModule()) else { report("Detection cancelled: Library or Develop is no longer active."); return }
         cancelPanelCheck()
         let settings=reloadDetectionConfig()
         let mode=requestedLayout ?? overlayLayout
@@ -1098,7 +1114,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         cancelScreenInspection()
         report("Finding the Lightroom viewing area…")
         detectionCompletion=completion
-        let inspectionID=UUID(); screenInspectionID=inspectionID
+        let inspectionID=UUID(); screenInspectionID=inspectionID;screenModule=currentModule()
         let inspectionStarted=ProcessInfo.processInfo.systemUptime
         updateToggleTitle()
         screenTimeout=Timer(timeInterval:12,repeats:false) { [weak self] _ in
@@ -1128,7 +1144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let callback=detectionCompletion
         screenInspectionID=nil; screenTask=nil; screenTimeout?.invalidate(); screenTimeout=nil; detectionCompletion=nil
         updateToggleTitle()
-        guard currentModule()=="develop" else { report("Detection cancelled: Develop is no longer active."); return }
+        guard supportedLightroomModule(currentModule()),screenModule==currentModule() else { report("Module changed; detection cancelled. Invoke again in Library or Develop."); return }
         if result.geometryChanged { report(result.summary);lastLayout=result.summary;return }
         if let windowID=result.windowID, !sameWindowGeometry(result.windowFrame,currentCaptureWindowFrame(windowID)) {
             invalidateAutomaticGeometry();lastLayout=result.summary+"\nRejected before display: Lightroom window geometry changed.";report(lastLayout);return
