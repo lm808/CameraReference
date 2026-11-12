@@ -1,4 +1,4 @@
-# Camera Reference — 1.0.8
+# Camera Reference — 1.0.9
 
 Camera Reference is a macOS menu-bar companion for Lightroom Classic. It displays a camera JPEG over Lightroom’s working area, or in an independent floating window, so you can compare it with your RAW edit.
 
@@ -12,7 +12,7 @@ Download the disk image for your Mac’s architecture from the repository’s Gi
 
 See [installation and upgrades](docs/INSTALL.md) for the complete steps, dependencies and alpha signing limitations. The app requires macOS 13 or later; automatic detection, capture preview and calibration snapping require macOS 14 or later. The bridge has been developed/tested with Lightroom Classic 15.6; other releases need verification. ExifTool is required for CR3/ARW extraction and lossless embedded-JPEG export.
 
-For development testing, run **release/CameraReference.app** after `bash scripts/stage.sh`. build/ is internal. This update requires bridge **0.5.2**. Stop old copies before consolidation; see the upgrade instructions.
+For candidate testing, run **release/CameraReference.app** after `bash scripts/stage.sh --testing`. The purple Camera Reference Testing app has a separate permissions identity; stable retains its teal icon. Run only one copy at a time; settings and the bridge are shared. Ad-hoc signing can still require permission approval after testing updates. build/ is internal. This update requires bridge **0.5.2**. Stop old copies before consolidation; see the upgrade instructions.
 
 ## Use
 
@@ -47,7 +47,7 @@ The overlay floats while Lightroom is active, preventing Lightroom clicks from c
 
 Background checks detect internal panel changes while Lightroom is active. They default to every **3 seconds**, use a lower-resolution capture, and are cancelled for foreground requests. Set the interval to **0** to disable them; use Clear region after panel changes in that case.
 
-For minimise troubleshooting, **Settings → Enable minimise monitoring…** requests Accessibility explicitly. **Developer tools → Bridge diagnostics…** reports permission, window binding, notification-registration results and a short event history. Minimise timing still requires native verification.
+For minimise troubleshooting, **Developer tools → Bridge diagnostics…** provides six selectable sections with **Copy all**. Permission, window binding, notification events, placement and timing are separated. The redundant monitoring action is removed; if Accessibility access is missing, **Inspect Accessibility layout…** provides the existing permission flow. Movement prefers Lightroom’s logical Accessibility frame and holds resize/restoration geometry until stable. Early hiding before the minimise animation still needs native verification.
 
 To compare capture alignment, use **Developer tools → Keep on-screen capture baseline…** with Lightroom fully on-screen. Keep that preview open, move Lightroom without resizing, then use **Preview captured Lightroom window…**. The two named previews retain pixels only in RAM; close them to release the images. Compare full window corners and panel edges. Diagnostics include both geometries and warn if the window/size changed.
 
@@ -63,7 +63,7 @@ Open it through **Settings → Edit config file**. Existing `detection.conf` is 
 
 ## Limitations and help
 
-Placement assumes Lightroom Fit and a supported, clearly bounded viewport. Crop, lens/perspective corrections and RAW/JPEG aspect differences can prevent exact alignment. Split wipe views and automatic synchronisation with Lightroom’s zoom/pan are not supported. Fresh automatic placement requires Lightroom fully on one display. Window-only capture produced shifted placement in native tests and is now diagnostic-only. Existing overlays and reusable placements still follow ordinary movement; manual calibration remains available.
+Placement assumes Lightroom Fit and a supported, clearly bounded viewport. Crop, lens/perspective corrections and RAW/JPEG aspect differences can prevent exact alignment. Split wipe views and automatic synchronisation with Lightroom’s zoom/pan are not supported. Off-screen capture now uses the complete window surface without setting sourceRect, matching the user-tested preview path. Fresh placement and Option-snapping are enabled again; actual off-screen placement still needs acceptance. The fully on-screen display-capture path is unchanged.
 
 See [troubleshooting and uninstalling](docs/TROUBLESHOOTING.md), [privacy](PRIVACY.md), [current acceptance tests](TESTING.md), and [release notes](RELEASE-NOTES.md). Report failures with app/bridge versions, layout/pane, diagnostics and a screenshot if you are comfortable sharing it.
 

@@ -1,5 +1,12 @@
 import Foundation
 
+// One settings file for stable and testing; separate bundle IDs isolate TCC
+// entries, not the user's calibration/shortcuts. Stable keeps its original domain.
+enum CameraPreferences {
+    static let shared:UserDefaults = Bundle.main.bundleIdentifier == "org.local.CameraReference.testing"
+        ? UserDefaults(suiteName:"org.local.CameraReference")! : .standard
+}
+
 struct BridgeResponse {
     let token: String
     let success: Bool

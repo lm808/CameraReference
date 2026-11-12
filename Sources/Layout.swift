@@ -194,6 +194,22 @@ func overlayHostAction(saved:CGRect,current:CGRect?,onScreen:Bool,overview:Bool)
     return .translate(CGPoint(x:current.minX-saved.minX,y:current.minY-saved.minY))
 }
 
+// Keep the last accepted logical host geometry while a resize/restoration
+// is in flight. Ordinary same-size movement remains immediate.
+struct OverlayGeometrySettler {
+    private var pending:CGRect?
+    private var since:TimeInterval=0
+    mutating func reset() { pending=nil;since=0 }
+    mutating func accepts(_ current:CGRect,saved:CGRect,restoring:Bool,now:TimeInterval)->Bool {
+        let resized=abs(current.width-saved.width)>=0.5 || abs(current.height-saved.height)>=0.5
+        if !restoring && !resized && pending == nil { return true }
+        if let pending,sameWindowGeometry(pending,current) {
+            if now-since>=0.3 { return true }
+        } else { pending=current;since=now }
+        return false
+    }
+}
+
 // Notifications win briefly over lagging AX attributes during animation, but a
 // missed restore notification must not leave a retained overlay hidden forever.
 func hostMinimizedState(polled:Bool?,notified:Bool?,notificationAge:TimeInterval)->Bool? {
@@ -295,7 +311,7 @@ final class LightroomHostAccessibility {
     }
     init?(pid:pid_t,hostFrame:CGRect,diagnostic:inout String) {
         guard AXIsProcessTrusted() else {
-            diagnostic="Accessibility permission not granted to this app. Use Settings → Enable minimise monitoring…";return nil
+            diagnostic="Accessibility permission not granted to this app. Use Developer tools → Inspect Accessibility layout… to request access.";return nil
         }
         let app=AXUIElementCreateApplication(pid)
         AXUIElementSetMessagingTimeout(app,0.03)
@@ -317,6 +333,10 @@ final class LightroomHostAccessibility {
         application=app;host=candidates[index];AXUIElementSetMessagingTimeout(host,0.03)
         diagnostic="AX host bound by unique geometry match (\(frames.count) examined)."
         watchMinimize(pid:pid)
+    }
+    var layoutFrame:CGRect? {
+        guard let rect=Self.frame(host),rect.width>0,rect.height>0 else { return nil }
+        return appKitRect(rect,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
     }
     var minimized:Bool? {
         var value:CFTypeRef?

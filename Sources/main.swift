@@ -5,6 +5,7 @@ import ApplicationServices
 
 enum Destination: String { case overlay, window, check, detect }
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemValidation, NSMenuDelegate {
+    var diagnosticsWindow:DiagnosticsController?
     var capturePreview:CapturePreviewController?
     var captureBaseline:CapturePreviewController?
     var captureBaselineGeometry:(CGWindowID,CGRect)?
@@ -14,7 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var floatingTitle="Camera Reference"
     private var versionTitle: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
-        return "Camera Reference \(version)"
+        return "\(Bundle.main.object(forInfoDictionaryKey:"CFBundleDisplayName") as? String ?? "Camera Reference") \(version)"
     }
     var floatingZoom:Double=0
     var calibrationTask:Task<Void,Never>?
@@ -25,8 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var acceptedSplitKey:String?
     var lastProbe:ScreenProbeResult?
     var manualLayoutKey:String? {
-        get { UserDefaults.standard.string(forKey:regionKey("manualLayoutKey")) }
-        set { UserDefaults.standard.set(newValue,forKey:regionKey("manualLayoutKey")) }
+        get { CameraPreferences.shared.string(forKey:regionKey("manualLayoutKey")) }
+        set { CameraPreferences.shared.set(newValue,forKey:regionKey("manualLayoutKey")) }
     }
     func updateFloatingTitle() { floating?.title=floatingTitle + String(format:" — %.1f%%",floatingZoom) }
     let detectionSettings=DetectionConfigStore()
@@ -59,6 +60,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var shortcutItem: NSMenuItem!
     var panel: OverlayPanel?
     var overlayHost:HostWindowSnapshot?
+    var overlayGeometrySettler=OverlayGeometrySettler()
+    var overlayGeometrySource="not sampled"
     var overlayAccessibility:LightroomHostAccessibility?
     var nextAccessibilityBind:TimeInterval=0
     var accessibilityBindingStatus="Host binding not attempted; show an overlay first."
@@ -100,13 +103,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard let panel else { return }
         overlayVisibilityStatus="Overlay suspended: \(reason)."
         recordLifecycle("suspend: \(reason)")
+        if !overlaySuspended { overlayGeometrySettler.reset() }
         cancelPanelCheck();overlaySuspended=true
         overlayResumeAfter=ProcessInfo.processInfo.systemUptime+0.4
         panel.orderOut(nil)
     }
     func reconcileOverlayHost() {
         guard let panel,let saved=overlayHost else { return }
-        let current=hostWindowSnapshot(saved.id)
+        let reported=hostWindowSnapshot(saved.id)
+        // AX describes logical layout; CG window positions may follow Dock
+        // animation. Keep CG visibility, but prefer AX coordinates for movement.
+        let logical=overlayAccessibility?.layoutFrame
+        let current=reported.map { HostWindowSnapshot(id:$0.id,frame:logical ?? $0.frame,onScreen:$0.onScreen) }
+        overlayGeometrySource=logical == nil ? "window list":"Accessibility logical frame"
         if overlayAccessibility?.minimized == true || (current.map { hostIsPresentationThumbnail($0.frame) } ?? false) {
             suspendOverlay(reason:"Lightroom minimised or thumbnail transition");return
         }
@@ -121,6 +130,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         case .retain:overlayVisibilityStatus="Overlay retained: host metadata temporarily unavailable."
         case .suspend:suspendOverlay(reason:workspaceOverview ? "Dock overview active":"host is off-screen or on another Space")
         case .translate(let delta):
+            guard let current,overlayGeometrySettler.accepts(current.frame,saved:saved.frame,restoring:overlaySuspended,now:ProcessInfo.processInfo.systemUptime) else {
+                overlayVisibilityStatus="Overlay geometry held while host resize/restoration settles.";return
+            }
             if overlaySuspended {
                 guard ProcessInfo.processInfo.systemUptime>=overlayResumeAfter else { return }
             }
@@ -128,7 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 panel.setFrameOrigin(CGPoint(x:panel.frame.minX+delta.x,y:panel.frame.minY+delta.y))
                 overlayMoveCount += 1
             }
-            overlayHost=current
+            overlayGeometrySettler.reset();overlayHost=current
             if overlaySuspended {
                 recordLifecycle("restore: host visible and settled")
                 overlaySuspended=false;_ = orderOverlayAboveLightroom(initial:true)
@@ -136,7 +148,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     let imageCache=SelectionImageCache()
-    var overlayLayout:OverlayLayout = OverlayLayout(rawValue:UserDefaults.standard.string(forKey:"overlayLayout") ?? "full") ?? .full
+    var overlayLayout:OverlayLayout = OverlayLayout(rawValue:CameraPreferences.shared.string(forKey:"overlayLayout") ?? "full") ?? .full
     var layoutItems=[OverlayLayout:NSMenuItem]()
     var layoutGroups=[Int:NSMenuItem]()
     var layoutSeparator:NSMenuItem?
@@ -161,26 +173,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var recording = false
     var currentShortcut: (UInt32, UInt32) = (UInt32(kVK_ANSI_J), UInt32(controlKey | optionKey | cmdKey))
     var savedRegion: NSRect? {
-        guard let text=UserDefaults.standard.string(forKey:regionKey("region")) else { return nil }
+        guard let text=CameraPreferences.shared.string(forKey:regionKey("region")) else { return nil }
         return NSRectFromString(text)
     }
     var region: NSRect? {
         get {
             guard let r=savedRegion else { return nil }
-            let saved=UserDefaults.standard.data(forKey:regionKey("regionDisplay")).flatMap { try? JSONDecoder().decode(DisplayGeometry.self,from:$0) }
+            let saved=CameraPreferences.shared.data(forKey:regionKey("regionDisplay")).flatMap { try? JSONDecoder().decode(DisplayGeometry.self,from:$0) }
             guard calibratedRegionIsUsable(r,savedDisplay:saved,current:currentDisplays()) else { return nil }
-            if let text=UserDefaults.standard.string(forKey:regionKey("regionWindow")),let current=lightroomWindowFrame() {
+            if let text=CameraPreferences.shared.string(forKey:regionKey("regionWindow")),let current=lightroomWindowFrame() {
                 return translatedCalibration(r,from:NSRectFromString(text),to:current)
             }
             return r
         }
         set {
             guard let newValue else { return } // Temporary display changes never erase calibration.
-            UserDefaults.standard.set(NSStringFromRect(newValue),forKey:regionKey("region"))
-            if let frame=lightroomWindowFrame() { UserDefaults.standard.set(NSStringFromRect(frame),forKey:regionKey("regionWindow")) }
-            else { UserDefaults.standard.removeObject(forKey:regionKey("regionWindow")) }
+            CameraPreferences.shared.set(NSStringFromRect(newValue),forKey:regionKey("region"))
+            if let frame=lightroomWindowFrame() { CameraPreferences.shared.set(NSStringFromRect(frame),forKey:regionKey("regionWindow")) }
+            else { CameraPreferences.shared.removeObject(forKey:regionKey("regionWindow")) }
             if let screen=currentDisplays().first(where:{$0.frame.contains(newValue)}), let data=try? JSONEncoder().encode(screen) {
-                UserDefaults.standard.set(data,forKey:regionKey("regionDisplay"))
+                CameraPreferences.shared.set(data,forKey:regionKey("regionDisplay"))
             }
         }
     }
@@ -192,7 +204,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func checkPanelBoundariesIfDue() {
         guard #available(macOS 14.0,*),ProcessInfo.processInfo.systemUptime>=nextPanelCheck,
               panelCheckTask==nil,screenTask==nil,pending==nil,calibration==nil,!recording,!regionResetting,
-              !workspaceOverview,!overlaySuspended,isLightroom(),currentModule()=="develop",UserDefaults.standard.bool(forKey:regionKey("automaticBounds")),
+              !workspaceOverview,!overlaySuspended,isLightroom(),currentModule()=="develop",CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
               let memory=placementMemory,memory.layout==overlayLayout,let imageSize=lastImageSize,
               selectionEpoch()==memory.epoch else { return }
         guard let host=hostWindowSnapshot(memory.windowID),host.onScreen,
@@ -303,7 +315,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         updateLayoutMenu()
     }
     func updateLayoutMenu() {
-        let hidden = !UserDefaults.standard.bool(forKey:regionKey("automaticBounds"))
+        let hidden = !CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
         layoutSeparator?.isHidden=hidden
         layoutItems[.full]?.isHidden=hidden
         for item in layoutGroups.values { item.isHidden=hidden }
@@ -313,18 +325,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     @objc func selectLayout(_ sender:NSMenuItem) {
         guard let raw=sender.representedObject as? String,let mode=OverlayLayout(rawValue:raw),mode != overlayLayout else { return }
         cancelScreenInspection();cancelRequest();hide();calibration?.finish(nil)
-        overlayLayout=mode;UserDefaults.standard.set(mode.rawValue,forKey:"overlayLayout")
-        UserDefaults.standard.set(true,forKey:regionKey("automaticBounds"))
+        overlayLayout=mode;CameraPreferences.shared.set(mode.rawValue,forKey:"overlayLayout")
+        CameraPreferences.shared.set(true,forKey:regionKey("automaticBounds"))
         invalidateAutomaticGeometry();updateLayoutMenu()
-        autoItem.state=UserDefaults.standard.bool(forKey:regionKey("automaticBounds")) ? .on:.off
+        autoItem.state=CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) ? .on:.off
         report(mode == .full ? "Full layout selected.":"\(mode.label) pane selected. Calibrate its entire UI backdrop, including photo margins.")
     }
     func calibratedUI(_ mode:OverlayLayout)->CGRect? {
-        guard let text=UserDefaults.standard.string(forKey:regionKey("region",layout:mode)) else { return nil }
+        guard let text=CameraPreferences.shared.string(forKey:regionKey("region",layout:mode)) else { return nil }
         let rect=NSRectFromString(text)
-        let display=UserDefaults.standard.data(forKey:regionKey("regionDisplay",layout:mode)).flatMap { try? JSONDecoder().decode(DisplayGeometry.self,from:$0) }
+        let display=CameraPreferences.shared.data(forKey:regionKey("regionDisplay",layout:mode)).flatMap { try? JSONDecoder().decode(DisplayGeometry.self,from:$0) }
         guard calibratedRegionIsUsable(rect,savedDisplay:display,current:currentDisplays()),
-              let saved=UserDefaults.standard.string(forKey:regionKey("regionWindow",layout:mode)),let window=lightroomWindowFrame(),
+              let saved=CameraPreferences.shared.string(forKey:regionKey("regionWindow",layout:mode)),let window=lightroomWindowFrame(),
               let translated=translatedCalibration(rect,from:NSRectFromString(saved),to:window),window.contains(translated),
               NSScreen.screens.contains(where:{$0.frame.contains(translated)}) else { return nil }
         return translated
@@ -358,7 +370,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             displayFloating(loaded.image,origin:loaded.origin,filename:loaded.sourceFilename,area:ui,photoSize:size)
             floatingView?.exportSnapshot=snapshot
         }
-        if !UserDefaults.standard.bool(forKey:regionKey("automaticBounds")) {
+        if !CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) {
             if let full=calibratedUI(.full) { show(full);return }
             if let pane=region,overlayLayout != .full {
                 // A calibrated split pane supplies an approximate full working area.
@@ -380,15 +392,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        if NSWorkspace.shared.runningApplications.contains(where:{
+            $0.processIdentifier != ProcessInfo.processInfo.processIdentifier &&
+            ["org.local.CameraReference","org.local.CameraReference.testing"].contains($0.bundleIdentifier ?? "")
+        }) {
+            let alert=NSAlert();alert.messageText="Camera Reference is already running"
+            alert.informativeText="Quit the other copy before opening this one. Stable and testing share the Lightroom bridge and settings."
+            NSApp.activate(ignoringOtherApps:true);alert.runModal();NSApp.terminate(nil);return
+        }
         if let url=Bundle.main.url(forResource:"AppIcon",withExtension:"icns") { NSApp.applicationIconImage=NSImage(contentsOf:url) }
         // Carry only calibration and shortcut settings forward; no photo paths or images.
-        if !UserDefaults.standard.bool(forKey: "migrated03") {
-            if let old = UserDefaults.standard.persistentDomain(forName: "org.local.JPEGReference") {
+        if !CameraPreferences.shared.bool(forKey: "migrated03") {
+            if let old = CameraPreferences.shared.persistentDomain(forName: "org.local.JPEGReference") {
                 for key in ["region", "key", "modifiers"] {
-                    if let value = old[key] { UserDefaults.standard.set(value, forKey: key) }
+                    if let value = old[key] { CameraPreferences.shared.set(value, forKey: key) }
                 }
             }
-            UserDefaults.standard.set(true, forKey: "migrated03")
+            CameraPreferences.shared.set(true, forKey: "migrated03")
         }
         do { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700]) }
         catch { fatalError("Cannot create bridge directory: \(error)") }
@@ -409,13 +429,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         menu.addItem(.separator())
         let settings = submenu("Settings")
         preferItem = add("Prefer RAW-embedded JPEG", #selector(changePreference), to: settings)
-        preferItem.state = UserDefaults.standard.bool(forKey: "preferEmbedded") ? .on : .off
+        preferItem.state = CameraPreferences.shared.bool(forKey: "preferEmbedded") ? .on : .off
         autoItem = add("Automatic viewing area", #selector(changeAutomatic), to: settings)
-        autoItem.state = UserDefaults.standard.bool(forKey: regionKey("automaticBounds")) ? .on : .off
+        autoItem.state = CameraPreferences.shared.bool(forKey: regionKey("automaticBounds")) ? .on : .off
         add("Set image region…", #selector(calibrate), to: settings)
         settings.addItem(.separator())
         shortcutItem = add("Keyboard shortcuts…", #selector(changeShortcut), to: settings)
-        add("Enable minimise monitoring…", #selector(enableMinimizeMonitoring), to: settings)
 
         settings.addItem(.separator())
         add("Edit config file", #selector(openDetectionConfig), to: settings)
@@ -443,7 +462,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             if identifier.id == 2 { owner.openFloating() } else { owner.toggle() }
             return noErr
         }, 1, &spec, Unmanaged.passUnretained(self).toOpaque(), &handler)
-        let prefs = UserDefaults.standard
+        let prefs = CameraPreferences.shared
         if prefs.object(forKey: "key") != nil {
             currentShortcut = (UInt32(prefs.integer(forKey: "key")), UInt32(prefs.integer(forKey: "modifiers")))
         }
@@ -526,7 +545,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func hide() {
         if destination == .overlay { cancelRequest() }
         (panel?.contentView as? ReferenceView)?.releaseContent()
-        panel?.orderOut(nil); panel = nil;overlayHost=nil;overlayAccessibility=nil;overlayBaselineWindows=[];overlayDialogVisible=false;overlayEpoch=nil;overlaySuspended=false;updateIcon()
+        panel?.orderOut(nil); panel = nil;overlayHost=nil;overlayGeometrySettler.reset();overlayAccessibility=nil;overlayBaselineWindows=[];overlayDialogVisible=false;overlayEpoch=nil;overlaySuspended=false;updateIcon()
     }
     func currentModule() -> String? {
         let url = folder.appendingPathComponent("heartbeat.txt")
@@ -641,8 +660,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func load(_ path: String, token: String, target: Destination, work: Cancellation, invoked: TimeInterval) {
         let loadStarted=ProcessInfo.processInfo.systemUptime
         let bridgeMS=(loadStarted-invoked)*1000
-        let prefer = UserDefaults.standard.bool(forKey: "preferEmbedded")
-        let executable = findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool"))
+        let prefer = CameraPreferences.shared.bool(forKey: "preferEmbedded")
+        let executable = findExifTool(custom: CameraPreferences.shared.string(forKey: "exiftool"))
         let liveEpoch=selectionEpoch()
         imageCache.observe(liveEpoch)
         let epoch=responseEpoch(token).flatMap { $0 == liveEpoch ? $0:nil }
@@ -718,6 +737,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         view.refresh = { [weak self] in self?.reloadOverlay() }
         view.image = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
         p.contentView = view; panel = p;overlayMoveCount=0;overlayOrderCount=0;overlayLevelChangeCount=0;
+        overlayGeometrySettler.reset()
         lifecycleTrace=[];lastLifecycleEvent="";recordLifecycle("overlay created")
         guard orderOverlayAboveLightroom(initial:true) else { hide();report("Lightroom window unavailable; invoke again when it is visible.");return nil }
         let requested=region.insetBy(dx:-1,dy:-1)
@@ -840,8 +860,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     @objc func changePreference() {
         imageCache.clear()
-        let enabled = !UserDefaults.standard.bool(forKey: "preferEmbedded")
-        UserDefaults.standard.set(enabled, forKey: "preferEmbedded"); preferItem.state = enabled ? .on : .off
+        let enabled = !CameraPreferences.shared.bool(forKey: "preferEmbedded")
+        CameraPreferences.shared.set(enabled, forKey: "preferEmbedded"); preferItem.state = enabled ? .on : .off
         report("Source priority changed; applies on the next load or double-click refresh.")
     }
     @objc func chooseExifTool() {
@@ -849,12 +869,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let picker = NSOpenPanel(); picker.title = "Choose the ExifTool executable"; picker.canChooseDirectories = false
         NSApp.activate(ignoringOtherApps: true)
         if picker.runModal() == .OK, let url = picker.url, FileManager.default.isExecutableFile(atPath: url.path) {
-            UserDefaults.standard.set(url.path, forKey: "exiftool"); report("ExifTool location saved.")
+            CameraPreferences.shared.set(url.path, forKey: "exiftool"); report("ExifTool location saved.")
         }
     }
     @objc func changeAutomatic() {
-        let enabled = !UserDefaults.standard.bool(forKey: regionKey("automaticBounds"))
-        UserDefaults.standard.set(enabled, forKey: regionKey("automaticBounds")); autoItem.state = enabled ? .on : .off
+        let enabled = !CameraPreferences.shared.bool(forKey: regionKey("automaticBounds"))
+        CameraPreferences.shared.set(enabled, forKey: regionKey("automaticBounds")); autoItem.state = enabled ? .on : .off
         cancelScreenInspection();cancelRequest();hide();invalidateAutomaticGeometry()
         if enabled { _ = FeaturePermission.screenCapture.ensure() }
         report(enabled ? "Automatic detection enabled. Manual calibration is the fallback." : "Using manual calibration.")
@@ -866,12 +886,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let result=probeLightroomViewState()
             DispatchQueue.main.async { self?.report(result);self?.showResult() }
         }
-    }
-    @objc func enableMinimizeMonitoring() {
-        guard FeaturePermission.accessibility.ensure() else { return }
-        nextAccessibilityBind=0
-        updateOverlayLifecycle()
-        report(overlayHost == nil ? "Accessibility granted. Show an overlay, then test minimise/restore and read Bridge diagnostics.":overlayLifecycleStatus)
     }
     @objc func inspectLayout() {
         hide(); guard FeaturePermission.accessibility.ensure() else { return }
@@ -929,8 +943,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                     self.report("Select the UI backdrop inside the Lightroom window. Previous calibration retained.");return
                 }
                 self.region=result; self.manualLayoutKey=self.lastProbe?.layoutKey
-                UserDefaults.standard.set(selectionKind,forKey:self.regionKey("regionKind"))
-                UserDefaults.standard.set(false,forKey:self.regionKey("automaticBounds")); self.autoItem.state = .off
+                CameraPreferences.shared.set(selectionKind,forKey:self.regionKey("regionKind"))
+                CameraPreferences.shared.set(false,forKey:self.regionKey("automaticBounds")); self.autoItem.state = .off
                 self.invalidateAutomaticGeometry()
                 self.report("Image region saved. Shortcut toggles the reference.")
             }
@@ -966,7 +980,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         calibrationTimer?.invalidate();calibrationTimer=nil
         cancelPanelCheck()
         cancelScreenInspection();cancelRequest();hide();saveToast.close();capturePreview?.close();capturePreview=nil
-        clearRegionPreferences(UserDefaults.standard,layout:overlayLayout)
+        clearRegionPreferences(CameraPreferences.shared,layout:overlayLayout)
         placementMemory=nil
         acceptedSplitKey=nil;lastProbe=nil;lastImageSize=nil
         lastLayout="No region data. Detection/calibration starts fresh."
@@ -977,10 +991,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.report("Region cleared for this layout/pane. Automatic detection preference unchanged.")
         }
     }
+    func requireDevelopForCapture()->Bool {
+        guard currentModule() != "develop" else { return true }
+        let alert=NSAlert();alert.icon=NSApp.applicationIconImage
+        alert.messageText="Switch Lightroom to Develop"
+        alert.informativeText="Capture and viewing-area tools require the Develop module. Switch there, then try again."
+        NSApp.activate(ignoringOtherApps:true);alert.runModal();return false
+    }
     @objc func keepCaptureBaseline() { showCapturePreview(keepBaseline:true) }
     @objc func previewCapture() { showCapturePreview(keepBaseline:false) }
     func showCapturePreview(keepBaseline:Bool) {
-        guard !regionResetting else { return }
+        guard !regionResetting,requireDevelopForCapture() else { return }
         hide();calibration?.finish(nil)
         if !keepBaseline { capturePreview?.close();capturePreview=nil }
         guard #available(macOS 14.0,*),FeaturePermission.screenCapture.ensure() else { return }
@@ -1011,7 +1032,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     @objc func inspectScreen() {
-        guard !regionResetting else { return }
+        guard !regionResetting,requireDevelopForCapture() else { return }
         guard screenTask == nil else { report("Screen inspection is already running."); return }
         guard #available(macOS 14.0, *) else { report("Screen-based inspection requires macOS 14 or newer. Manual calibration remains available."); showResult(); return }
         hide(); calibration?.finish(nil)
@@ -1020,7 +1041,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         request(.detect) // Obtain the current JPEG aspect ratio, never a previous photo's.
     }
     func displayManual(_ image:CGImage,in area:CGRect,snapshot:ExportSnapshot?) {
-        if UserDefaults.standard.string(forKey:regionKey("regionKind")) == "ui" {
+        if CameraPreferences.shared.string(forKey:regionKey("regionKind")) == "ui" {
             let settings=reloadDetectionConfig()
             // placement uses top-left coordinates, even though calibration is AppKit.
             let topLeft=appKitRect(area,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
@@ -1035,7 +1056,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     func resolveOverlay(_ image:CGImage,snapshot:ExportSnapshot?,selectionEpoch expectedEpoch:String? = nil) {
         let settings=reloadDetectionConfig()
-        guard UserDefaults.standard.bool(forKey:regionKey("automaticBounds")) else {
+        guard CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) else {
             if let area=region { displayManual(image,in:area,snapshot:snapshot) }
             else { askForCalibration() }; return
         }
@@ -1060,7 +1081,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func askForCalibration(workingAreaTooNarrow:Bool = false,reason:String? = nil) {
         let alert=NSAlert();alert.icon=NSApp.applicationIconImage
         alert.messageText="Cannot reliably identify viewing area."
-        let automatic=UserDefaults.standard.bool(forKey:regionKey("automaticBounds"))
+        let automatic=CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
         alert.informativeText=(reason.map { $0 + "\n\n" } ?? "") + (workingAreaTooNarrow ? "Working area too narrow—enlarge it or calibrate manually.\n\n":"") + calibrationInstructions(layout:overlayLayout,automatic:automatic)
         alert.addButton(withTitle:"Calibrate manually…"); alert.addButton(withTitle:"Cancel")
         NSApp.activate(ignoringOtherApps:true)
@@ -1121,19 +1142,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let response=alert.runModal()
         if let candidate=result.candidate, response == .alertFirstButtonReturn { beginCalibration(proposal:candidate) }
     }
-    func bridgeDiagnostics() -> String {
-        let heartbeat = folder.appendingPathComponent("heartbeat.txt")
-        let attributes = try? FileManager.default.attributesOfItem(atPath: heartbeat.path)
-        let date = attributes?[.modificationDate] as? Date
-        let age = date.map { "\(max(0, Int(Date().timeIntervalSince($0)))) seconds ago" } ?? "not received"
-        let state = (try? String(contentsOf: folder.appendingPathComponent("status.txt"), encoding: .utf8)) ?? "No plugin status. The bridge may not have started."
-        return "\(versionTitle)\nApp: \(Bundle.main.bundleURL.path)\nAccessibility permission: \(AXIsProcessTrusted() ? "granted":"not granted")\nHeartbeat: \(age)\nPlugin status: \(state)\nExifTool: \(findExifTool(custom: UserDefaults.standard.string(forKey: "exiftool")) == nil ? "not found" : "available")\n\n" + storageStatus + "\n" + overlayVisibilityStatus + "\n" + overlayLifecycleStatus + "\nLifecycle trace (uptime seconds): " + lifecycleTrace.joined(separator:"; ") + "\nWindow maintenance since show: moves \(overlayMoveCount); ordering changes \(overlayOrderCount); level changes \(overlayLevelChangeCount).\n" + lastLayout + "\n" + panelCheckStatus + "\n\nTiming: " + lastTiming
+    func diagnosticSections()->[DiagnosticSection] {
+        let heartbeat=folder.appendingPathComponent("heartbeat.txt")
+        let attributes=try? FileManager.default.attributesOfItem(atPath:heartbeat.path)
+        let date=attributes?[.modificationDate] as? Date
+        let age=date.map { "\(max(0,Int(Date().timeIntervalSince($0)))) seconds ago" } ?? "not received"
+        let state=(try? String(contentsOf:folder.appendingPathComponent("status.txt"),encoding:.utf8)) ?? "No plugin status received."
+        return [
+            DiagnosticSection(title:"App & permissions",body:"\(versionTitle)\nAccessibility: \(AXIsProcessTrusted() ? "granted":"not granted — request through Inspect Accessibility layout")\nScreen Recording: \(CGPreflightScreenCaptureAccess() ? "granted":"not granted")\nExifTool: \(findExifTool(custom:CameraPreferences.shared.string(forKey:"exiftool")) == nil ? "not found":"available")\nApp: \(Bundle.main.bundleURL.path)\nBundle ID: \(Bundle.main.bundleIdentifier ?? "unknown")\n\(storageStatus)"),
+            DiagnosticSection(title:"Lightroom bridge",body:"Heartbeat: \(age)\nPlugin status: \(state.trimmingCharacters(in:.whitespacesAndNewlines))"),
+            DiagnosticSection(title:"Overlay visibility & minimisation",body:"\(overlayVisibilityStatus)\nGeometry source: \(overlayGeometrySource)\n\(overlayLifecycleStatus)\nMoves: \(overlayMoveCount); ordering changes: \(overlayOrderCount); level changes: \(overlayLevelChangeCount).\n\nEvent history (uptime seconds):\n" + lifecycleTrace.joined(separator:"\n")),
+            DiagnosticSection(title:"Placement & capture",body:lastLayout),
+            DiagnosticSection(title:"Cache & background checks",body:panelCheckStatus),
+            DiagnosticSection(title:"Performance",body:lastTiming)
+        ]
     }
     @objc func showDiagnostics() {
-        let saved = lastResult
-        report(bridgeDiagnostics())
-        showResult()
-        report(saved)
+        let sections=diagnosticSections()
+        hide();diagnosticsWindow?.close()
+        diagnosticsWindow=DiagnosticsController(sections:sections)
     }
     @objc func showResult() {
         hide(); NSApp.activate(ignoringOtherApps: true)
@@ -1177,7 +1204,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let b=a && register(floating.candidate,floatingTarget:true)
             if a && b {
                 keyLabel=overlay.keyLabel;floatingKeyLabel=floating.keyLabel
-                let prefs=UserDefaults.standard
+                let prefs=CameraPreferences.shared
                 prefs.set(currentShortcut.0,forKey:"key");prefs.set(currentShortcut.1,forKey:"modifiers");prefs.set(keyLabel,forKey:"keyLabel")
                 prefs.set(floatingShortcut.0,forKey:"floatingKey");prefs.set(floatingShortcut.1,forKey:"floatingModifiers");prefs.set(floatingKeyLabel,forKey:"floatingKeyLabel")
                 report("Shortcuts saved.");return
@@ -1188,7 +1215,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     @objc func cancel() { calibration?.finish(nil); hide(); report("Ready.") }
-    @objc func quit() { cancelPanelCheck();imageCache.clear(); calibration?.finish(nil); cancelScreenInspection(); hide(); cancelRequest(); captureBaseline?.close(); capturePreview?.close(); floating?.close(); NSApp.terminate(nil) }
+    @objc func quit() { cancelPanelCheck();imageCache.clear(); calibration?.finish(nil); cancelScreenInspection(); hide(); cancelRequest(); diagnosticsWindow?.close(); captureBaseline?.close(); capturePreview?.close(); floating?.close(); NSApp.terminate(nil) }
 
 }
 let app = NSApplication.shared

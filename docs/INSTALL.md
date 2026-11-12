@@ -1,4 +1,4 @@
-# Installing Camera Reference 1.0.8
+# Installing Camera Reference 1.0.9
 
 For manual source builds, older-commit recovery, and stable/candidate Git worktrees, see [Building from source and keeping a working version](SOURCE-BUILD.md).
 
@@ -42,6 +42,10 @@ Bridge 0.5.2 uses the unspaced CameraReference/Bridge folder. Quit the old compa
 
 ## Verify
 
-The menu should say **Camera Reference 1.0.8**. Bridge diagnostics should report bridge 0.5.2 and a recent heartbeat. Start with Full, Lightroom Develop at Fit, and a known paired/embedded JPEG.
+The menu should say **Camera Reference 1.0.9**. Bridge diagnostics should report bridge 0.5.2 and a recent heartbeat. Start with Full, Lightroom Develop at Fit, and a known paired/embedded JPEG.
 
 Use TESTING.md in the repository for staged-app acceptance; DMG installation is tested only when a package is requested. For checksum verification, compare `shasum -a 256 <downloaded.dmg>` with the adjacent `.sha256` download; this detects file corruption, not publisher identity.
+
+### Stable and testing copies
+
+Use `bash scripts/stage.sh --testing` in the candidate worktree for Camera Reference Testing (purple icon, `org.local.CameraReference.testing`). Stable builds keep `org.local.CameraReference`. Keep main’s accepted app while testing; quit one before starting the other because settings/bridge are shared. The testing identity requires its own Screen Recording and optional Accessibility approval. Separate identity protects stable’s permissions entry; ad-hoc-signed testing updates may still require renewed approval. No permission is granted or reset by the build scripts.

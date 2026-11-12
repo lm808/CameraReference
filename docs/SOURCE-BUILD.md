@@ -159,3 +159,5 @@ A separate macOS user account provides stronger settings/permission isolation if
 Use `git worktree list` to see them. Once you no longer need a worktree, quit its app and remove/disable any Lightroom plugin pointing into it. Preserve anything you still need, then use `git worktree remove PATH`. Git may refuse because generated files remain; inspect them rather than using force blindly. Removing a worktree does not remove its tag or the main repository.
 
 Apple reference: [installing command-line tools](https://developer.apple.com/documentation/xcode/installing-the-command-line-tools/).
+
+For candidate worktrees, use `bash scripts/stage.sh --testing`. This selects the purple testing icon and separate bundle identity while preserving the shared settings domain. Use plain `bash scripts/stage.sh` for a requested stable build. Do not rebuild the accepted main app until candidate acceptance. Only one copy should run because the Lightroom bridge is shared.

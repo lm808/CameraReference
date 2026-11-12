@@ -335,3 +335,30 @@ For any failure, copy Developer tools → Bridge diagnostics before invoking aga
 Native build and the final `bash test.sh` run passed, including new AX geometry ambiguity/read-failure/error-description checks and existing capture, Full/split, bridge, preview and navigation regressions. Staged signature/plist and `git diff --check` passed. An earlier test compilation overlapped a source edit; the full suite was rerun after edits stopped.
 
 Live inspection was blocked by Computer Use permission. No live test result was obtained; the user explicitly requires all live interaction to remain theirs, now recorded in AGENTS.md. This version does not establish whether Accessibility is granted to the running app, whether notification arrival precedes animation, or how off-screen pixels map to the parent. It exposes those distinctions and preserves a comparison baseline in memory. Native evidence is pending in TESTING.md. Main and its 1.0.6 staged app remain unchanged.
+
+## User results for 1.0.8
+
+Verbatim checklist:
+
+```text
+# CameraReference 1.0.8 — diagnostic checks
+
+Main stays at **1.0.6**. Quit the current app and open this candidate’s **release/CameraReference.app**. Bridge 0.5.2 is unchanged. Your 1.0.7 annotations are preserved verbatim in docs/VALIDATION.md. All live interaction is yours.
+
+- [Discussed ] Show an overlay, then copy **Developer tools → Bridge diagnostics…**. It should distinguish missing Accessibility permission, failed window matching or specific notification registration errors. The diagnostics dialog dismisses the overlay, so invoke it again before testing.
+- [Discussed ] If permission is missing, choose **Settings → Enable minimise monitoring…** and enable this candidate yourself in macOS Accessibility. Reopen the app if macOS requires it. Show the overlay; minimise/restore via yellow button and Cmd-M several times, then copy diagnostics. Report whether hiding occurs before/during/after animation and whether restoration succeeds. No reset of other permissions is needed.
+- [They appear completely the same. ] With Lightroom fully on-screen, choose **Developer tools → Keep on-screen capture baseline…**. Keep its preview open. Move Lightroom slightly off-screen **without resizing or changing the photo/panels**, then choose **Preview captured Lightroom window…**. Compare the complete title bar, all window corners and panel edges in the two named previews. Report clipping/shift/stretch and copy Bridge diagnostics (contains both capture geometries). Close both previews afterward; no images are saved automatically.
+- [Yes, but when off-screen, even the snapping doesn't work during calibration.] Off-screen, clear region in auto mode and invoke: it should decline fresh detection and offer manual calibration, without producing a displaced overlay. Cancel, move Lightroom fully on-screen and invoke: normal Full/split detection still works. Existing overlays should continue following ordinary movement.
+- [x ] Briefly check no flicker while clicking/panning RAW, other apps covering Lightroom and Library dismissal. Do not merge until the outstanding behaviour is accepted.
+
+```
+
+Chat evidence: Accessibility granted; both registrations succeeded and mini/restore events reached 1/1. Polling suspended at uptime 702698.269, notification arrived at 702698.290, restore notification at 702700.935 and overlay restored at 702701.439. No intentional movement; each cycle added two moves. User observed lingering, stutter and downward jump during minimise, then late reappearance on restoration. Baseline/latest previews looked identical. Main remains 1.0.6.
+
+## 1.0.9 automated validation
+
+Native testing build and `bash test.sh` passed, including immediate ordinary movement versus settled resize/restore sequences, diagnostic section headings and single timing emission. Shell syntax, staged signature/plist and diff checks passed. The generated purple icon was inspected locally. Testing bundle identity is org.local.CameraReference.testing; main’s clean tree and staged 1.0.6 were verified unchanged. No application was launched, no permissions changed and no live UI interaction was performed. Native minimisation geometry/timing, section-window usability, off-screen placement/snapping and new testing permissions remain in TESTING.md.
+
+## 1.0.9 automated validation
+
+Native testing build and bash test.sh passed, including immediate movement versus settled resize/restore sequences, diagnostic section headings and single timing emission. Shell syntax, staged signature/plist and diff checks passed. The generated purple icon was inspected locally. Testing bundle identity is org.local.CameraReference.testing; main remains clean with staged 1.0.6 unchanged. No application was launched, no permissions changed and no live UI interaction was performed. Native minimisation timing, diagnostic-window usability, off-screen placement/snapping and testing permissions remain in TESTING.md.

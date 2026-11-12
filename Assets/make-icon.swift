@@ -1,6 +1,7 @@
 import AppKit
 let root=CommandLine.arguments[1]
-let dir=root+"/build/AppIcon.iconset"
+let testing=CommandLine.arguments.contains("--testing")
+let dir=root+(testing ? "/build/TestingIcon.iconset":"/build/AppIcon.iconset")
 try FileManager.default.createDirectory(atPath:dir,withIntermediateDirectories:true)
 for size in [16,32,128,256,512] {
  for scale in [1,2] {
@@ -9,7 +10,7 @@ for size in [16,32,128,256,512] {
   image.lockFocus()
   NSColor(calibratedRed:0.10,green:0.15,blue:0.21,alpha:1).setFill()
   NSBezierPath(roundedRect:NSRect(x:32,y:32,width:960,height:960),xRadius:210,yRadius:210).fill()
-  NSColor(calibratedRed:0.35,green:0.79,blue:0.77,alpha:1).setFill()
+  (testing ? NSColor(calibratedRed:0.66,green:0.48,blue:0.92,alpha:1) : NSColor(calibratedRed:0.35,green:0.79,blue:0.77,alpha:1)).setFill()
   NSBezierPath(roundedRect:NSRect(x:164,y:278,width:696,height:454),xRadius:70,yRadius:70).fill()
   NSBezierPath(roundedRect:NSRect(x:310,y:680,width:260,height:100),xRadius:28,yRadius:28).fill()
   NSColor(calibratedRed:0.10,green:0.15,blue:0.21,alpha:1).setFill()

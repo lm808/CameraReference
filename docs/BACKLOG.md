@@ -2,8 +2,8 @@
 
 ## 1.0 alpha acceptance
 
-- Use 1.0.8 diagnostics to identify missing Accessibility permission/window binding/notification support; verify minimise/restore timing. Retain accepted Mission Control/App Exposé/Space behaviour.
-- Compare on-screen baseline and off-screen window-only pixels (1.0.8). Fresh off-screen placement is disabled after 1.0.7 produced shifted bounds; establish mapping before re-enabling it. Retain off-screen following and other-app covering.
+- Use sectioned diagnostics to identify missing Accessibility permission/window binding/notification support; verify minimise/restore timing. Retain accepted Mission Control/App Exposé/Space behaviour.
+- Compare on-screen baseline and off-screen window-only pixels (1.0.8). 1.0.9 re-enables placement/snapping with no source crop after the user’s matching-preview result; verify actual alignment. Retain off-screen following and other-app covering.
 - Check DMG installation and advanced config migration without losing personal settings.
 - Retain Full and all split-pane portrait/landscape placement; user accepted 0.9.15 with sideSearchPercent = 30.
 

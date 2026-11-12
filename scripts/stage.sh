@@ -1,7 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-if [ "${1:-}" != '--no-build' ]; then bash build.sh; fi
+case "${1:-}" in
+  --no-build) ;;
+  --testing) bash build.sh --testing ;;
+  '') bash build.sh ;;
+  *) echo 'Usage: bash scripts/stage.sh [--testing|--no-build]' >&2; exit 2 ;;
+esac
 mkdir -p release
 # Checksums avoid replacing unchanged components; changed files are renamed
 # into place by rsync. A running app still needs quitting/reopening afterward.

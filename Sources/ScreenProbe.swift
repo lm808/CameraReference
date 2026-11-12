@@ -90,16 +90,14 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
             return ScreenProbeResult(candidate:nil,summary:"Waiting for stable window geometry.",geometryChanged:true)
         }
         let display=content.displays.first(where:{ windowCaptureSourceRect(window:originFrame,display:$0.frame) != nil })
-        // A single-window sourceRect is not a proven crop. Keep that path
-        // diagnostic-only until native pixel alignment is verified.
-        if display == nil && !previewCapture {
-            return ScreenProbeResult(candidate:nil,summary:"Fresh automatic placement is unavailable while Lightroom extends beyond one display: the window-only capture alignment is not verified. Move it fully on-screen or calibrate manually. Existing overlays are retained.\nWindow: \(originFrame). Use Keep on-screen capture baseline and Preview captured Lightroom window to compare pixels.",windowID:window.windowID,windowFrame:originFrame,placementUnavailableReason:"Move Lightroom fully onto one display for fresh auto-detection, or calibrate manually.")
-        }
+        // User compared 1.0.8's uncropped preview against an on-screen baseline.
+        // Preserve this path for off-screen detection and calibration; never set
+        // a display-local sourceRect on the independent window filter.
         let filter=display.map { SCContentFilter(display:$0,including:[window]) }
             ?? SCContentFilter(desktopIndependentWindow:window)
         let extent=display?.frame ?? filter.contentRect
         let sourceRect=display.flatMap { windowCaptureSourceRect(window:originFrame,display:$0.frame) }
-        let captureMode=display == nil ? "window-only diagnostic (no source crop; alignment unverified)":"display-bound window filter, explicit crop"
+        let captureMode=display == nil ? "window-only filter, full surface (no source crop)":"display-bound window filter, explicit crop"
         let cropDescription=sourceRect.map(String.init(describing:)) ?? "not set for single-window capture"
         let captureKey="\(captureMode):\(display?.displayID ?? 0):\(extent):\(cropDescription)"
         let config=SCStreamConfiguration()

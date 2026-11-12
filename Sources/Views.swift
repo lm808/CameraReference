@@ -264,3 +264,52 @@ func layoutMenuIcon(_ layout:OverlayLayout)->NSImage {
     }
     let image=NSImage(cgImage:context.makeImage()!,size:CGSize(width:22,height:16));image.isTemplate=true;return image
 }
+
+struct DiagnosticSection {
+    let title:String
+    let body:String
+}
+func diagnosticReport(_ sections:[DiagnosticSection])->String {
+    sections.map { "\($0.title.uppercased())\n\($0.body)" }.joined(separator:"\n\n────────────────────────\n\n")
+}
+final class DiagnosticsController:NSObject,NSWindowDelegate {
+    private var window:NSWindow?
+    private let sections:[DiagnosticSection]
+    private let chooser=NSPopUpButton(frame:.zero,pullsDown:false)
+    private let text=NSTextView()
+    init(sections:[DiagnosticSection]) {
+        self.sections=sections;super.init()
+        let panel=NSWindow(contentRect:CGRect(x:0,y:0,width:760,height:560),styleMask:[.titled,.closable,.resizable],backing:.buffered,defer:false)
+        panel.title="Camera Reference — Bridge diagnostics";panel.isReleasedWhenClosed=false;panel.delegate=self
+        let root=NSView();panel.contentView=root
+        chooser.addItems(withTitles:["All sections"]+sections.map(\.title));chooser.target=self;chooser.action=#selector(selectSection)
+        let copy=NSButton(title:"Copy all",target:self,action:#selector(copyAll))
+        let scroll=NSScrollView();scroll.hasVerticalScroller=true;scroll.borderType = .bezelBorder
+        text.isEditable=false;text.isSelectable=true;text.isRichText=false
+        text.font=NSFont.monospacedSystemFont(ofSize:12,weight:.regular)
+        text.textContainerInset=CGSize(width:12,height:12);text.isVerticallyResizable=true;text.isHorizontallyResizable=false
+        text.autoresizingMask=[.width];text.textContainer?.widthTracksTextView=true
+        scroll.documentView=text
+        for view in [chooser,copy,scroll] as [NSView] { view.translatesAutoresizingMaskIntoConstraints=false;root.addSubview(view) }
+        NSLayoutConstraint.activate([
+            chooser.leadingAnchor.constraint(equalTo:root.leadingAnchor,constant:16),chooser.topAnchor.constraint(equalTo:root.topAnchor,constant:14),
+            chooser.trailingAnchor.constraint(lessThanOrEqualTo:copy.leadingAnchor,constant:-12),
+            copy.trailingAnchor.constraint(equalTo:root.trailingAnchor,constant:-16),copy.centerYAnchor.constraint(equalTo:chooser.centerYAnchor),
+            scroll.topAnchor.constraint(equalTo:chooser.bottomAnchor,constant:12),scroll.leadingAnchor.constraint(equalTo:root.leadingAnchor,constant:16),
+            scroll.trailingAnchor.constraint(equalTo:root.trailingAnchor,constant:-16),scroll.bottomAnchor.constraint(equalTo:root.bottomAnchor,constant:-16)
+        ])
+        panel.minSize=CGSize(width:540,height:340);window=panel;selectSection();panel.center()
+        NSApp.activate(ignoringOtherApps:true);panel.makeKeyAndOrderFront(nil)
+    }
+    @objc private func selectSection() {
+        let index=chooser.indexOfSelectedItem
+        text.string=diagnosticReport(index>0 ? [sections[index-1]]:sections)
+        text.scrollRangeToVisible(NSRange(location:0,length:0))
+    }
+    @objc private func copyAll() {
+        NSPasteboard.general.clearContents();NSPasteboard.general.setString(diagnosticReport(sections),forType:.string)
+    }
+    func windowWillClose(_ notification:Notification) { window?.contentView=nil;window=nil }
+    func close() { window?.close();window=nil }
+    deinit { close() }
+}

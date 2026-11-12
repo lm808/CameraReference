@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.9 — testing candidate
+
+Consolidate diagnostics into six selectable sections, remove duplicate timing and redundant monitoring action, and explain Develop-only capture. Restore off-screen detection/snapping with uncropped window capture. Prefer logical AX movement and settle resize/restoration geometry. Add purple, separately identified testing builds while preserving stable and shared preferences. Native acceptance pending.
+
 ## 1.0.8 — diagnostic candidate
 
 Expose specific Accessibility permission/binding/notification failures and an explicit minimise-monitoring setup action. Retain an on-screen capture baseline alongside the latest preview. Reject known-unreliable fresh off-screen placement while preserving existing overlays and on-screen detection. Native comparison/notification timing remains unverified; main stays at 1.0.6.
