@@ -140,3 +140,9 @@ AX host matching first verifies public main/focused-window geometry, then scans 
 Develop retains the historical overlayLayout preference. Library uses library.overlayLayout in the same shared domain and defaults Full only when absent. The enum includes the pane. Calibration keys are unchanged; unknown module samples retain the last known module for layout selection.
 
 Before translating an overlay, compare CG presentation size with AX logical size. A proportional shrink greater than two points on both axes while logical dimensions remain at the saved size temporarily suspends the overlay. A matching logical resize, ordinary translation or clipped width alone is not evidence. Existing restore settling and user-dismissal rules remain. No private API, global input monitor or extra polling timer is added. This can reduce lingering only if CG exposes the animation early enough; native acceptance is required.
+
+## Capture error reporting (1.0.13)
+
+The outer capture handler must preserve error domain/code and localized description, including up to three nested causes, together with capture mode, parent/filter geometry and requested dimensions. Do not replace all failures with permission advice. Frame failures distinguish conversion status, missing metadata, geometric rejection and crop failure; retain the expected parent, actual buffer dimensions and frame rectangles/scales. This is necessary to diagnose off-screen failures without altering capture geometry speculatively. Capture preview starts independent performance timing.
+
+The user accepts brief minimise lingering; further command/input monitoring is deferred. The 1.0.12 shrinking check did not demonstrate earlier suspension in the supplied trace. Keep current lifecycle behaviour without claiming synchronised minimisation.

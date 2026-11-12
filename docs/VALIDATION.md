@@ -432,3 +432,119 @@ Use Copy all after failures before invoking again. Prior test annotations are pr
 Read-only comparison found ScreenProbe, ViewportDetector and Views unchanged between 1.0.10 and 1.0.11. User reports off-screen regression in both modules; bitmap padding is suspected, not proven to be caused by child windows. New off-screen path uses one SCStream frame and its boundingRect/scaleFactor/screenRect to normalize the parent surface. Synthetic checks cover padding, Retina scaling, child-union extents and invalid metadata; native results remain pending. Minimise shrinking-presentation evidence also requires native confirmation; AX notifications alone can arrive late.
 
 Automated checks: bash test.sh passed all Swift/Lua suites, including new module-layout isolation, animation evidence and padded capture geometry cases. Testing build compiled successfully. No live capture, permission changes or Lightroom interaction were performed; main/release remains untouched.
+
+## User results — 1.0.12 (preserved verbatim)
+
+# CameraReference Testing 1.0.12
+
+Main stays at 1.0.6. Quit the stable app, then run this worktree’s `release/CameraReference Testing.app` (purple T). Bridge remains **0.5.3**; no plugin update if already loaded. All live interaction is yours. Prior annotations are preserved in docs/VALIDATION.md.
+
+- [x ] Choose Full in Library and a split pane in Develop. Switch back and forth, then relaunch: each module remembers its own selection. Existing Develop calibration/preferences remain intact. Clear region still leaves auto/manual mode unchanged.
+- [x ] On-screen: Full and split placement, repeated toggles and Option snapping still work in Library Loupe and Develop.
+- [As discussed. Even a tiny bit of offscreen triggers capture failure] With the same window size, keep an on-screen capture baseline, move Lightroom slightly off each edge (also left + bottom together), then preview. Latest capture should show just the complete Lightroom window, without the extra padding. Try fresh placement and Option snapping in both modules. Copy diagnostics if it fails; look for Frame screen rect / bounding rect / Parent pixel crop or a geometry-verification error.
+- [I think slightly reduced but still there. No jump but orphaned.] Minimise/restore with an overlay visible: check whether lingering is reduced, with no downward jump or orphan overlay. Copy lifecycle history if it persists. Move partly off-screen and resize normally: overlay remains usable; ordinary clicks do not flicker.
+
+APP & PERMISSIONS
+Camera Reference Testing 1.0.12
+Accessibility: granted
+Screen Recording: granted
+ExifTool: available
+App: /Users/lm808/Documents/Codex/CameraReference/worktrees/flicker-fix/release/CameraReference Testing.app
+Bundle ID: org.local.CameraReference.testing
+Storage: consolidated under CameraReference.
+
+────────────────────────
+
+LIGHTROOM BRIDGE
+Heartbeat: 0 seconds ago
+Plugin status: Running 0.5.3
+
+────────────────────────
+
+OVERLAY VISIBILITY & MINIMISATION
+Overlay floating while Lightroom is active.
+Geometry source: Accessibility logical frame
+Lifecycle: minimise notifications active; dialog false; minimised false; Accessibility + window list.
+AX host bound via main/focused window, geometry verified (1 examined; 32 listed).
+notifications mini: success (0); restore: success (0); AXMinimized: success (0); value false; events mini/restore 4/4
+AX event history (uptime seconds): 716350.335 mini received; 716352.334 restore received; 716355.126 mini received; 716357.108 restore received; 716359.855 mini received; 716361.895 restore received; 716404.122 mini received; 716406.895 restore received
+Moves: 0; ordering changes: 8; level changes: 3.
+
+Event history (uptime seconds):
+716355.122 suspend: Lightroom minimised or thumbnail transition
+716355.126 suspend: Lightroom minimise notification
+716355.292 suspend: Lightroom minimised or thumbnail transition
+716357.497 restore: host visible and settled
+716359.855 suspend: Lightroom minimise notification
+716360.094 suspend: Lightroom minimised or thumbnail transition
+716361.304 suspend: host presentation shrinking during minimise
+716361.481 suspend: Lightroom minimised or thumbnail transition
+716362.296 restore: host visible and settled
+716404.122 suspend: Lightroom minimise notification
+716404.292 suspend: Lightroom minimised or thumbnail transition
+716407.285 restore: host visible and settled
+
+────────────────────────
+
+PLACEMENT & CAPTURE
+Stage timing: enumerate 21 ms; stability/config 158 ms; capture 43 ms; raster 18 ms; detector 55 ms.
+Display-bound crop; frame normalization not needed.
+Capture mode: display-bound window filter, explicit crop.
+Capture extent (top-left): (0.0, 0.0, 2560.0, 1440.0).
+Source crop (capture-local): (0.0, 30.0, 2560.0, 1349.0).
+Side search: left 0…40.0%, right 60.0…100%.
+Analysis raster: 2560 × 1349.
+Child windows: included.
+UI-boundary detection (no OCR; no image saved).
+Window: 2560 × 1349 pt.
+Window origin (top-left): (0.0, 30.0).
+Filter content rect: (0.0, 0.0, 2560.0, 1440.0).
+Primary display: (0.0, 0.0, 2560.0, 1440.0).
+Capture: 2560 × 1349 pixels.
+Searched for UI borders.
+Rectangle search: L [16, 31, 306, 927], R [1621, 2243, 2248, 2524, 2529, 2544], T [32, 90, 108], B [1149, 1167, 1205, 1208, 1211, 1243, 1246, 1320, 1333]; 648 checked, 8 supported.
+Single-photo mode: UI bounds (306.0, 90.0, 1937.0, 1077.0). Internal divider search disabled.
+Sides L/R/T/B: ui/ui/ui/ui. Fit inset: 18.0 pt. Calculated photo: (927.33056640625, 138.0, 694.3388671875, 1041.0).
+Final overlay region (AppKit): (306.0, 243.0, 1937.0, 1077.0).
+Photo frame (AppKit): (927.33056640625, 261.0, 694.3388671875, 1041.0).
+Overlay panel requested (AppKit): (305.0, 242.0, 1939.0, 1079.0). Actual: (305.0, 242.0, 1939.0, 1079.0).
+Overlay content bounds: (0.0, 0.0, 1939.0, 1079.0). Photo viewport (view): (622.33056640625, 19.0, 694.3388671875, 1041.0). Panel visible: true. Display scale: 1.0.
+
+────────────────────────
+
+CACHE & BACKGROUND CHECKS
+Background check invalidated cached placement (visible overlay retained): UI boundaries changed.
+Previous UI: Optional((16.0, 243.0, 2528.0, 1077.0)); checked UI: Optional((16.0, 245.13649851632044, 2226.0, 1072.7952522255193)).
+Stage timing: enumerate 25 ms; stability/config 166 ms; capture 40 ms; raster 5 ms; detector 27 ms.
+Display-bound crop; frame normalization not needed.
+Capture mode: display-bound window filter, explicit crop.
+Capture extent (top-left): (0.0, 0.0, 2560.0, 1440.0).
+Source crop (capture-local): (0.0, 30.0, 2560.0, 1349.0).
+Side search: left 0…40.0%, right 60.0…100%.
+Analysis raster: 1280 × 674.
+Child windows: included.
+UI-boundary detection (no OCR; no image saved).
+Window: 2560 × 1349 pt.
+Window origin (top-left): (0.0, 30.0).
+Filter content rect: (0.0, 0.0, 2560.0, 1440.0).
+Primary display: (0.0, 0.0, 2560.0, 1440.0).
+Capture: 1280 × 674 pixels.
+Searched for UI borders.
+Rectangle search: L [7, 391], R [1122, 1125, 1263, 1273], T [17, 44, 53], B [575, 583, 603, 606, 622, 660, 667]; 168 checked, 4 supported.
+Single-photo mode: UI bounds (8.0, 46.0, 1113.0, 536.0). Internal divider search disabled.
+Sides L/R/T/B: ui/ui/ui/ui. Fit inset: 18.0 pt. Calculated photo: (783.2328333642433, 140.06824925816022, 691.5343332715133, 1036.7952522255193).
+Final overlay region (AppKit): (16.0, 245.13649851632044, 2226.0, 1072.7952522255193).
+Photo frame (AppKit): (783.2328333642433, 263.13649851632044, 691.5343332715133, 1036.7952522255193). 1280px check: 264 ms elapsed.
+
+────────────────────────
+
+PERFORMANCE
+Bridge 90 ms; JPEG load/decode 3 ms; RAM cache hit; source files revalidated; capture and detection 296 ms; total to panel shown 413 ms
+
+- [ ] Switch Library ↔ Develop and another app; check dismissal on module change, other apps covering the overlay, and normal restoration after Mission Control.
+
+Do not merge until accepted. Off-screen capture normalization and earlier minimise suspension are candidates, not confirmed native fixes.
+
+User subsequently accepted the remaining brief minimise orphan/linger as a limitation. Per-module layout and on-screen checks passed. Off-screen capture fails even with slight clipping; its actual error was swallowed by the outer handler. 1.0.13 exposes that error without changing capture geometry.
+
+1.0.13 automated validation: full bash test.sh suite passed, including injected nested capture errors retained through the reporting boundary. Testing app compiled without warnings. No live capture or Lightroom interaction performed. Off-screen root cause still awaits native diagnostic evidence.

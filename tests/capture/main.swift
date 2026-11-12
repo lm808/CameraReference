@@ -86,3 +86,12 @@ assert(parentWindowPixelCrop(window:parent,screenRect:parent,boundingRect:padded
 assert(parentWindowPixelCrop(window:parent,screenRect:parent,boundingRect:padded,scale:0,imageSize:CGSize(width:2560,height:1349)) == nil)
 assert(parentWindowPixelCrop(window:parent,screenRect:parent,boundingRect:CGRect(x:0,y:0,width:1000,height:1000),scale:1,imageSize:CGSize(width:2560,height:1349)) == nil)
 print("PASS: padded/Retina/child-union parent crops; reject clipped, out-of-surface and distorted metadata")
+
+let metadataError=NSError(domain:"CameraReference.Capture",code:2,userInfo:[NSLocalizedDescriptionKey:"Required frame geometry metadata is missing. Frame screen rect: nil; bounding rect: (600,40,1920,1012)"])
+let captureError=NSError(domain:"SCStreamErrorDomain",code:-3800,userInfo:[NSLocalizedDescriptionKey:"Stream failed",NSUnderlyingErrorKey:metadataError])
+let failure=captureFailureSummary(captureError,context:"Window: (-132,101,2560,1349)")
+assert(failure.contains("SCStreamErrorDomain (-3800): Stream failed"))
+assert(failure.contains("CameraReference.Capture (2): Required frame geometry metadata is missing"))
+assert(failure.contains("Frame screen rect: nil") && failure.contains("Window: (-132,101,2560,1349)"))
+assert(!failure.contains("Check permission"))
+print("PASS: capture failure boundary preserves original/underlying errors and geometry context")

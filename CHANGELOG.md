@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.13 — diagnostic candidate
+
+Preserve original capture errors, codes and geometry through the outer failure handler. Distinguish missing frame metadata, conversion failure, rejected geometry and failed image cropping. Capture previews reset stale performance timing. Off-screen placement remains unresolved pending this evidence; remaining minimise lingering accepted.
+
 ## 1.0.12 — testing candidate
 
 Remember layout/pane per module without changing existing Develop settings. Normalize off-screen window capture using frame metadata before placement/snapping; preserve on-screen capture. Suspend an overlay when the presentation shrinks while AX layout stays fixed, in addition to minimise notifications. Native off-screen and minimise acceptance pending.

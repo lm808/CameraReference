@@ -23,5 +23,5 @@
 
 Completed functionality belongs in README; implementation rationale in METHODS; historical evidence in VALIDATION and Git history. Pinch gestures were deliberately removed; Cmd-scroll is supported.
 
-- Library Loupe and module transitions passed user tests in 1.0.11. Validate per-module layout memory, off-screen capture normalization and minimise lingering in 1.0.12; main remains 1.0.6 pending acceptance.
+- Library Loupe/module transitions passed in 1.0.11; per-module layout memory and on-screen placement passed in 1.0.12. Off-screen capture remains blocked: obtain unmasked error diagnostics from 1.0.13, then correct the evidenced cause. Main remains 1.0.6. Brief minimise lingering is accepted; no further early-command monitoring planned.
 - Later: investigate AX panel-derived viewport bounds and explicit 50/50 split fallback; preserve capture detection until accepted.

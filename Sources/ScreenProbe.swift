@@ -70,6 +70,7 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
     guard CGPreflightScreenCaptureAccess() else { return ScreenProbeResult(candidate:nil,summary:"Screen Recording permission is required. Use Inspect screen layout again to open permission settings.") }
     let probeStarted=ProcessInfo.processInfo.systemUptime
     let ticket=await ScreenGeometryCache.shared.ticket()
+    var failureContext="Enumerating Lightroom windows."
     do {
         let content=try await SCShareableContent.excludingDesktopWindows(true,onScreenWindowsOnly:true)
         let windows=content.windows.filter {
@@ -110,6 +111,7 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         config.width=max(1,Int(window.frame.width*scale)); config.height=max(1,Int(window.frame.height*scale))
         config.showsCursor=false; config.capturesAudio=false; config.ignoreShadowsSingleWindow=true
         if #available(macOS 14.2, *) { config.includeChildWindows=true }
+        failureContext="Capture mode: \(captureMode).\nWindow: \(originFrame); filter content rect: \(filter.contentRect).\nRequested output: \(config.width) × \(config.height); filter scale: \(filter.pointPixelScale)."
         let captureStarted=ProcessInfo.processInfo.systemUptime
         let image:CGImage
         let frameDetail:String
@@ -180,7 +182,7 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
             windowID:window.windowID,workingAreaTooNarrow:detection.workingAreaTooNarrow,windowFrame:window.frame,layoutKey:key,split:false,background:detection.background,photoFrame:photoFrame,uiFrame:uiFrame)
 
     } catch is CancellationError { return ScreenProbeResult(candidate:nil,summary:"Screen inspection cancelled.") }
-    catch { return ScreenProbeResult(candidate:nil,summary:"Screen inspection failed. Check permission, keep Lightroom visible and try again. No capture was saved.") }
+    catch { return ScreenProbeResult(candidate:nil,summary:captureFailureSummary(error,context:failureContext)) }
 }
 
 // Always obtain the combined viewport through the unchanged Full detector.
@@ -297,13 +299,23 @@ private final class WindowCaptureFrame:NSObject,SCStreamOutput,SCStreamDelegate,
         }
         let bounds=rect(.boundingRect),screen=rect(.screenRect),content=rect(.contentRect)
         let scale=(info[.scaleFactor] as? NSNumber)?.doubleValue
-        let detail="Frame screen rect: \(String(describing:screen)); bounding rect: \(String(describing:bounds)); content rect: \(String(describing:content)); scale: \(String(describing:scale)); content scale: \(String(describing:info[.contentScale]))."
-        var image:CGImage?
-        guard VTCreateCGImageFromCVPixelBuffer(buffer,options:nil,imageOut:&image)==noErr,let image,
-              let bounds,let screen,let scale,
-              let crop=parentWindowPixelCrop(window:window,screenRect:screen,boundingRect:bounds,scale:scale,imageSize:CGSize(width:image.width,height:image.height)),
-              let normalized=image.cropping(to:crop) else {
-            finish(.failure(NSError(domain:"CameraReference.Capture",code:2,userInfo:[NSLocalizedDescriptionKey:"Window capture geometry could not be verified. \(detail)"])));return
+        let detail="Expected parent: \(window).\nFrame screen rect: \(String(describing:screen)); bounding rect: \(String(describing:bounds)); content rect: \(String(describing:content)); scale: \(String(describing:scale)); content scale: \(String(describing:info[.contentScale])).\nPixel buffer: \(CVPixelBufferGetWidth(buffer)) × \(CVPixelBufferGetHeight(buffer))."
+        func fail(_ reason:String) {
+            finish(.failure(NSError(domain:"CameraReference.Capture",code:2,userInfo:[NSLocalizedDescriptionKey:reason+"\n"+detail])))
+        }
+        var converted:CGImage?
+        let conversionStatus=VTCreateCGImageFromCVPixelBuffer(buffer,options:nil,imageOut:&converted)
+        guard conversionStatus==noErr,let image=converted else {
+            fail("Pixel-buffer conversion failed (OSStatus \(conversionStatus)).");return
+        }
+        guard let bounds,let screen,let scale else {
+            fail("Required frame geometry metadata is missing.");return
+        }
+        guard let crop=parentWindowPixelCrop(window:window,screenRect:screen,boundingRect:bounds,scale:scale,imageSize:CGSize(width:image.width,height:image.height)) else {
+            fail("Window capture geometry rejected: parent containment, scale consistency or pixel-buffer bounds check failed.");return
+        }
+        guard let normalized=image.cropping(to:crop) else {
+            fail("Parent image crop failed at \(crop).");return
         }
         finish(.success(Frame(image:normalized,detail:"\(detail)\nParent pixel crop: \(crop); surface: \(image.width) × \(image.height); normalized: \(normalized.width) × \(normalized.height).")))
     }
@@ -323,4 +335,18 @@ private final class WindowCaptureFrame:NSObject,SCStreamOutput,SCStreamDelegate,
             output.cancel();try? await stream.stopCapture();throw error
         }
     }
+}
+
+// Preserve the cause across the outer capture boundary; never replace a geometry
+// or stream error with an unsupported permission diagnosis. No userInfo dump.
+func captureFailureSummary(_ error:Error,context:String)->String {
+    var lines=["Screen inspection failed.",context]
+    var current: NSError? = error as NSError
+    for _ in 0..<3 {
+        guard let item=current else { break }
+        lines.append("\(item.domain) (\(item.code)): \(item.localizedDescription)")
+        current=item.userInfo[NSUnderlyingErrorKey] as? NSError
+    }
+    lines.append("No capture was saved.")
+    return lines.joined(separator:"\n")
 }

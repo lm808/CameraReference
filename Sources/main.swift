@@ -1120,6 +1120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func startPhotoDetection(imageSize:CGSize,previewCapture:Bool=false,layout requestedLayout:OverlayLayout? = nil,completion:((ScreenProbeResult)->Void)? = nil) {
         guard #available(macOS 14.0, *), supportedLightroomModule(currentModule()) else { report("Detection cancelled: Library or Develop is no longer active."); return }
         cancelPanelCheck()
+        if previewCapture { lastTiming="" }
         let settings=reloadDetectionConfig()
         let mode=requestedLayout ?? overlayLayout
         let seed=mode == overlayLayout && mode != .full ? region:nil
@@ -1134,7 +1135,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let callback=self.detectionCompletion
             self.cancelScreenInspection()
             let result=ScreenProbeResult(candidate:nil,summary:"Screen capture timed out. Retry Find viewing area, or use manual calibration.")
-            self.report(result.summary); callback?(result)
+            self.lastLayout=result.summary;self.report(result.summary); callback?(result)
         }
         RunLoop.main.add(screenTimeout!,forMode:.common)
         screenTask=Task.detached(priority:.userInitiated) { [weak self] in
@@ -1152,7 +1153,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     @MainActor func finishScreenInspection(_ result:ScreenProbeResult,id:UUID,elapsed:TimeInterval) {
         guard screenInspectionID==id else { return }
-        lastTiming += String(format:"; capture and detection %.0f ms",elapsed*1000)
+        lastTiming += (lastTiming.isEmpty ? "":"; ") + String(format:"capture and detection %.0f ms",elapsed*1000)
         let callback=detectionCompletion
         screenInspectionID=nil; screenTask=nil; screenTimeout?.invalidate(); screenTimeout=nil; detectionCompletion=nil
         updateToggleTitle()
