@@ -1,13 +1,11 @@
-# Camera Reference Testing 1.0.18
+# Camera Reference Testing 1.0.19
 
-Candidate only: run `release/CameraReference Testing.app` in the AX investigation worktree. Bridge remains 0.5.3. Stable main/release remains 1.0.15. Quit one app before running the other; settings are shared.
+Candidate in the AX investigation worktree: `release/CameraReference Testing.app`. Bridge stays 0.5.3. Main/daily-use 1.0.15 is unchanged. Quit one app before using the other; settings are shared.
 
-Developer tools now groups capture/bridge actions and provides one Diagnostics window, including Refresh AX and Copy all. Optional **Show AX placement preview** adds click-through green/purple borders after normal placement. Both split panes are drawn; layout is inferred from visible label geometry independently of the production layout menu. No clear pair means single view. Information-overlay rectangles and session-specific IDs are not used.
+Developer tools now groups the AX preview and new automatic-view toggle under **Experimental features**. Automatic view detection samples visible AX label geometry at each automatic overlay invocation, selects single/side-by-side/stacked layout and remembers the preferred pane per orientation/module. No clear pair means single view; read failures remain explicit failures. It defaults off. The existing capture detector still calculates actual placement.
 
-The estimate uses visible surrounding panels, window-edge insets for hidden panels, and a nominal midpoint constrained into the central label gap. It is deliberately uncorrected for toolbar/margin differences. It never supplies placement to the current detector.
+AX preview geometry has zero-default edge/inset adjustments, with observed suggestions in trailing config comments. Keep the `# AX:` prefix when editing: it lets the testing app read the setting while older stable apps ignore it. Missing settings are appended without replacing existing preferences. Toolbar state is explicitly annotated as unknown/shown/hidden until direct detection is established.
 
-Optional **Copy diagnostics after invocation** replaces the clipboard with reports as invocation status updates, then with the completed AX report. Both options default off. Accessibility inspection does not capture screenshots; existing Screen Recording features are unchanged. No detection-backend switch, DMG, install or push.
+Diagnostics → Refresh AX now includes bounded traversal of all exposed windows’ child controls, frame coordinates and parent links. No control text or values are read. **Save diagnostics after invocation** replaces automatic clipboard copying and atomically replaces `~/Library/Application Support/CameraReference/Diagnostics/latest.txt`; Refresh AX also updates it when enabled. The former automatic-copy preference carries forward to saving; manual Copy all remains available. No image is saved.
 
-1.0.18 explicitly orders the diagnostic border panels onscreen and reports their actual frames/visibility. Please verify that outlines now appear; live confirmation is pending.
-
-The preview host check now converts AX top-left coordinates to AppKit before comparison. This fixes the reported “host changed or does not match overlay host” rejection for an unchanged window.
+See TESTING.md for the short toolbar investigation and acceptance checks. No detection-backend switch, DMG, installation or push. Native acceptance remains pending.

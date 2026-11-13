@@ -1,13 +1,15 @@
-# Camera Reference Testing 1.0.18 — AX diagnostic trial
+# Camera Reference Testing 1.0.19 — AX investigation
 
-Run this worktree's `release/CameraReference Testing.app`, with bridge 0.5.3. Quit the stable app first; both share settings. Main and its staged 1.0.15 app are unchanged. No new bridge required.
+Run this worktree’s `release/CameraReference Testing.app` with bridge 0.5.3. Quit the stable app first; settings are shared. Main and its staged 1.0.15 app remain unchanged. Live acceptance is pending.
 
-- [ ] With AX preview enabled, invoke and confirm coloured borders actually appear. An unchanged host must no longer be rejected because its AX and AppKit y coordinates differ. Copy the **AX placement trial** section: it now reports each border’s actual frame and visibility.
-- [ ] With both new developer options off, confirm ordinary overlay placement, repeated toggles and manual calibration behave as before.
-- [ ] Enable **Developer tools → Show AX placement preview** (Accessibility required). Invoke in single view: one green outline. Invoke in side-by-side/stacked Reference View: green left/top and purple right/bottom, regardless of the app's existing layout/pane selection. Normal photo placement still follows that selection.
-- [ ] Turn Lightroom photo information off; hide panels and resize; invoke again. Outlines must use fresh panel/label evidence, not information rectangles. Raw edge estimates deliberately include unresolved toolbar/margin errors: report these with a screenshot.
-- [ ] Dismiss/reinvoke quickly, move Lightroom, switch apps, minimise/restore: no late or orphan trial borders; borders do not intercept clicks. Disable the option: outlines disappear without dismissing the photo.
-- [ ] **Diagnostics… → Refresh AX** shows a new snapshot timestamp and image-inspection section in the same window. **Copy all** includes normal placement, AX trial, display map and timings. No separate inspection alert to copy.
-- [ ] Enable **Copy diagnostics after invocation**: clipboard is replaced by the full report automatically, including the completed AX result. Confirm with preview both on and off. A normal invocation failure should also copy its status. Disable to stop automatic clipboard writes.
+Start with automatic view detection **off**, AX preview **on**, and all AX config numbers **zero**.
 
-Live acceptance is pending. No Screen Capture / AX placement switch yet. The normal detector is unchanged; the AX calculation is a heuristic experiment, not a verified replacement.
+- [ ] Enable **Developer tools → Save diagnostics after invocation**. Invoke; confirm `~/Library/Application Support/CameraReference/Diagnostics/latest.txt` updates and the clipboard remains untouched. Disable: subsequent invocations do not overwrite it. Diagnostics → Copy all remains available.
+- [ ] In single view with all surrounding panels visible, invoke and screenshot the green outline. Use **Diagnostics → Refresh AX**; this also updates the saved report when saving is enabled. Ask the agent to read it before the next case overwrites it.
+- [ ] Hide only Lightroom’s bottom toolbar (T), repeat the screenshot and Refresh AX. Then show it, make the window smaller, and repeat. Keep module/display/panel visibility otherwise unchanged. These reports test whether a toolbar container or its controls expose a reliable boundary.
+- [ ] Through **Edit config file**, change one `# AX:` number, retaining the prefix. Start with `axToolbarState = shown` and `axToolbarShownBottomOffsetPoints = -31`. Reinvoke: only the coloured outline changes, not the normal photo placement. Restore zero afterwards. Existing personal values remain intact; older stable builds ignore these comment directives.
+- [ ] Enable **Experimental features → Automatically detect Lightroom view**. Invoke in single, side-by-side and stacked views; menu offers the inferred view’s panes. Change pane and reinvoke; its preference persists separately for each orientation/module. No clear label pair means single view. Turning the experiment off restores the saved manual menu selection.
+- [ ] With automatic view detection enabled, calibrate a region successfully: manual placement still uses that region. Cancel calibration: prior mode/region retained. With the experiment off, check ordinary Full/split placement and repeat toggles.
+- [ ] Rapidly toggle/cancel during AX collection; change modules; minimise/restore; move the window. No late overlay or orphan coloured border. Permission/read failure is reported rather than classified as single view.
+
+Save only text diagnostics; no screenshots or photograph files are automatically written. Geometry offsets remain a preview experiment, not an AX replacement for capture placement.

@@ -540,3 +540,52 @@ func accessibilityMappingReport(evidence: ((CGRect,[AXTrialWindow])->Void)? = ni
     lines.append(String(format:"Snapshot elapsed: %.0f ms. AXVisible may be unsupported; unknown never means hidden.",(ProcessInfo.processInfo.systemUptime-start)*1000))
     return lines.joined(separator:"\n")
 }
+
+// Explicit diagnostic refresh only: inspect children of ALL exposed windows, not just main.
+// No AX actions, titles, values, descriptions or filenames are read.
+func accessibilityControlReport()->String {
+    guard AXIsProcessTrusted() else { return "Accessibility permission unavailable; controls not inspected." }
+    guard let app=NSWorkspace.shared.runningApplications.first(where:isLightroomApp) else { return "Lightroom is not running." }
+    let application=AXUIElementCreateApplication(app.processIdentifier)
+    AXUIElementSetMessagingTimeout(application,0.02)
+    func read(_ node:AXUIElement,_ key:String)->CFTypeRef? {
+        var result:CFTypeRef?
+        guard AXUIElementCopyAttributeValue(node,key as CFString,&result) == .success else { return nil }
+        return result
+    }
+    func frame(_ node:AXUIElement)->CGRect? {
+        guard let p=read(node,kAXPositionAttribute),let s=read(node,kAXSizeAttribute),CFGetTypeID(p)==AXValueGetTypeID(),CFGetTypeID(s)==AXValueGetTypeID() else { return nil }
+        var point=CGPoint.zero,size=CGSize.zero
+        guard AXValueGetValue(unsafeBitCast(p,to:AXValue.self),.cgPoint,&point),AXValueGetValue(unsafeBitCast(s,to:AXValue.self),.cgSize,&size) else { return nil }
+        return CGRect(origin:point,size:size)
+    }
+    guard let windows=read(application,kAXWindowsAttribute) as? [AXUIElement] else { return "AX window list unavailable." }
+    var queue:[(AXUIElement,String,Int)]=[],seen:[AXUIElement]=[]
+    func enqueue(_ node:AXUIElement,_ parent:String,_ depth:Int) {
+        guard !seen.contains(where:{ CFEqual($0,node) }) else { return }
+        seen.append(node);queue.append((node,parent,depth))
+    }
+    if let main=read(application,kAXMainWindowAttribute),CFGetTypeID(main)==AXUIElementGetTypeID() { enqueue(unsafeBitCast(main,to:AXUIElement.self),"main",0) }
+    for (i,node) in windows.enumerated() { enqueue(node,"AXWindows[\(i)]",0) }
+    let started=ProcessInfo.processInfo.systemUptime,deadline=started+2
+    var cursor=0,lines=[String](),limited=false,toolbarCount=0
+    while cursor<queue.count && cursor<500 && ProcessInfo.processInfo.systemUptime<deadline {
+        let (node,parent,depth)=queue[cursor],id="E\(cursor)";cursor += 1
+        AXUIElementSetMessagingTimeout(node,0.02)
+        let role=read(node,kAXRoleAttribute) as? String ?? "unknown"
+        let subrole=read(node,kAXSubroleAttribute) as? String ?? "—"
+        let bounds=frame(node).map { String(describing:$0) } ?? "unavailable"
+        if role==kAXToolbarRole { toolbarCount += 1 }
+        lines.append("\(id) parent=\(parent) depth=\(depth) \(role)/\(subrole) frame=\(bounds)")
+        if let children=read(node,kAXChildrenAttribute) as? [AXUIElement],!children.isEmpty {
+            if depth<12 {
+                for child in children {
+                    if queue.count>=500 { limited=true;break }
+                    enqueue(child,id,depth+1)
+                }
+            } else { limited=true }
+        }
+    }
+    limited = limited || cursor<queue.count
+    return "Collected: \(Date())\nTop-left global points. E numbers are local to this report.\n\(windows.count) window roots; \(cursor) unique elements; \(limited ? "INCOMPLETE: budget/depth/node limit":"complete exposed child traversal").\nAXToolbar roles: \(toolbarCount). Absence does not prove the toolbar is hidden.\nElapsed: \(Int((ProcessInfo.processInfo.systemUptime-started)*1000)) ms.\n"+lines.joined(separator:"\n")
+}

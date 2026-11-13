@@ -89,4 +89,8 @@ For Accessibility-to-screenshot mapping, run **Developer tools → Inspect Acces
 
 ### Candidate AX diagnostics
 
-In the 1.0.16 testing candidate, Developer tools offers **Diagnostics…** with **Refresh AX** and **Copy all**. Optional **Show AX placement preview** draws a separate green/purple geometry estimate without changing normal placement. Optional **Copy diagnostics after invocation** replaces the clipboard automatically. Both default off; raw toolbar/margin mismatches are expected during this trial.
+
+
+Experimental AX tools are grouped under **Developer tools → Experimental features** in the investigation build. Optional automatic view detection chooses the layout; the established screen detector still determines placement. AX preview outlines have independent, zero-default `# AX:` geometry settings in `config.conf`; preserve that prefix when editing so older apps can still read the shared file.
+
+For investigation, enable **Save diagnostics after invocation** to maintain one text report at `~/Library/Application Support/CameraReference/Diagnostics/latest.txt`. **Diagnostics → Refresh AX** adds child-control/parent geometry and refreshes this file when saving is enabled. Manual **Copy all** remains available. No screenshots are saved automatically.

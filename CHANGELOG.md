@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.19 — AX investigation controls (candidate)
+
+- Optional AX view classification feeds the existing capture detector; per-orientation pane selection remains available.
+- Preview-only zero-default geometry adjustments and observed inline hints, compatible with the stable app’s shared config.
+- Consolidated controls/parent diagnostics and opt-in latest report on disk instead of automatic clipboard copying.
+- Existing working detector and stable staging remain unchanged; native acceptance pending.
+
 ## 1.0.18 — AX trial host coordinate correction (candidate)
 
 Convert AX top-left host coordinates to AppKit before comparing with the overlay host. Previously the trial incorrectly rejected unchanged windows. Production host tracking and detection remain unchanged.

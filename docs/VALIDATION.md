@@ -585,3 +585,11 @@ The AX option was confirmed enabled in read-only preferences. Source review foun
 ## 1.0.18 candidate
 
 User report confirmed a valid proposal was rejected by the preview host check. Source inspection established AX top-left was compared directly against HostWindowSnapshot AppKit bounds. Corrected only the trial comparison; regression includes the reported (0,30,2560,1349) host and its AppKit (0,61,2560,1349) counterpart on the 1440-point primary display, plus a negative-origin display.
+
+## 1.0.19 candidate — AX investigation groundwork
+
+Automated: full `bash test.sh` suite passed after shared-config/parser changes. Core checks were rebuilt and rerun after adding zero-default/inline-comment parsing, conditional toolbar offsets, unchanged production cache key, invalid-setting rejection, append-only/idempotent migration and older-parser compatibility cases; all passed. Native testing app builds successfully. The capture/boundary detector sources are unchanged.
+
+The all-window child-control traversal and automatic-view routing still require native acceptance. No app launch, Lightroom interaction, permission change or personal config edit was performed by the agent. Candidate config additions occur when the user runs the app; `# AX:` directives remain comments to stable 1.0.15. Main and its release staging were not rebuilt.
+
+Next evidence: single view, toolbar shown versus hidden at unchanged host size, then toolbar shown at a smaller size. Collect screenshots plus explicit Refresh AX reports before experimenting with the commented geometry hints. Zero defaults intentionally leave unresolved raw bounds visible. Saved text reports overwrite `CameraReference/Diagnostics/latest.txt`; read each case before the next replaces it.

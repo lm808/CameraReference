@@ -157,8 +157,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     let imageCache=SelectionImageCache()
+    var automaticViewEnabled:Bool { CameraPreferences.shared.bool(forKey:"experimentalAutomaticView") }
+    var detectedLayout:OverlayLayout?
+    var detectedLayoutModule:String?
+    var viewProbeID:UUID?
+    var lastViewDetection="Automatic view detection disabled."
+    var manualOverlayLayout:OverlayLayout { savedOverlayLayout(CameraPreferences.shared,module:currentModule() ?? observedModule) }
     var overlayLayout:OverlayLayout {
-        get { savedOverlayLayout(CameraPreferences.shared,module:currentModule() ?? observedModule) }
+        get {
+            if automaticViewEnabled,detectedLayoutModule == currentModule(),let mode=detectedLayout,
+               CameraPreferences.shared.bool(forKey:regionKey("automaticBounds",layout:manualOverlayLayout)) { return mode }
+            return manualOverlayLayout
+        }
         set { CameraPreferences.shared.set(newValue.rawValue,forKey:overlayLayoutPreferenceKey(module:currentModule() ?? observedModule)) }
     }
     var layoutItems=[OverlayLayout:NSMenuItem]()
@@ -166,7 +176,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var layoutSeparator:NSMenuItem?
     var placementMemory:PlacementMemory?
     func regionKey(_ key:String,layout:OverlayLayout? = nil)->String {
-        let base=regionPreferenceKey(key,layout:layout ?? overlayLayout)
+        let base=regionPreferenceKey(key,layout:layout ?? (key == "automaticBounds" && automaticViewEnabled ? manualOverlayLayout:overlayLayout))
         return currentModule() == "library" ? "library."+base:base
     }
     var floatingHotKey: EventHotKeyRef?
@@ -334,13 +344,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         layoutSeparator?.isHidden=hidden
         layoutItems[.full]?.isHidden=hidden
         for item in layoutGroups.values { item.isHidden=hidden }
+        let inferred=detectedLayoutModule == currentModule() ? detectedLayout:nil
+        layoutItems[.full]?.action = automaticViewEnabled ? nil:#selector(selectLayout(_:))
+        if automaticViewEnabled && !hidden {
+            layoutItems[.full]?.title = inferred == nil ? "View detected on next invocation":"▣  Single view (AX)"
+            layoutItems[.full]?.isEnabled=false
+            layoutItems[.full]?.isHidden = inferred != nil && overlayLayout.group != 0
+            for (group,item) in layoutGroups { item.isHidden = inferred == nil || group != overlayLayout.group }
+        } else { layoutItems[.full]?.title="▣  Full";layoutItems[.full]?.isEnabled=true }
         for (mode,item) in layoutItems { item.state=mode==overlayLayout ? .on:.off }
         for (group,item) in layoutGroups { item.state=group==overlayLayout.group ? .on:.off }
     }
     @objc func selectLayout(_ sender:NSMenuItem) {
         guard let raw=sender.representedObject as? String,let mode=OverlayLayout(rawValue:raw),mode != overlayLayout else { return }
+        if automaticViewEnabled && (mode.group==0 || mode.group != overlayLayout.group) { return }
         cancelScreenInspection();cancelRequest();hide();calibration?.finish(nil)
-        overlayLayout=mode
+        if automaticViewEnabled {
+            CameraPreferences.shared.set(mode.rawValue,forKey:"axPreferredPane.\(currentModule() ?? "develop").\(mode.group)")
+            detectedLayout=mode
+        } else { overlayLayout=mode }
         CameraPreferences.shared.set(true,forKey:regionKey("automaticBounds"))
         invalidateAutomaticGeometry();updateLayoutMenu()
         autoItem.state=CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) ? .on:.off
@@ -462,10 +484,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let developer = submenu("Developer tools")
         developer.addItem(detail); developer.addItem(.separator())
         add("Diagnostics…", #selector(showDiagnostics), to: developer)
-        let trial=add("Show AX placement preview", #selector(toggleAXTrial), to: developer)
-        trial.state = axTrialEnabled ? .on:.off
-        let copy=add("Copy diagnostics after invocation", #selector(toggleAutoDiagnostics), to: developer)
+        let copy=add("Save diagnostics after invocation", #selector(toggleAutoDiagnostics), to: developer)
         copy.state = autoDiagnostics ? .on:.off
+        developer.addItem(.separator())
+        let experimental=NSMenu();let experimentalItem=NSMenuItem(title:"Experimental features",action:nil,keyEquivalent:"")
+        experimentalItem.submenu=experimental;developer.addItem(experimentalItem)
+        let view=add("Automatically detect Lightroom view",#selector(toggleAutomaticView),to:experimental)
+        view.state=automaticViewEnabled ? .on:.off
+        let trial=add("Show AX placement preview",#selector(toggleAXTrial),to:experimental)
+        trial.state=axTrialEnabled ? .on:.off
         let actions=NSMenu();let actionsItem=NSMenuItem(title:"Capture / bridge actions",action:nil,keyEquivalent:"")
         actionsItem.submenu=actions;developer.addItem(actionsItem)
         add("Check selected photo", #selector(checkPhoto), to: actions)
@@ -557,9 +584,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func report(_ text: String) {
         lastResult = text; detail.title = String(text.prefix(100)); status.button?.toolTip = text
         DispatchQueue.main.async { [weak self] in
-            guard let self,self.copyingInvocation else { return }
-            self.copyInvocationDiagnostics()
-            if self.pending == nil && self.screenInspectionID == nil && self.panel == nil { self.copyingInvocation=false }
+            guard let self,self.savingInvocation else { return }
+            self.saveInvocationDiagnostics()
+            if self.pending == nil && self.screenInspectionID == nil && self.panel == nil && self.viewProbeID == nil { self.savingInvocation=false }
         }
     }
     func updateIcon() {
@@ -570,6 +597,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         updateToggleTitle()
     }
     func cancelRequest() {
+        viewProbeID=nil
         cancellation?.cancel(); cancellation = nil; pending = nil; destination = nil
         timer?.invalidate(); timer = nil
         try? FileManager.default.removeItem(at: folder.appendingPathComponent("request.txt"))
@@ -630,14 +658,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     func updateToggleTitle() {
         floatingMenuItem?.title=(floating?.isVisible == true ? "Hide floating display" : "Show floating display") + "   " + shortcutText(key:floatingKeyLabel,modifiers:floatingShortcut.1)
-        let active=panel != nil || destination == .overlay || detectionCompletion != nil
+        let active=panel != nil || destination == .overlay || viewProbeID != nil || detectionCompletion != nil
         toggleItem?.title=(active ? "Hide overlay" : "Show overlay") + "   " + shortcutText(key:keyLabel,modifiers:currentShortcut.1)
     }
     func menuNeedsUpdate(_ menu:NSMenu) { updateToggleTitle();updateLayoutMenu() }
     @objc func menuToggle() { toggle() }
     func toggle() {
         if recording || calibration != nil { return }
-        if destination == .overlay || panel != nil || detectionCompletion != nil { cancelScreenInspection(); hide(); report("Overlay cancelled."); return }
+        if destination == .overlay || viewProbeID != nil || panel != nil || detectionCompletion != nil { cancelScreenInspection(); cancelRequest(); hide(); report("Overlay cancelled."); return }
         guard isLightroom() || NSWorkspace.shared.frontmostApplication?.processIdentifier == ProcessInfo.processInfo.processIdentifier else {
             report("Bring Lightroom to the front to show the overlay."); return
         }
@@ -648,9 +676,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         request(.overlay)
     }
     @objc func checkPhoto() { request(.check) }
-    func request(_ target: Destination) {
-        copyingInvocation = target == .overlay || target == .window
+    func request(_ target: Destination, viewChecked:Bool=false) {
+        savingInvocation = target == .overlay || target == .window
         guard !regionResetting,requireSupportedModule() else { return }
+        if target == .overlay && automaticViewEnabled && !viewChecked && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) {
+            detectInvocationView();return
+        }
         cancelPanelCheck();nextPanelCheck=ProcessInfo.processInfo.systemUptime+reloadDetectionConfig().panelCheckIntervalSeconds
         cancelScreenInspection(); cancelRequest()
         let token = UUID().uuidString, work = Cancellation()
@@ -928,14 +959,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             DispatchQueue.main.async { self?.report(result);self?.showDiagnostics() }
         }
     }
+    @objc func toggleAutomaticView(_ item:NSMenuItem) {
+        if !automaticViewEnabled && !FeaturePermission.accessibility.ensure() { return }
+        cancelRequest();cancelScreenInspection()
+        CameraPreferences.shared.set(!automaticViewEnabled,forKey:"experimentalAutomaticView")
+        detectedLayout=nil;detectedLayoutModule=nil
+        item.state=automaticViewEnabled ? .on:.off
+        lastViewDetection=automaticViewEnabled ? "Enabled; view is sampled at each automatic overlay invocation.":"Disabled; using saved menu selection."
+        invalidateAutomaticGeometry();updateLayoutMenu();report(lastViewDetection)
+    }
+    func detectInvocationView() {
+        cancelRequest();cancelScreenInspection()
+        let id=UUID(),module=currentModule(),started=ProcessInfo.processInfo.systemUptime
+        viewProbeID=id;updateToggleTitle()
+        report("Reading Lightroom view through Accessibility…")
+        DispatchQueue.global(qos:.userInitiated).async {
+            var proposal:AXTrialProposal?
+            let mapping=accessibilityMappingReport { host,windows in
+                // No fine adjustments: only classify the raw visible panel/label evidence.
+                proposal=axTrialProposal(host:host,windows:windows)
+            }
+            DispatchQueue.main.async {
+                guard self.viewProbeID==id else { return }
+                self.viewProbeID=nil;self.updateToggleTitle()
+                self.lastAXMapping=mapping
+                guard module==self.currentModule(),let proposal else {
+                    self.lastViewDetection="AX view unavailable or module changed; no overlay requested. Disable automatic view detection to use the saved menu selection."
+                    self.report(self.lastViewDetection);self.saveInvocationDiagnostics();return
+                }
+                let group=proposal.layout == "Side-by-side" ? 1:proposal.layout == "Above-and-below" ? 2:0
+                let preferred=CameraPreferences.shared.string(forKey:"axPreferredPane.\(module ?? "develop").\(group)").flatMap(OverlayLayout.init(rawValue:))
+                let mode:OverlayLayout=group==0 ? .full:(preferred?.group==group ? preferred!:(group==1 ? .left:.upper))
+                self.detectedLayout=mode;self.detectedLayoutModule=module
+                self.lastViewDetection="\(proposal.layout); selected pane: \(mode.label). No clear pair means single view.\nClassification took \(Int((ProcessInfo.processInfo.systemUptime-started)*1000)) ms (before bridge request)."
+                self.updateLayoutMenu()
+                self.request(.overlay,viewChecked:true)
+            }
+        }
+    }
     var lastAXMapping="Not collected. Use Diagnostics → Refresh AX."
-    var copyingInvocation=false
+    var savingInvocation=false
     var lastAXTrial="AX preview not run."
     var lastAXInspection="Not inspected."
+    var lastAXControls="Not collected. Use Diagnostics → Refresh AX."
     var axTrialBorders:[NSPanel]=[]
     var axTrialGeneration=0
     var axTrialEnabled:Bool { CameraPreferences.shared.bool(forKey:"developerAXTrial") }
-    var autoDiagnostics:Bool { CameraPreferences.shared.bool(forKey:"developerAutoCopyDiagnostics") }
+    var autoDiagnostics:Bool {
+        (CameraPreferences.shared.object(forKey:"developerAutoSaveDiagnostics") as? Bool) ?? CameraPreferences.shared.bool(forKey:"developerAutoCopyDiagnostics")
+    }
+    var diagnosticSaveStatus="Automatic report saving has not run."
+    var diagnosticSaveURL:URL { folder.deletingLastPathComponent().appendingPathComponent("Diagnostics/latest.txt") }
     @objc func toggleAXTrial(_ item:NSMenuItem) {
         if !axTrialEnabled && !FeaturePermission.accessibility.ensure() { return }
         CameraPreferences.shared.set(!axTrialEnabled,forKey:"developerAXTrial")
@@ -943,13 +1017,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if !axTrialEnabled { clearAXTrialBorders() }
     }
     @objc func toggleAutoDiagnostics(_ item:NSMenuItem) {
-        CameraPreferences.shared.set(!autoDiagnostics,forKey:"developerAutoCopyDiagnostics")
+        CameraPreferences.shared.set(!autoDiagnostics,forKey:"developerAutoSaveDiagnostics")
         item.state=autoDiagnostics ? .on:.off
     }
-    func copyInvocationDiagnostics() {
+    func saveInvocationDiagnostics() {
         guard autoDiagnostics else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(diagnosticReport(diagnosticSections()),forType:.string)
+        do {
+            try FileManager.default.createDirectory(at:diagnosticSaveURL.deletingLastPathComponent(),withIntermediateDirectories:true)
+            diagnosticSaveStatus="Latest report: \(diagnosticSaveURL.path)\nSaved: \(Date())"
+            try diagnosticReport(diagnosticSections()).write(to:diagnosticSaveURL,atomically:true,encoding:.utf8)
+        } catch {
+            diagnosticSaveStatus="Could not save diagnostics: \(error.localizedDescription)"
+            detail.title=diagnosticSaveStatus
+        }
     }
     func clearAXTrialBorders() {
         axTrialGeneration += 1
@@ -959,17 +1039,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func runAXTrial(after actual:NSPanel) {
         clearAXTrialBorders()
         guard axTrialEnabled || autoDiagnostics else { lastAXTrial="AX preview disabled.";return }
-        let drawPreview=axTrialEnabled
+        let drawPreview=axTrialEnabled,settings=reloadDetectionConfig()
         let generation=axTrialGeneration, displays=displayMappingReport(), started=ProcessInfo.processInfo.systemUptime
         lastAXTrial="AX preview collecting…"
         DispatchQueue.global(qos:.utility).async {
             var proposal:AXTrialProposal?
-            let mapping=accessibilityMappingReport { host,windows in proposal=axTrialProposal(host:host,windows:windows) }
+            let mapping=accessibilityMappingReport { host,windows in proposal=axTrialProposal(host:host,windows:windows,settings:settings) }
             DispatchQueue.main.async {
                 guard self.axTrialGeneration==generation,self.panel === actual else { return }
                 self.lastAXMapping=displays+"\n\n"+mapping
                 self.lastAXTrial=(proposal?.summary ?? "AX proposal unavailable. See Accessibility map; normal overlay unaffected.")+String(format:"\nTrial elapsed: %.0f ms (after normal panel shown).",(ProcessInfo.processInfo.systemUptime-started)*1000)
-                if !drawPreview { self.lastAXTrial += "\nDrawing disabled; collected for automatic diagnostics.";self.copyInvocationDiagnostics();self.copyingInvocation=false;return }
+                if !drawPreview { self.lastAXTrial += "\nDrawing disabled; collected for automatic diagnostics.";self.saveInvocationDiagnostics();self.savingInvocation=false;return }
                 if let proposal,let current=self.overlayHost, axTrialHostMatches(proposedTopLeft:proposal.host,actualAppKit:current.frame,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height) {
                     let displayHeight=CGDisplayBounds(CGMainDisplayID()).height
                     for (index,rect) in proposal.panes.enumerated() {
@@ -989,7 +1069,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                         self.lastAXTrial += "\n\(name): requested AppKit \(frame); actual \(border.frame); visible \(border.isVisible); parent visible \(actual.isVisible); suspended \(self.overlaySuspended)."
                     }
                 } else if proposal != nil { self.lastAXTrial += "\nPreview not drawn: host changed or does not match overlay host. AX top-left: \(proposal!.host); overlay AppKit: \(String(describing:self.overlayHost?.frame))." }
-                self.copyInvocationDiagnostics();self.copyingInvocation=false
+                self.saveInvocationDiagnostics();self.savingInvocation=false
             }
         }
     }
@@ -1004,10 +1084,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         axMappingInProgress=true
         DispatchQueue.global(qos: .userInitiated).async {
             let mapping="Module: \(module)\n\n"+displays+"\n\n"+accessibilityMappingReport()
+            let controls=accessibilityControlReport()
             let result = probeLightroom(imageSize: size)
             DispatchQueue.main.async {
-                self.axMappingInProgress=false;self.lastAXMapping=mapping
-                self.lastAXInspection = "Diagnostic inspection only; this does not change calibration or detection mode.\n"+result.summary; self.showDiagnostics()
+                self.axMappingInProgress=false;self.lastAXMapping=mapping;self.lastAXControls=controls
+                self.lastAXInspection = "Diagnostic inspection only; this does not change calibration or detection mode.\n"+result.summary; self.saveInvocationDiagnostics(); self.showDiagnostics()
             }
         }
     }
@@ -1058,6 +1139,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 guard let window=lightroomWindowFrame(),window.contains(result) else {
                     self.report("Select the UI backdrop inside the Lightroom window. Previous calibration retained.");return
                 }
+                // Accepting calibration makes this selected pane the manual region too.
+                if self.automaticViewEnabled { let selected=self.overlayLayout;self.overlayLayout=selected }
                 self.region=result; self.manualLayoutKey=self.lastProbe?.layoutKey
                 CameraPreferences.shared.set(selectionKind,forKey:self.regionKey("regionKind"))
                 CameraPreferences.shared.set(false,forKey:self.regionKey("automaticBounds")); self.autoItem.state = .off
@@ -1268,7 +1351,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         return [
             DiagnosticSection(title:"App & permissions",body:"\(versionTitle)\nAccessibility: \(AXIsProcessTrusted() ? "granted":"not granted — request through Inspect Accessibility layout")\nScreen Recording: \(CGPreflightScreenCaptureAccess() ? "granted":"not granted")\nExifTool: \(findExifTool(custom:CameraPreferences.shared.string(forKey:"exiftool")) == nil ? "not found":"available")\nApp: \(Bundle.main.bundleURL.path)\nBundle ID: \(Bundle.main.bundleIdentifier ?? "unknown")\n\(storageStatus)"),
             DiagnosticSection(title:"Accessibility & display map",body:lastAXMapping),
+            DiagnosticSection(title:"Saved diagnostics",body:diagnosticSaveStatus),
+            DiagnosticSection(title:"Automatic view experiment",body:lastViewDetection),
             DiagnosticSection(title:"AX placement trial",body:lastAXTrial),
+            DiagnosticSection(title:"AX controls & parents",body:lastAXControls),
             DiagnosticSection(title:"Accessibility image inspection",body:lastAXInspection),
             DiagnosticSection(title:"Last result",body:lastResult),
             DiagnosticSection(title:"Lightroom bridge",body:"Heartbeat: \(age)\nPlugin status: \(state.trimmingCharacters(in:.whitespacesAndNewlines))"),

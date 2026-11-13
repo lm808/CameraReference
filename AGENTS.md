@@ -19,7 +19,7 @@ The user runs only staged apps: stable `release/CameraReference.app` or candidat
 - `bash scripts/package.sh`: package the existing release/ payload as a DMG/checksum under ignored dist/. Uses hdiutil; may require sandbox approval. Does not install the app or publish anything. Existing DMG is not overwritten.
 - Verify signature/plist and `git diff --check` before committing. Run checks appropriate to the change; avoid repeating unchanged suites without reason.
 
-Use plain three-component versions in CFBundleShortVersionString (candidate `1.0.18`; stable main `1.0.15`); the menu and package script read that value. Stable keeps org.local.CameraReference. User authorised testing identity org.local.CameraReference.testing with a purple icon; candidate builds use bash build.sh --testing or bash scripts/stage.sh --testing. Both use the existing org.local.CameraReference preference domain and shared support/bridge folder; run only one app at a time. Do not rebuild main’s accepted staged app while working on candidates.
+Use plain three-component versions in CFBundleShortVersionString (candidate `1.0.19`; stable main `1.0.15`); the menu and package script read that value. Stable keeps org.local.CameraReference. User authorised testing identity org.local.CameraReference.testing with a purple icon; candidate builds use bash build.sh --testing or bash scripts/stage.sh --testing. Both use the existing org.local.CameraReference preference domain and shared support/bridge folder; run only one app at a time. Do not rebuild main’s accepted staged app while working on candidates.
 
 ## Source map and flow
 
@@ -65,3 +65,8 @@ Main flow: shortcut → bridge request/epoch → image load or RAM hit → manua
 README describes current functionality/usage, never a development diary. CHANGELOG records user-facing changes; RELEASE-NOTES describes the current downloadable build. docs/METHODS.md is the technical rationale; docs/VALIDATION.md records evidence; docs/BACKLOG.md lists unresolved work. TESTING.md is short/current only. Update related docs when behaviour changes; qualify synthetic versus native checks.
 
 Do not commit build/release/dist artifacts, personal config, bridge runtime files, photographs, credentials or screenshot captures. Use config/config.example.conf for defaults. Preserve uncommitted user changes; inspect git status first. Keep working tree changes scoped and commit tested work. Do not create arbitrary release tags or push without instruction.
+
+
+## AX investigation candidate
+
+`Sources/AXTrial.swift` owns diagnostic geometry and the opt-in view classifier. Preview corrections never enter capture geometry or its cache key. Experimental `# AX:` config directives keep the shared file compatible with older stable parsers. Classification supplies only layout to the unchanged detector; no clear pair means single, read failure does not. Explicit Refresh AX collects bounded child/parent geometry. Opt-in saved reports overwrite `CameraReference/Diagnostics/latest.txt`; do not commit these reports. Keep diagnostic timestamps when comparing cases.

@@ -33,3 +33,10 @@ Completed functionality belongs in README; implementation rationale in METHODS; 
 - Determine exact toolbar/backdrop edges; current panel-edge estimate is deliberately raw.
 - Validate label heuristics across Library, display scales, session changes and hidden panels.
 - Only after acceptance, discuss switching actual placement to AX and retiring layout selection. Do not alter the existing detector during this trial.
+
+
+### AX investigation follow-up (1.0.19)
+- Trial automatic view classification and per-orientation pane choices in native Lightroom; keep the capture backend intact.
+- Compare fresh child/parent AX reports with toolbar shown/hidden, then after resizing. Establish whether a real toolbar container replaces the provisional offsets.
+- Validate geometry hints across modules/scales/hidden panels. All preview adjustment defaults remain zero.
+- AX placement backend switch remains deferred until preview geometry is accepted.

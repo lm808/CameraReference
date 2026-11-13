@@ -3,6 +3,30 @@ import CoreGraphics
 
 struct DetectionConfig: Equatable {
     enum Bound:String { case ui,photo }
+    // Preview-only geometry; deliberately excluded from the production cache key.
+    var axLeftOffsetPoints:CGFloat=0,axRightOffsetPoints:CGFloat=0,axTopOffsetPoints:CGFloat=0,axBottomOffsetPoints:CGFloat=0
+    var axHiddenLeftInsetPoints:CGFloat=0,axHiddenRightInsetPoints:CGFloat=0,axHiddenTopInsetPoints:CGFloat=0,axHiddenBottomInsetPoints:CGFloat=0
+    var axToolbarShownBottomOffsetPoints:CGFloat=0,axToolbarHiddenBottomOffsetPoints:CGFloat=0
+    var axToolbarState="unknown"
+    static let axGeometryTemplate="""
+    # AX geometry investigation — preview only; macOS points, NOT pixels.
+    # Keep the # AX: prefix; edit the value after =. Older apps ignore these lines.
+    # Offsets: positive moves an edge right/down; negative moves left/up.
+    # Observations below are suggestions, not enabled defaults or universal constants.
+    # AX: axLeftOffsetPoints = 0 # observed -18 with left panel visible
+    # AX: axRightOffsetPoints = 0 # observed +18 in Library; +16 in Develop
+    # AX: axTopOffsetPoints = 0 # observed -12 with top panel visible
+    # AX: axBottomOffsetPoints = 0 # observed: use the toolbar-specific offsets below
+    # Insets when a panel is hidden: positive moves inward from the host edge.
+    # AX: axHiddenLeftInsetPoints = 0 # earlier indicator started 18 pt from host left
+    # AX: axHiddenRightInsetPoints = 0 # earlier indicator ended 18 pt from host right
+    # AX: axHiddenTopInsetPoints = 0 # observed indicator at host top +50; backdrop not verified
+    # AX: axHiddenBottomInsetPoints = 0 # not established; keep zero during investigation
+    # Explicit trial annotation, NOT automatic toolbar detection: unknown/shown/hidden.
+    # AX: axToolbarState = unknown # use shown/hidden to trial the relevant offset
+    # AX: axToolbarShownBottomOffsetPoints = 0 # observed -31 from filmstrip top
+    # AX: axToolbarHiddenBottomOffsetPoints = 0 # inferred +13 from filmstrip top (-31 +44)
+    """
     var left=Bound.ui,right=Bound.ui,top=Bound.ui,bottom=Bound.ui
     var panelCheckIntervalSeconds:Double=3
     var fitInsetPoints:CGFloat=18
@@ -35,12 +59,16 @@ struct DetectionConfig: Equatable {
     snapGapPoints = 4
     # Minimum RGB contrast, 1...64. Raise to reject faint edges.
     snapContrast = 4
-    """
+    """ + "\n\n" + axGeometryTemplate
+    static func settingText(_ raw:String)->String {
+        let trimmed=raw.trimmingCharacters(in:.whitespaces)
+        return trimmed.hasPrefix("# AX: ") ? String(trimmed.dropFirst(6)):raw
+    }
     static func parse(_ text:String) throws -> DetectionConfig {
         var c=DetectionConfig(),seen=Set<String>()
         func invalid(_ line:Int)->NSError { NSError(domain:"CameraReference",code:1,userInfo:[NSLocalizedDescriptionKey:"Invalid config.conf setting on line \(line). Check the name, value and allowed range."]) }
         for (index,raw) in text.components(separatedBy:.newlines).enumerated() {
-            let line=raw.components(separatedBy:"#")[0].trimmingCharacters(in:.whitespaces)
+            let line=settingText(raw).components(separatedBy:"#")[0].trimmingCharacters(in:.whitespaces)
             if line.isEmpty { continue }
             let parts=line.components(separatedBy:"=").map{$0.trimmingCharacters(in:.whitespaces)}
             guard parts.count==2,seen.insert(parts[0]).inserted else { throw invalid(index+1) }
@@ -53,8 +81,22 @@ struct DetectionConfig: Equatable {
                 guard let b=Bound(rawValue:v) else { throw invalid(index+1) }
                 switch k { case "left":c.left=b;case "right":c.right=b;case "top":c.top=b;default:c.bottom=b };continue
             }
+            if k == "axToolbarState" {
+                guard ["unknown","shown","hidden"].contains(v) else { throw invalid(index+1) }
+                c.axToolbarState=v;continue
+            }
             guard let n=Double(v),n.isFinite else { throw invalid(index+1) }
             switch k {
+            case "axLeftOffsetPoints" where (-200...200).contains(n):c.axLeftOffsetPoints=n
+            case "axRightOffsetPoints" where (-200...200).contains(n):c.axRightOffsetPoints=n
+            case "axTopOffsetPoints" where (-200...200).contains(n):c.axTopOffsetPoints=n
+            case "axBottomOffsetPoints" where (-200...200).contains(n):c.axBottomOffsetPoints=n
+            case "axHiddenLeftInsetPoints" where (0...200).contains(n):c.axHiddenLeftInsetPoints=n
+            case "axHiddenRightInsetPoints" where (0...200).contains(n):c.axHiddenRightInsetPoints=n
+            case "axHiddenTopInsetPoints" where (0...200).contains(n):c.axHiddenTopInsetPoints=n
+            case "axHiddenBottomInsetPoints" where (0...200).contains(n):c.axHiddenBottomInsetPoints=n
+            case "axToolbarShownBottomOffsetPoints" where (-200...200).contains(n):c.axToolbarShownBottomOffsetPoints=n
+            case "axToolbarHiddenBottomOffsetPoints" where (-200...200).contains(n):c.axToolbarHiddenBottomOffsetPoints=n
             case "panelCheckIntervalSeconds" where (0...3600).contains(n):c.panelCheckIntervalSeconds=n
             case "sideSearchPercent" where (5...50).contains(n):c.sideSearchPercent=n
             case "fitInsetPoints" where (0...100).contains(n):c.fitInsetPoints=n
@@ -100,16 +142,29 @@ final class DetectionConfigStore {
             try ensureFile()
         } else {
             var text=try String(contentsOf:url,encoding:.utf8)
-            if !text.components(separatedBy:.newlines).contains(where:{ $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces)=="panelCheckIntervalSeconds" }) {
+            if !text.components(separatedBy:.newlines).contains(where:{ DetectionConfig.settingText($0).components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces)=="panelCheckIntervalSeconds" }) {
                 text += "\n# Background panel checks in seconds; 0 disables (range 0...3600).\npanelCheckIntervalSeconds = 3\n"
                 try text.write(to:url,atomically:true,encoding:.utf8)
             }
             let hasInterval=text.components(separatedBy:.newlines).contains {
-                $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces) == "sideSearchPercent"
+                DetectionConfig.settingText($0).components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces) == "sideSearchPercent"
             }
             if !hasInterval {
                 try (text + "\n# Side-border search from each window edge, 5...50 percent.\n# 40 searches left 0...40% and right 60...100%; 50 reaches the centre.\nsideSearchPercent = 40\n").write(to:url,atomically:true,encoding:.utf8)
             }
+        }
+        let existing=try String(contentsOf:url,encoding:.utf8)
+        let keys=Set(existing.components(separatedBy:.newlines).map { DetectionConfig.settingText($0).components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces) })
+        let missing=DetectionConfig.axGeometryTemplate.components(separatedBy:.newlines).filter { line in
+            let key=DetectionConfig.settingText(line).components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces)
+            return !key.isEmpty && !keys.contains(key)
+        }
+        if !missing.isEmpty {
+            let addition=keys.contains("axLeftOffsetPoints") ? missing.joined(separator:"\n"):DetectionConfig.axGeometryTemplate.components(separatedBy:.newlines).filter { line in
+                let key=DetectionConfig.settingText(line).components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces)
+                return key.isEmpty || !keys.contains(key)
+            }.joined(separator:"\n")
+            try (existing+"\n\n# AX geometry (new keys only; existing values preserved).\n"+addition+"\n").write(to:url,atomically:true,encoding:.utf8)
         }
     }
     func reload() throws -> DetectionConfig {
