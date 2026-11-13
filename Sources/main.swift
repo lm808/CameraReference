@@ -1036,8 +1036,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var lastAXMapping="Not collected. Use Diagnostics → Refresh AX."
     var savingInvocation=false
     var lastAXTrial="AX preview not run."
-    var lastAXInspection="Not inspected."
-    var lastAXControls="Not collected. Use Diagnostics → Refresh AX."
     var lastAXToolbar="Not collected. Use Diagnostics → Refresh AX."
     var axTrialBorders:[NSPanel]=[]
     var axTrialGeneration=0
@@ -1081,11 +1079,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         lastAXTrial="AX preview collecting…"
         DispatchQueue.global(qos:.utility).async {
             var proposal:AXTrialProposal?
-            let mapping=accessibilityMappingReport { host,windows in proposal=axTrialProposal(host:host,windows:windows,settings:settings) }
+            let toolbar=accessibilityToolbarReading()
+            var previewSettings=settings;previewSettings.axToolbarState=toolbar.effectiveState
+            let mapping=accessibilityMappingReport { host,windows in proposal=axTrialProposal(host:host,windows:windows,settings:previewSettings) }
             DispatchQueue.main.async {
                 guard self.axTrialGeneration==generation,self.panel === actual else { return }
+                self.lastAXToolbar=toolbar.report
                 self.lastAXMapping=displays+"\n\n"+mapping
-                self.lastAXTrial=(proposal?.summary ?? "AX proposal unavailable. See Accessibility map; normal overlay unaffected.")+String(format:"\nTrial elapsed: %.0f ms (after normal panel shown).",(ProcessInfo.processInfo.systemUptime-started)*1000)
+                self.lastAXTrial=(proposal?.summary ?? "AX proposal unavailable. See Accessibility map; normal overlay unaffected.")+"\nToolbar evidence used for this preview:\n"+toolbar.report+String(format:"\nTrial elapsed: %.0f ms (after normal panel shown).",(ProcessInfo.processInfo.systemUptime-started)*1000)
                 if !drawPreview { self.lastAXTrial += "\nDrawing disabled; collected for automatic diagnostics.";self.savingInvocation=false;self.collectCompleteDiagnostics();return }
                 if let proposal,let current=self.overlayHost, axTrialHostMatches(proposedTopLeft:proposal.host,actualAppKit:current.frame,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height) {
                     let displayHeight=CGDisplayBounds(CGMainDisplayID()).height
@@ -1118,20 +1119,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func collectCompleteDiagnostics(openWindow:Bool=false) {
         guard openWindow || autoDiagnostics else { return }
         if axMappingInProgress { if diagnosticRunningGeneration != diagnosticGeneration { diagnosticPending=true };return }
-        let generation=diagnosticGeneration,size=lastImageSize,displays=displayMappingReport(),module=currentModule()
+        let generation=diagnosticGeneration,displays=displayMappingReport(),module=currentModule()
         axMappingInProgress=true;diagnosticRunningGeneration=generation
-        lastAXControls="Collecting fresh controls…";lastAXToolbar="Collecting fresh toolbar structure…"
+        lastAXToolbar="Collecting toolbar visibility…"
         saveInvocationDiagnostics()
         DispatchQueue.global(qos:.utility).async {
             let mapping="Module: \(module ?? "unknown")\n\n"+displays+"\n\n"+accessibilityMappingReport()
-            let toolbar=accessibilityToolbarReport()
-            let controls=accessibilityControlReport()
-            let result=probeLightroom(imageSize:size)
+            let toolbar=accessibilityToolbarReading()
             DispatchQueue.main.async {
                 self.axMappingInProgress=false
                 if generation==self.diagnosticGeneration && module==self.currentModule() {
-                    self.lastAXMapping=mapping;self.lastAXControls=controls;self.lastAXToolbar=toolbar
-                    self.lastAXInspection="Diagnostic only; no placement or preference changes.\n"+result.summary
+                    self.lastAXMapping=mapping;self.lastAXToolbar=toolbar.report
                     self.saveInvocationDiagnostics()
                     if openWindow { self.showDiagnostics() }
                 }
@@ -1403,9 +1401,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             DiagnosticSection(title:"Saved diagnostics",body:diagnosticSaveStatus),
             DiagnosticSection(title:"Automatic view experiment",body:lastViewDetection),
             DiagnosticSection(title:"AX placement trial",body:lastAXTrial),
-            DiagnosticSection(title:"AX toolbar structure",body:lastAXToolbar),
-            DiagnosticSection(title:"AX controls & parents",body:lastAXControls),
-            DiagnosticSection(title:"Accessibility image inspection",body:lastAXInspection),
+            DiagnosticSection(title:"AX toolbar visibility",body:lastAXToolbar),
             DiagnosticSection(title:"Last result",body:lastResult),
             DiagnosticSection(title:"Lightroom bridge",body:"Heartbeat: \(age)\nPlugin status: \(state.trimmingCharacters(in:.whitespacesAndNewlines))"),
             DiagnosticSection(title:"Overlay visibility & minimisation",body:"\(overlayVisibilityStatus)\nGeometry source: \(overlayGeometrySource)\n\(overlayLifecycleStatus)\nMoves: \(overlayMoveCount); ordering changes: \(overlayOrderCount); level changes: \(overlayLevelChangeCount).\n\nEvent history (uptime seconds):\n" + lifecycleTrace.joined(separator:"\n")),

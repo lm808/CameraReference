@@ -1,10 +1,10 @@
-# AX Explorer 1.0.3
+# AX Explorer 1.0.4
 
 Standalone, read-only Lightroom Accessibility investigation. It does not link CameraReference app code, capture the screen, activate Lightroom, change settings or perform AX actions. The app is not rebuilt. No Screen Recording permission is needed.
 
 ## Start
 
-Double-click the staged `release/AXExplorer/Explore.command` (opens Terminal), or run `release/AXExplorer/AXExplorer` from Terminal. Type `permission` if access has not been granted, follow System Settings, then `refresh`. macOS may attribute permission to Terminal or the executable. Do not remove existing CameraReference permissions. If access remains unavailable, restart the explorer. No automatic permission prompt on startup.
+Double-click the staged `build/AXExplorer/Explore.command` (opens Terminal), or run `build/AXExplorer/AXExplorer` from Terminal. Type `permission` if access has not been granted, follow System Settings, then `refresh`. macOS may attribute permission to Terminal or the executable. Do not remove existing CameraReference permissions. If access remains unavailable, restart the explorer. No automatic permission prompt on startup.
 
 ## Delayed reading (1.0.2)
 
@@ -38,6 +38,6 @@ IDs and recorded routes describe this session only. Do not use child indices as 
 
 ## Build and validation
 
-From the candidate worktree: `bash scripts/build-ax-explorer.sh`. It builds/stages only this tool under ignored build/release folders; no main app build, installation or launch. `release/AXExplorer/AXExplorer --self-test` checks argument validation and safe filenames without live AX calls. Native permission/traversal acceptance is performed by the user.
+From the candidate worktree: `bash scripts/build-ax-explorer.sh`. It builds/stages only this tool under ignored build/release folders; no main app build, installation or launch. `build/AXExplorer/AXExplorer --self-test` checks argument validation and safe filenames without live AX calls. Native permission/traversal acceptance is performed by the user.
 
-Report location is derived from the executable location, not the shell working directory. Both staged release/AXExplorer and build/AXExplorer resolve to the worktree. A copy outside those folders saves in ax-reports beside that executable. Existing reports were moved out of Application Support; reopen Explorer 1.0.3 before saving more reports. The main app’s Diagnostics/latest.txt remains runtime state in Application Support.
+Report location is derived from the executable location, not the shell working directory. The build/AXExplorer location resolves to the worktree. A copy outside those folders saves in ax-reports beside that executable. Existing reports were moved out of Application Support; reopen Explorer 1.0.4 before saving more reports. The main app’s Diagnostics/latest.txt remains runtime state in Application Support.

@@ -49,3 +49,5 @@ Once inactive, contents of the spaced Camera Reference folder are merged into Ca
 GUI settings intentionally remain in the conventional macOS Preferences domain described above; they are not duplicated here.
 
 JPEG bytes, decoded images, captured pixels and automatic placement caches are held in RAM. No disk image cache is created. An independent floating display owns its displayed image until closed/reloaded.
+
+Experimental AX preview reads toolbar visibility automatically. The legacy `axToolbarState` entry remains accepted for compatibility but is ignored by the app preview; no personal file is rewritten. A failed/ambiguous reading assumes shown and uses `axToolbarShownBottomOffsetPoints`. Confirmed hidden uses `axToolbarHiddenBottomOffsetPoints`. Both offsets still default to zero and affect only preview geometry, never screenshot placement.

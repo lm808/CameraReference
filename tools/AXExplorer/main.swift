@@ -2,7 +2,7 @@ import AppKit
 import ApplicationServices
 
 // Standalone read-only investigation. No actions, attribute writes, capture or app activation.
-let version = "1.0.3"
+let version = "1.0.4"
 let relationships = ["AXSections", "AXChildren", "AXContents", "AXVisibleChildren", "AXChildrenInNavigationOrder"]
 let scalars: Set<String> = ["AXRole", "AXSubrole", "AXIdentifier", "AXHidden", "AXVisible", "AXEnabled", "AXFocused", "AXMain", "AXMinimized", "AXModal", "AXFullScreen"]
 struct Budget {

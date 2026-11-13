@@ -132,3 +132,9 @@ Detailed findings and accepted results are in docs/VALIDATION.md, not this user-
 ## 1.0.22
 
 - Inspect AXSections structure and element references in automatically saved toolbar diagnostics; no placement changes.
+
+## 1.0.23 (candidate)
+
+- Use AX View-menu toolbar visibility for experimental geometry only; assume shown on failed reads.
+- Retain useful consolidated AX diagnostics; move deep exploration entirely into the build-only explorer.
+- Preserve existing screenshot detection and personal geometry settings.

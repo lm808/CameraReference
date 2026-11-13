@@ -625,3 +625,9 @@ Delayed toolbar command built/staged successfully and strict signature verificat
 ## Standalone AX Explorer 1.0.3
 
 Moved five existing probe reports from Application Support into the development worktree’s ignored investigations/ax-reports directory. Future saves resolve that directory from the executable location. Pure path checks cover release, build and externally copied executables; self-tests, native build, strict signature verification and diff checks passed. Git ignores the report directory. No live AX calls were made; main app, screenshot detector and personal settings are unchanged. Reopen the explorer to use the new save location.
+
+## 1.0.23 candidate — toolbar menu state and investigation cleanup
+
+Full bash test.sh suite passed, including title classification and unknown-to-shown fallback checks. Native candidate build/staging, strict signature verification, explorer self-tests and shell/diff checks passed. ScreenProbe, ViewportDetector, PhotoDetector and SplitLayout are byte-unchanged from the preceding candidate. Main's staged app and personal settings were not modified. Native app toolbar readings, focus behaviour and preview placement still require the TESTING.md checks; standalone user evidence is not app acceptance.
+
+Removed exhaustive control/AXSections routines from the app; retained window/display/opacity evidence and concise toolbar reports. Standalone AX Explorer 1.0.4 builds atomically under build/AXExplorer, with no release staging. Removed only the obsolete release/AXExplorer payload; saved investigation reports remain under ignored investigations/ax-reports. Consolidated current methods and investigation evidence; historical validation and changelog entries remain in their respective files. No live interaction, installation, packaging or push performed.

@@ -56,7 +56,7 @@ func axTrialProposal(host:CGRect, windows:[AXTrialWindow], settings:DetectionCon
     } else if layout == "Above-and-below" {
         panes=[CGRect(x:left,y:top,width:area.width,height:splitY-top),CGRect(x:left,y:splitY,width:area.width,height:bottom-splitY)]
     } else { panes=[area] }
-    let summary="AX trial: \(layout). Top-left global points.\nHost: \(host)\nRaw combined area: \(rawArea)\nAdjusted area: \(area)\nProposed panes: \(panes)\nVisible label candidates: \(labels)\n"+notes.joined(separator:"\n")+"\nPreview-only config corrections applied. Toolbar annotation: \(settings.axToolbarState) (not automatically identified). No menu layout/pane preference used."
+    let summary="AX trial: \(layout). Top-left global points.\nHost: \(host)\nRaw combined area: \(rawArea)\nAdjusted area: \(area)\nProposed panes: \(panes)\nVisible label candidates: \(labels)\n"+notes.joined(separator:"\n")+"\nPreview-only config corrections applied. Toolbar annotation: \(settings.axToolbarState) (effective preview state; see toolbar diagnostics). No menu layout/pane preference used."
     return AXTrialProposal(host:host,panes:panes,layout:layout,summary:summary)
 }
 final class AXTrialBorder:NSView {

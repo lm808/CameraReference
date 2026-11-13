@@ -595,3 +595,10 @@ let oldConfig=try DetectionConfig.parse(oldReadable)
 assert(oldConfig.left == .photo)
 try FileManager.default.removeItem(at:axConfigDir)
 print("AX fine-adjustment and shared-config checks passed")
+
+// Toolbar command titles are visibility evidence, never geometry or checkboxes.
+assert(axToolbarTitleState("Hide Toolbar") == true)
+assert(axToolbarTitleState("Show Toolbar") == false)
+assert(axToolbarTitleState("Toolbar") == nil)
+assert(AXToolbarReading(shown:nil,report:"failed").effectiveState == "shown")
+assert(AXToolbarReading(shown:false,report:"fresh").effectiveState == "hidden")

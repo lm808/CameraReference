@@ -42,41 +42,23 @@ Earlier evidence: hidden panel AX rectangles can persist while their matched CG 
 - Never use control indices, window IDs or filenames as permanent identifiers. Account for hidden ancestors and scroll clipping: a reported child rectangle need not be visible.
 - Screen Recording remains required for screenshot detection even if AX supplies view/search hints.
 - Do not infer Library/Grid/Loupe solely from lack of Reference/Active labels. The agreed “single” fallback describes the overlay layout, not positive proof of Loupe.
-- Live view monitoring and automatic child-diagnostic collection are requested follow-ups, not implemented by this log update.
+- Live view monitoring is opt-in; automatic reports retain useful evidence without deep child scans.
 - Before implementation, trial proposed AX assistance as diagnostic suggestions alongside the unchanged result. Record disagreements as well as successes.
 
 Update this file as evidence arrives. Keep raw diagnostic files and screenshots outside Git; record relevant measurements and limitations here, implementation rationale in METHODS, and accepted test outcomes in VALIDATION.
 
 
-## Structural inspection gaps and next probe (1.0.20)
+## Consolidated toolbar evidence — 13 November 2026
 
-Code review found that 1.0.19 only traversed AXChildren; its parent labels described traversal, not a queried AXParent. It did not enumerate supported attribute names, AXContents, AXVisibleChildren or control-level visibility status. Library exhausted 500 nodes in nested sidebar/catalogue data. Thus earlier reports cannot establish that AX exposes no toolbar boundary.
+- Library shown/hidden reports at 15:18/15:20: screenshot UI bottom 1197→1240 (+43 pt), while raw AX filmstrip top stays 1228. Main-child text/checkbox disappear; no stable toolbar container. Main AXSections identifies the title-bar image. Initial 180-element probes were incomplete.
+- Develop exhaustive standalone scans: 838/866 elements, no traversal caps. No dedicated toolbar container found through queried relationships. Most attribute errors were AXSections on sidebar rows; main sections read successfully. Control indices and incidental checkboxes are not accepted selectors.
+- Develop delayed menu pair at 16:27/16:30: Hide Toolbar when shown, Show Toolbar when hidden; 65 elements, 40 ms, no errors.
+- Confirmed Library fresh pair at 16:58:23/16:58:49: same title/state correspondence; 103 elements, 50/40 ms, no errors. Earlier 16:55/16:56 pair has uncertain module and is excluded from module-specific conclusions.
+- Menu checkmarks were absent. Shortcut T/modifiers 8 supports identifying the command; the generic AgMenu identifier is not unique. Titles currently require English.
+- Lightroom can expose incomplete menus after focus changes. One delayed test rejected focus despite the user's observation. Thus unavailable status is an explicit assumption of shown in the preview, not proof of visibility. Repeated native testing remains necessary.
 
-The focused probe queries these public structural attributes, prioritises main-window controls, reads actual parent frames and lists supported names without reading titles/values/descriptions. It limits work to 180 elements, shallow descendants and two seconds, explicitly reports errors/truncation and host geometry before/after. AXHidden is application-specific in the SDK, so support on a control is not assumed. AXVisibleChildren being unsupported or absent is not hidden-state evidence. AXToolbarButton, if present, identifies a window toolbar toggle rather than the toolbar rectangle itself.
+Visibility is supported by these pairs; height remains unreported and configurable. Full AX-only placement is still experimental. The existing screenshot detector remains intact.
 
-Library reports 14:10:02 (shown) and 14:11:24 (hidden) exposed one main-child checkbox at (2132,1205,83,21) and text at (829,1210,1277,17), both disappearing when hidden. Side scroll bounds remained unchanged. These are incidental controls, not accepted stable identifiers. User confirms Library geometry matches Develop; those Library reports did not contain screenshot placement measurements.
+## Investigation ownership
 
-Goal clarified: assess AX-only placement, not introduce a screenshot-dependent hybrid as its replacement. Existing screenshot detector remains untouched. A new shown/hidden pair from the focused probe is required before concluding whether a stable AX-only boundary/state exists. No such conclusion has yet been established.
-
-
-1.0.21 implements live inference polling and automatic complete bounded diagnostics after invocation. These scheduling changes do not establish toolbar-boundary reliability; the shown/hidden structural comparison remains pending.
-
-### Library toolbar pair — 1.0.21, 2026-11-13 15:08/15:09
-
-Same host (0,30,2560,1349). Shown screenshot UI bottom y=1197; hidden y=1240 (+43 pt). Raw AX bottom stays 1228. Main-window text (829,1210,1277,17) and checkbox (2132,1205,83,21) disappear when hidden; their actual parent is the main window. Side scroll-area bounds remain unchanged. Visibility unsupported; focused probe capped at 180. This confirms control disappearance but not a stable toolbar container/state. 1.0.22 adds AXSections structural inspection to investigate the unqueried relationship; native results pending.
-
-### Fresh AXSections pair and external explorer
-
-Library reports at 15:18:31 (shown) and 15:20:13 (hidden), 2026-11-13, have identical host (0,30,2560,1349) and fresh captures. Screenshot bottom changes 1197→1240; AX estimate remains 1228. Main AXSections references only the title-bar image in both. Toolbar text/checkbox disappear when hidden; side scroll areas are unchanged. Focused scans hit 180 elements and report 9/11 read errors, so absence of a stable container remains unproven. The earlier 15:14 pair is excluded from conclusions after the user reset the test.
-
-Further exploration is isolated in tools/AXExplorer instead of repeatedly rebuilding the app. It supports pruning known panel roots, inspecting parents/sections/children and changing node/depth/time budgets interactively. Live use is user-operated. Session IDs and numeric paths are evidence only, not durable selectors. No production algorithm changes.
-
-### Toolbar menu-state investigation — AX Explorer 1.0.1
-
-Develop full-tree shown/hidden scans examined 838/866 elements in 0.40/0.34 seconds, with no node/time/depth caps. Toolbar controls disappear but no dedicated container was found through the traversed relationships. Most generic errors were AXSections on sidebar rows/indicators; the main-window section read succeeded. One shown-scan menu-child read failed. These results motivate inspecting View's Show/Hide Toolbar menu command, not changing production placement.
-
-Explorer `toolbar` reads menu titles, shortcut/modifiers, checkmark, enabled state and identifier without actions or menu opening. Native tests must establish whether the item updates after T while the menu remains closed, separately in Library and Develop. Even if reliable, this indicates visibility, not toolbar height. Main app and screenshot detector are untouched.
-
-### Menu focus caveat — Explorer 1.0.2
-
-Develop menu pair at 16:16:58/16:17:28 (2026-11-13) exposed only Apple, Lightroom Classic, File, Edit, Window and Help. No View menu, so no toolbar-state comparison was possible. User observed matching missing menu headings after Lightroom lost/regained focus. Explorer now supports a delayed read to allow manual return to Lightroom, records focus at both ends and skips the delayed query if Lightroom is not active. Missing menu means unknown, not hidden. No activation/menu actions and no app changes.
+App diagnostics keep host/display maps, panel rectangles, AX visibility and supplementary CG opacity, label candidates, view inference, preview corrections/bounds, toolbar command/state/timestamp and failure reasons. Exhaustive child/parent/section dumps were removed from the app in 1.0.23. Standalone source and launcher are in tools/AXExplorer; the executable/launcher are built in build/AXExplorer only. Raw probes are preserved in ignored investigations/ax-reports. Historical build/check evidence stays in VALIDATION.md, not README or the current checklist.

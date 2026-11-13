@@ -1,15 +1,10 @@
-# Camera Reference Testing 1.0.22 — AXSections diagnostic
+# Camera Reference Testing 1.0.23
 
-Use this worktree’s staged `release/CameraReference Testing.app`; quit stable first. Main stays 1.0.15; bridge stays 0.5.3. Native acceptance pending.
+Use this worktree's release/CameraReference Testing.app; quit stable first. Main stays 1.0.15. These tests are pending native acceptance. Enable AX preview and Save diagnostics after invocation. Existing numeric geometry adjustments can remain zero.
 
-New focused check: in Library Loupe, keep window/panels unchanged. With **Save diagnostics after invocation** enabled, show the toolbar, invoke and wait 10 seconds; ask the agent to read the report. Then hide the toolbar and repeat. AX TOOLBAR STRUCTURE should now include AXSections status, bounded payload structure and any referenced elements. Unsupported/empty results are useful evidence too. Repeat in Develop only after this pair is reviewed.
-
-- [ ] Enable **Experimental features → Automatically detect Lightroom view**. Without invoking an overlay, switch single/side-by-side/stacked views while Lightroom is active. Within about two seconds (plus AX read time), reopen the menu: only relevant pane choices appear. Leave the layout unchanged: no recurring menu changes.
-- [ ] Choose right/bottom panes, change layouts and return: the choices persist independently. Disable automatic view detection: the saved explicit menu selection returns.
-- [ ] Leave an overlay visible while changing Lightroom layout: it stays where it was. Dismiss/reinvoke to use the newly inferred layout. Existing detector still determines actual bounds.
-- [ ] Set screenshot background interval to zero temporarily: live AX view detection still operates. Restore your previous value. Switch apps: polling pauses; return to Lightroom: it resumes. Missing permission/read failure retains previous inference without prompting in the background.
-- [ ] Enable **Save diagnostics after invocation** and invoke. Wait for collection to finish, then ask the agent to read `~/Library/Application Support/CameraReference/Diagnostics/latest.txt`. AX toolbar structure, controls/parents and image inspection now have fresh data without Refresh AX. Check with preview on and off, and floating display.
-- [ ] Rapidly invoke/dismiss/reinvoke or change modules during collection. Old collections must not overwrite the newer invocation’s report. Check a failed invocation also saves fresh diagnostics. Disabled saving produces no automatic deep scan or file writes.
-- [ ] With both experiments off, confirm ordinary screenshot Full/split placement, manual calibration and repeated toggles remain usable.
-
-For the toolbar investigation: Library Loupe, toolbar shown, invoke and wait for the saved report; tell the agent to check before hiding the toolbar and repeating. Manual Refresh AX remains optional. All geometry adjustments can stay zero.
+- [ ] Library Loupe and Develop: show/hide toolbar, invoking after each change. Diagnostics should say fresh shown/hidden. The preview uses the corresponding configured bottom offset; zero offsets intentionally leave the raw bottom unchanged.
+- [ ] Repeat at a smaller window size, with filmstrip hidden, and after switching away/back. Missing menu/permission/focus evidence must say **assumed shown**, not confirmed hidden. No stale toolbar state should be reused.
+- [ ] Diagnostics retain host/display coordinates, full window/panel map, opacity/visibility evidence, labels, inferred view, raw/adjusted pane bounds and toolbar read failures. No exhaustive child/AXSections dump. Reports save automatically after invocation.
+- [ ] Single and both split layouts: coloured preview borders remain separate from actual placement. Live view experiment updates only on change; switching it off restores explicit selection.
+- [ ] Experiments off: existing screenshot Full/split placement, manual placement and repeated toggles remain unchanged. Toolbar assumptions must never change actual overlay bounds.
+- [ ] AX Explorer launches from build/AXExplorer/Explore.command when needed; reports save in investigations/ax-reports. No explorer exists in release/.
