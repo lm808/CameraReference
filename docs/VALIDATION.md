@@ -607,3 +607,7 @@ Live polling, menu transitions and automatic report freshness require user accep
 ## 1.0.22 candidate — AXSections
 
 Native testing build passed. Diagnostic-only traversal added inside accessibilityToolbarReport; screenshot detector files and runtime view/placement coordinator unchanged. Existing full regression suite passed in 1.0.21; it was not rerun for this isolated reporting change. Native AXSections payload/toolbar evidence remains pending. No live app interaction or personal settings edits performed.
+
+## Standalone AX Explorer 1.0.0
+
+Separate executable, no app source/build changes. Native compilation, strict signature verification, shell syntax and diff checks passed. The no-live-AX self-test passed, as did scripted interactive checks for valid/invalid limits, disconnected scan rejection, help and report clearing. User acceptance is still required for permission attribution, interactive traversal and report comparison. No live AX calls or permission requests made by the agent. App remains candidate 1.0.22; main remains 1.0.15.

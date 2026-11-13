@@ -64,3 +64,9 @@ Goal clarified: assess AX-only placement, not introduce a screenshot-dependent h
 ### Library toolbar pair — 1.0.21, 2026-11-13 15:08/15:09
 
 Same host (0,30,2560,1349). Shown screenshot UI bottom y=1197; hidden y=1240 (+43 pt). Raw AX bottom stays 1228. Main-window text (829,1210,1277,17) and checkbox (2132,1205,83,21) disappear when hidden; their actual parent is the main window. Side scroll-area bounds remain unchanged. Visibility unsupported; focused probe capped at 180. This confirms control disappearance but not a stable toolbar container/state. 1.0.22 adds AXSections structural inspection to investigate the unqueried relationship; native results pending.
+
+### Fresh AXSections pair and external explorer
+
+Library reports at 15:18:31 (shown) and 15:20:13 (hidden), 2026-11-13, have identical host (0,30,2560,1349) and fresh captures. Screenshot bottom changes 1197→1240; AX estimate remains 1228. Main AXSections references only the title-bar image in both. Toolbar text/checkbox disappear when hidden; side scroll areas are unchanged. Focused scans hit 180 elements and report 9/11 read errors, so absence of a stable container remains unproven. The earlier 15:14 pair is excluded from conclusions after the user reset the test.
+
+Further exploration is isolated in tools/AXExplorer instead of repeatedly rebuilding the app. It supports pruning known panel roots, inspecting parents/sections/children and changing node/depth/time budgets interactively. Live use is user-operated. Session IDs and numeric paths are evidence only, not durable selectors. No production algorithm changes.

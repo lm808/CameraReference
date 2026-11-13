@@ -70,3 +70,7 @@ Do not commit build/release/dist artifacts, personal config, bridge runtime file
 ## AX investigation candidate
 
 `Sources/AXTrial.swift` owns diagnostic geometry and the opt-in view classifier. Preview corrections never enter capture geometry or its cache key. Experimental `# AX:` config directives keep the shared file compatible with older stable parsers. Classification supplies only layout to the unchanged detector; no clear pair means single, read failure does not. Explicit Refresh AX collects bounded child/parent geometry. Opt-in saved reports overwrite `CameraReference/Diagnostics/latest.txt`; do not commit these reports. Keep diagnostic timestamps when comparing cases.
+
+## Standalone AX exploration
+
+`tools/AXExplorer/` is a separate interactive read-only executable, built/staged by `bash scripts/build-ax-explorer.sh` into `release/AXExplorer/`. It never rebuilds the app or changes its version/settings. Exploratory commands, branch skips and budgets are runtime options. Reports are saved explicitly under the existing CameraReference/Diagnostics/AXExplorer folder. Leave all live use and permission prompts to the user; `--self-test` performs no live AX calls. Review tool findings separately before integrating production selectors.
