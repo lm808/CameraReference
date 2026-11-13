@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.21 — Live AX view and complete diagnostics (candidate)
+
+- Poll inferred AX view while Lightroom is active; update pane menus on changes only.
+- Automatically collect full bounded AX diagnostics after invocation when report saving is enabled.
+
 ## 1.0.20 — Focused AX toolbar investigation (candidate)
 
 - Added structural AX diagnostics to investigate overlooked toolbar containers or visibility state; no placement changes.

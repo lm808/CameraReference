@@ -1,7 +1,9 @@
-# Camera Reference Testing 1.0.20
+# Camera Reference Testing 1.0.21
 
-Diagnostic-only update in the AX investigation worktree. Main remains 1.0.15; bridge stays 0.5.3. Run the staged `release/CameraReference Testing.app`, quitting the stable app first.
+Candidate only; main remains 1.0.15 and bridge 0.5.3. Run this worktree’s staged testing app, not build/.
 
-Diagnostics → Refresh AX now includes **AX toolbar structure**: supported attribute names, actual AXParent geometry, AXContents/AXVisibleChildren relationships and explicit visibility-read statuses. A bounded shallow probe prioritises the main window and its controls before sidebar/catalogue descendants consume the budget. It does not assume checkbox absence proves toolbar visibility, or claim that a toolbar boundary has been found.
+Opt-in automatic AX view detection now polls every two seconds while Lightroom is active in Library/Develop, independently of screenshot background checking. It updates layout/pane menu choices only on a changed inference, retains the previous view on AX failure, and does not reposition a visible overlay. The first invocation can still initialise inference if no live result exists yet.
 
-Screenshot detector, placement, caching, personal config and existing experimental view behaviour are unchanged. Live view polling and automatic deep diagnostics are not part of this focused investigation update. Native evidence is still required; see TESTING.md.
+With **Save diagnostics after invocation** enabled, fresh window mapping, toolbar structure, child controls and image inspection are collected asynchronously after display and saved to the existing latest.txt file. No manual Refresh AX is required; it remains available. Bounded collection is coalesced and stale invocation/module results are discarded. Existing scan limits still apply and are reported.
+
+Screenshot detector sources, geometry calculations and cache algorithms are unchanged. No personal config changes, installation, launch, DMG or push. Native acceptance remains pending; see TESTING.md.

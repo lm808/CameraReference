@@ -161,6 +161,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var detectedLayout:OverlayLayout?
     var detectedLayoutModule:String?
     var viewProbeID:UUID?
+    var liveViewBusy=false
+    var nextLiveViewCheck:TimeInterval=0
+    var liveViewGeneration=0
+    var diagnosticGeneration=0
+    var diagnosticPending=false
+    var diagnosticRunningGeneration = -1
     var lastViewDetection="Automatic view detection disabled."
     var manualOverlayLayout:OverlayLayout { savedOverlayLayout(CameraPreferences.shared,module:currentModule() ?? observedModule) }
     var overlayLayout:OverlayLayout {
@@ -551,6 +557,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.observeWindowGeometry()
             if self.panel != nil { _ = self.orderOverlayAboveLightroom() }
             self.checkPanelBoundariesIfDue()
+            self.checkLiveAXViewIfDue()
             // Module/heartbeat uncertainty invalidates reuse, not the user-visible image.
         }
         if let moduleTimer { RunLoop.main.add(moduleTimer,forMode:.common) }
@@ -586,7 +593,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         DispatchQueue.main.async { [weak self] in
             guard let self,self.savingInvocation else { return }
             self.saveInvocationDiagnostics()
-            if self.pending == nil && self.screenInspectionID == nil && self.panel == nil && self.viewProbeID == nil { self.savingInvocation=false }
+            if self.pending == nil && self.screenInspectionID == nil && self.panel == nil && self.viewProbeID == nil { self.savingInvocation=false;self.collectCompleteDiagnostics() }
         }
     }
     func updateIcon() {
@@ -677,9 +684,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     @objc func checkPhoto() { request(.check) }
     func request(_ target: Destination, viewChecked:Bool=false) {
+        diagnosticGeneration += 1
         savingInvocation = target == .overlay || target == .window
         guard !regionResetting,requireSupportedModule() else { return }
-        if target == .overlay && automaticViewEnabled && !viewChecked && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) {
+        if target == .overlay && automaticViewEnabled && !viewChecked && (detectedLayout == nil || detectedLayoutModule != currentModule()) && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) {
             detectInvocationView();return
         }
         cancelPanelCheck();nextPanelCheck=ProcessInfo.processInfo.systemUptime+reloadDetectionConfig().panelCheckIntervalSeconds
@@ -710,6 +718,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     func failed(_ text: String, target: Destination) {
         cancelRequest(); report(text)
+        collectCompleteDiagnostics()
         if target == .window { floating?.title = floatingTitle + " — unchanged; refresh failed" }
     }
     func selectionEpoch()->String? {
@@ -882,6 +891,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         floatingTitle=filename + " — " + origin.rawValue + " · Camera Reference"
         updateFloatingTitle()
         floating?.orderFrontRegardless()
+        collectCompleteDiagnostics()
     }
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window === floating else { return }
@@ -963,10 +973,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if !automaticViewEnabled && !FeaturePermission.accessibility.ensure() { return }
         cancelRequest();cancelScreenInspection()
         CameraPreferences.shared.set(!automaticViewEnabled,forKey:"experimentalAutomaticView")
+        liveViewGeneration += 1;nextLiveViewCheck=0
         detectedLayout=nil;detectedLayoutModule=nil
         item.state=automaticViewEnabled ? .on:.off
-        lastViewDetection=automaticViewEnabled ? "Enabled; view is sampled at each automatic overlay invocation.":"Disabled; using saved menu selection."
+        lastViewDetection=automaticViewEnabled ? "Enabled; AX view checked every 2 seconds while Lightroom is active.":"Disabled; using saved menu selection."
         invalidateAutomaticGeometry();updateLayoutMenu();report(lastViewDetection)
+    }
+    func checkLiveAXViewIfDue() {
+        let now=ProcessInfo.processInfo.systemUptime
+        guard automaticViewEnabled,!liveViewBusy,!axMappingInProgress,now>=nextLiveViewCheck,
+              isLightroom(),supportedLightroomModule(currentModule()),AXIsProcessTrusted(),
+              pending == nil,viewProbeID == nil,screenInspectionID == nil,calibration == nil else { return }
+        nextLiveViewCheck=now+2;liveViewBusy=true
+        let generation=liveViewGeneration,module=currentModule()
+        DispatchQueue.global(qos:.utility).async {
+            var proposal:AXTrialProposal?
+            _=accessibilityMappingReport { host,windows in proposal=axTrialProposal(host:host,windows:windows) }
+            DispatchQueue.main.async {
+                self.liveViewBusy=false
+                guard self.automaticViewEnabled,self.liveViewGeneration==generation,module==self.currentModule(),
+                      self.isLightroom(),self.pending == nil,self.viewProbeID == nil,self.screenInspectionID == nil,self.calibration == nil else { return }
+                guard let proposal else { self.lastViewDetection="Live AX read unavailable; retaining previous inferred view.";return }
+                let group=proposal.layout == "Side-by-side" ? 1:proposal.layout == "Above-and-below" ? 2:0
+                let preferred=CameraPreferences.shared.string(forKey:"axPreferredPane.\(module ?? "develop").\(group)").flatMap(OverlayLayout.init(rawValue:))
+                let mode:OverlayLayout=group==0 ? .full:(preferred?.group==group ? preferred!:(group==1 ? .left:.upper))
+                guard self.detectedLayout != mode || self.detectedLayoutModule != module else { return }
+                self.detectedLayout=mode;self.detectedLayoutModule=module
+                self.lastViewDetection="Live AX: \(proposal.layout); pane: \(mode.label). Updated \(Date()). Poll interval 2 seconds."
+                self.updateLayoutMenu()
+            }
+        }
     }
     func detectInvocationView() {
         cancelRequest();cancelScreenInspection()
@@ -1050,7 +1086,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 guard self.axTrialGeneration==generation,self.panel === actual else { return }
                 self.lastAXMapping=displays+"\n\n"+mapping
                 self.lastAXTrial=(proposal?.summary ?? "AX proposal unavailable. See Accessibility map; normal overlay unaffected.")+String(format:"\nTrial elapsed: %.0f ms (after normal panel shown).",(ProcessInfo.processInfo.systemUptime-started)*1000)
-                if !drawPreview { self.lastAXTrial += "\nDrawing disabled; collected for automatic diagnostics.";self.saveInvocationDiagnostics();self.savingInvocation=false;return }
+                if !drawPreview { self.lastAXTrial += "\nDrawing disabled; collected for automatic diagnostics.";self.savingInvocation=false;self.collectCompleteDiagnostics();return }
                 if let proposal,let current=self.overlayHost, axTrialHostMatches(proposedTopLeft:proposal.host,actualAppKit:current.frame,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height) {
                     let displayHeight=CGDisplayBounds(CGMainDisplayID()).height
                     for (index,rect) in proposal.panes.enumerated() {
@@ -1070,27 +1106,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                         self.lastAXTrial += "\n\(name): requested AppKit \(frame); actual \(border.frame); visible \(border.isVisible); parent visible \(actual.isVisible); suspended \(self.overlaySuspended)."
                     }
                 } else if proposal != nil { self.lastAXTrial += "\nPreview not drawn: host changed or does not match overlay host. AX top-left: \(proposal!.host); overlay AppKit: \(String(describing:self.overlayHost?.frame))." }
-                self.saveInvocationDiagnostics();self.savingInvocation=false
+                self.savingInvocation=false;self.collectCompleteDiagnostics()
             }
         }
     }
     var axMappingInProgress=false
     @objc func inspectLayout() {
-        guard !axMappingInProgress else { return }
         guard FeaturePermission.accessibility.ensure() else { return }
-        report("Inspecting Lightroom’s accessible layout…")
-        let size = lastImageSize
-        let displays=displayMappingReport()
-        let module=currentModule() ?? "unknown"
-        axMappingInProgress=true
-        DispatchQueue.global(qos: .userInitiated).async {
-            let mapping="Module: \(module)\n\n"+displays+"\n\n"+accessibilityMappingReport()
+        collectCompleteDiagnostics(openWindow:true)
+    }
+    func collectCompleteDiagnostics(openWindow:Bool=false) {
+        guard openWindow || autoDiagnostics else { return }
+        if axMappingInProgress { if diagnosticRunningGeneration != diagnosticGeneration { diagnosticPending=true };return }
+        let generation=diagnosticGeneration,size=lastImageSize,displays=displayMappingReport(),module=currentModule()
+        axMappingInProgress=true;diagnosticRunningGeneration=generation
+        lastAXControls="Collecting fresh controls…";lastAXToolbar="Collecting fresh toolbar structure…"
+        saveInvocationDiagnostics()
+        DispatchQueue.global(qos:.utility).async {
+            let mapping="Module: \(module ?? "unknown")\n\n"+displays+"\n\n"+accessibilityMappingReport()
             let toolbar=accessibilityToolbarReport()
             let controls=accessibilityControlReport()
-            let result = probeLightroom(imageSize: size)
+            let result=probeLightroom(imageSize:size)
             DispatchQueue.main.async {
-                self.axMappingInProgress=false;self.lastAXMapping=mapping;self.lastAXControls=controls;self.lastAXToolbar=toolbar
-                self.lastAXInspection = "Diagnostic inspection only; this does not change calibration or detection mode.\n"+result.summary; self.saveInvocationDiagnostics(); self.showDiagnostics()
+                self.axMappingInProgress=false
+                if generation==self.diagnosticGeneration && module==self.currentModule() {
+                    self.lastAXMapping=mapping;self.lastAXControls=controls;self.lastAXToolbar=toolbar
+                    self.lastAXInspection="Diagnostic only; no placement or preference changes.\n"+result.summary
+                    self.saveInvocationDiagnostics()
+                    if openWindow { self.showDiagnostics() }
+                }
+                if self.diagnosticPending {
+                    self.diagnosticPending=false;self.collectCompleteDiagnostics()
+                }
             }
         }
     }

@@ -187,3 +187,10 @@ Potential AX assistance to individual stages of the existing screenshot detector
 
 
 The 1.0.20 focused toolbar probe runs on explicit AX refresh only, before the general child scan. It enumerates public attribute names and structural relations, includes true AXParent frames, and keeps failures/unsupported states distinct from false visibility. It never enters placement or screenshot detection.
+
+
+### Live AX scheduling and complete reports (1.0.21)
+
+The existing app timer calls an independent AX scheduler at two-second intervals. It runs only when enabled, trusted and Lightroom is active in a supported module; it avoids overlapping itself or mutating layout during requests/capture/calibration. Unchanged layout/module results do not rebuild menu state. Failed reads retain the previous inference; successful no-pair scans mean single. No visible overlay movement/dismissal is performed by this scheduler. Screenshot detector/cache functions are unchanged; their existing layout keys still distinguish placements.
+
+Opt-in report saving triggers bounded full AX diagnostics after the normal overlay/preview or floating display appears, and on idle failure reporting. One collection runs at a time; duplicate work for the same invocation is coalesced, a newer requested collection is queued, and generation/module mismatches discard stale results. Preliminary reports say collection is pending; final reports include toolbar structure, controls and image inspection. Collection does not request permissions or change preferences. Live inference uses its own generation guard, separate from diagnostics and the existing capture pipeline.

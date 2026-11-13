@@ -597,3 +597,9 @@ Next evidence: single view, toolbar shown versus hidden at unchanged host size, 
 ## 1.0.20 candidate — focused toolbar structure
 
 Testing app built successfully with native Swift tools. This change adds read-only diagnostic queries on explicit Refresh AX, with element/depth/time limits and failure reporting. No geometry/detector/placement algorithm changed; full unchanged image suites were not rerun. Native attribute availability and toolbar shown/hidden comparison remain unverified. No app launched or live AX query made by the agent. Earlier saved reports were inspected only.
+
+## 1.0.21 candidate — live view and automatic diagnostics
+
+Testing app built and staged successfully; strict signature verification, staged version check and `git diff --check` passed. Full `bash test.sh` suite passed. ScreenProbe, ViewportDetector, PhotoDetector and SplitLayout sources are unchanged from 1.0.20. Scheduling changes are confined to the app coordinator.
+
+Live polling, menu transitions and automatic report freshness require user acceptance in Lightroom; automated geometry tests do not verify native timing. Diagnostics retain bounded traversal limits and report truncation rather than promising every accessible element. No app launch, live AX query, permission change or personal settings edit was performed. Main and its staged app remain untouched.

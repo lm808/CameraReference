@@ -94,3 +94,5 @@ For Accessibility-to-screenshot mapping, run **Developer tools → Inspect Acces
 Experimental AX tools are grouped under **Developer tools → Experimental features** in the investigation build. Optional automatic view detection chooses the layout; the established screen detector still determines placement. AX preview outlines have independent, zero-default `# AX:` geometry settings in `config.conf`; preserve that prefix when editing so older apps can still read the shared file.
 
 For investigation, enable **Save diagnostics after invocation** to maintain one text report at `~/Library/Application Support/CameraReference/Diagnostics/latest.txt`. **Diagnostics → Refresh AX** adds child-control/parent geometry and refreshes this file when saving is enabled. Manual **Copy all** remains available. No screenshots are saved automatically.
+
+In the investigation build, automatic AX view detection polls while Lightroom is active. Saving diagnostics also gathers fresh toolbar/control data after invocation; manual Refresh AX is optional.

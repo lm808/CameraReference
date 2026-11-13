@@ -42,3 +42,5 @@ Completed functionality belongs in README; implementation rationale in METHODS; 
 - AX placement backend switch remains deferred until preview geometry is accepted.
 
 - Maintain [AX assistance investigation log](AX-ASSISTANCE.md): potential search-band hints, candidate disambiguation, toolbar/hidden-panel evidence, split guidance and cache cross-checks. Trial suggestions diagnostically before changing the established detector.
+
+- 1.0.21 implements live AX menu inference and automatic complete diagnostic collection. Native acceptance and stable toolbar-boundary evidence remain pending.
