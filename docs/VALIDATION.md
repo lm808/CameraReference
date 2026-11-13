@@ -611,3 +611,9 @@ Native testing build passed. Diagnostic-only traversal added inside accessibilit
 ## Standalone AX Explorer 1.0.0
 
 Separate executable, no app source/build changes. Native compilation, strict signature verification, shell syntax and diff checks passed. The no-live-AX self-test passed, as did scripted interactive checks for valid/invalid limits, disconnected scan rejection, help and report clearing. User acceptance is still required for permission attribution, interactive traversal and report comparison. No live AX calls or permission requests made by the agent. App remains candidate 1.0.22; main remains 1.0.15.
+
+## Standalone AX Explorer 1.0.1
+
+Adds only a read-only toolbar menu command. Pure checks cover Show/Hide inference, unknown titles and avoiding Command-T as a toolbar shortcut. No live AX/permission/menu action is performed by the agent. Native menu freshness and availability remain pending; app unchanged at 1.0.22.
+
+Native build, staged signature verification, self-test and disconnected interactive command checks passed for Explorer 1.0.1. Initial execution after an in-place staged binary replacement was killed by macOS; staging now atomically replaces the executable, after which both checks passed. This staging change affects only the standalone explorer. Shell syntax and git diff checks passed.

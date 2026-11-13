@@ -70,3 +70,9 @@ Same host (0,30,2560,1349). Shown screenshot UI bottom y=1197; hidden y=1240 (+4
 Library reports at 15:18:31 (shown) and 15:20:13 (hidden), 2026-11-13, have identical host (0,30,2560,1349) and fresh captures. Screenshot bottom changes 1197→1240; AX estimate remains 1228. Main AXSections references only the title-bar image in both. Toolbar text/checkbox disappear when hidden; side scroll areas are unchanged. Focused scans hit 180 elements and report 9/11 read errors, so absence of a stable container remains unproven. The earlier 15:14 pair is excluded from conclusions after the user reset the test.
 
 Further exploration is isolated in tools/AXExplorer instead of repeatedly rebuilding the app. It supports pruning known panel roots, inspecting parents/sections/children and changing node/depth/time budgets interactively. Live use is user-operated. Session IDs and numeric paths are evidence only, not durable selectors. No production algorithm changes.
+
+### Toolbar menu-state investigation — AX Explorer 1.0.1
+
+Develop full-tree shown/hidden scans examined 838/866 elements in 0.40/0.34 seconds, with no node/time/depth caps. Toolbar controls disappear but no dedicated container was found through the traversed relationships. Most generic errors were AXSections on sidebar rows/indicators; the main-window section read succeeded. One shown-scan menu-child read failed. These results motivate inspecting View's Show/Hide Toolbar menu command, not changing production placement.
+
+Explorer `toolbar` reads menu titles, shortcut/modifiers, checkmark, enabled state and identifier without actions or menu opening. Native tests must establish whether the item updates after T while the menu remains closed, separately in Library and Develop. Even if reliable, this indicates visibility, not toolbar height. Main app and screenshot detector are untouched.

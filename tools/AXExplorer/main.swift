@@ -2,7 +2,7 @@ import AppKit
 import ApplicationServices
 
 // Standalone read-only investigation. No actions, attribute writes, capture or app activation.
-let version = "1.0.0"
+let version = "1.0.1"
 let relationships = ["AXSections", "AXChildren", "AXContents", "AXVisibleChildren", "AXChildrenInNavigationOrder"]
 let scalars: Set<String> = ["AXRole", "AXSubrole", "AXIdentifier", "AXHidden", "AXVisible", "AXEnabled", "AXFocused", "AXMain", "AXMinimized", "AXModal", "AXFullScreen"]
 struct Budget {
@@ -19,11 +19,26 @@ func safeLabel(_ label: String) -> String {
     let s = String(label.unicodeScalars.map { CharacterSet.alphanumerics.contains($0) || $0 == "-" || $0 == "_" ? String($0) : "_" }.joined().prefix(80))
     return s.isEmpty ? "report" : s
 }
+func toolbarState(_ title: String) -> String {
+    switch title.trimmingCharacters(in:.whitespacesAndNewlines).lowercased() {
+    case "hide toolbar": return "visible (inferred from Hide Toolbar command)"
+    case "show toolbar": return "hidden (inferred from Show Toolbar command)"
+    default: return "unknown; inspect raw title/checkmark (no assumption from enabled state)"
+    }
+}
+func toolbarCandidate(_ title:String,_ shortcut:String,_ modifiers:Int?) -> Bool {
+    title.lowercased().contains("toolbar") || (shortcut.lowercased()=="t" && modifiers==8)
+}
 if CommandLine.arguments.contains("--self-test") {
     precondition(parseBudget(["1000","8","5"]) != nil)
     for args in [["0","8","5"],["1000","31","5"],["1000","8","nan"],["1000","8","31"]] { precondition(parseBudget(args) == nil) }
     precondition(safeLabel("../../toolbar shown") == "______toolbar_shown")
-    print("PASS: explorer limits and safe report labels; no live AX calls.")
+    precondition(toolbarState("Hide Toolbar").hasPrefix("visible"))
+    precondition(toolbarState("Show Toolbar").hasPrefix("hidden"))
+    precondition(toolbarState("Show/Hide Toolbar").hasPrefix("unknown"))
+    precondition(toolbarCandidate("Other language","t",8))
+    precondition(!toolbarCandidate("Other action","t",0))
+    print("PASS: toolbar classification, explorer limits and safe report labels; no live AX calls.")
     exit(0)
 }
 
@@ -32,7 +47,7 @@ final class Explorer {
     var paths = [String]()
     var skipped = Set<Int>()
     var budget = Budget()
-    var transcript = "AX Explorer \(version)\nCoordinates: global top-left points. No screenshots, titles or control values.\n"
+    var transcript = "AX Explorer \(version)\nCoordinates: global top-left points. No screenshots or control values. Toolbar command reads menu titles only.\n"
     var pid: pid_t?
     var mainID: Int?
     var partial = false
@@ -145,6 +160,70 @@ final class Explorer {
         emit("Unexplored queued nodes: \(remaining.map{"N\($0)"}.joined(separator:","))\nDepth-limited nodes: \(depthStops)\nExplicitly pruned nodes: \(pruned)")
         emit("Host before=\(String(describing:before)); after=\(String(describing:after)); unchanged=\(before != nil && before==after). IDs are session-local, not stable selectors.")
     }
+    func toolbar(_ menuTitle:String) {
+        guard let pid,!nodes.isEmpty else { emit("Run refresh first.");return }
+        guard NSRunningApplication(processIdentifier:pid)?.isTerminated == false else { emit("Lightroom process ended; run refresh.");return }
+        guard AXIsProcessTrusted() else { emit("Accessibility unavailable; use permission then refresh.");return }
+        let start=ProcessInfo.processInfo.systemUptime
+        deadline=start+budget.seconds;partial=false
+        defer { deadline=Double.greatestFiniteMagnitude }
+        var failures=0
+        func query(_ node:AXUIElement,_ key:String)->(CFTypeRef?,AXError) {
+            AXUIElementSetMessagingTimeout(node,0.03)
+            let result=read(node,key)
+            if result.1 != .success && result.1 != .attributeUnsupported && result.1 != .noValue { failures += 1 }
+            return result
+        }
+        func children(_ node:AXUIElement,_ key:String)->[AXUIElement] {
+            let (raw,status)=query(node,key)
+            if status != .success { emit("Menu relationship \(key): status=\(status.rawValue)") }
+            let result=links(raw,key).map{$0.0}
+            partial = partial || relationClipped
+            return result
+        }
+        func string(_ node:AXUIElement,_ key:String)->String { query(node,key).0 as? String ?? "" }
+        func quoted(_ value:String)->String { String(reflecting:String(value.prefix(240))) }
+        emit("TOOLBAR MENU READ \(Date()); menu=\(quoted(menuTitle)); read-only; no menu opening or actions.")
+        let before=mainID.flatMap{rect(nodes[$0])}
+        let bars=children(nodes[0],"AXMenuBar")
+        let top=bars.flatMap{children($0,"AXChildren")}
+        let named=top.map{($0,string($0,"AXTitle"))}
+        let matches=named.filter{$0.1.caseInsensitiveCompare(menuTitle) == .orderedSame}
+        guard matches.count==1 else {
+            emit("Expected one matching menu; found \(matches.count). Available menu titles: \(named.map{quoted($0.1)}.joined(separator:", ")). For another language use toolbar MENU-TITLE.");return
+        }
+        var queue=[(matches[0].0,0)],seen=[AXUIElement](),cursor=0,candidates=0,depthStops=0
+        while cursor<queue.count,seen.count<budget.limit,ProcessInfo.processInfo.systemUptime<deadline {
+            let (node,depth)=queue[cursor];cursor += 1
+            if seen.contains(where:{CFEqual($0,node)}) { continue }
+            seen.append(node)
+            let role=string(node,"AXRole")
+            if role=="AXMenuItem" {
+                let title=string(node,"AXTitle")
+                let (charRaw,charStatus)=query(node,"AXMenuItemCmdChar")
+                let char=charRaw as? String ?? ""
+                let (modsRaw,modsStatus)=query(node,"AXMenuItemCmdModifiers")
+                let mods=(modsRaw as? NSNumber)?.intValue
+                if toolbarCandidate(title,char,mods) {
+                    candidates += 1
+                    emit("Candidate \(candidates): title=\(quoted(title)); title-derived state=\(toolbarState(title))")
+                    emit("  shortcut=\(quoted(char)) [\(charStatus.rawValue)]; modifiers=\(mods.map{String($0)} ?? "unavailable") [\(modsStatus.rawValue)] (8 means no Command modifier)")
+                    for key in ["AXMenuItemMarkChar","AXEnabled","AXIdentifier"] {
+                        let (raw,status)=query(node,key)
+                        let rendered=raw.map{quoted(String(describing:$0))} ?? "unavailable"
+                        emit("  \(key)=\(rendered) [\(status.rawValue)]")
+                    }
+                }
+            }
+            if depth>=budget.depth { depthStops += 1;continue }
+            for child in children(node,"AXChildren") { queue.append((child,depth+1)) }
+        }
+        let timedOut=ProcessInfo.processInfo.systemUptime>=deadline
+        deadline=Double.greatestFiniteMagnitude
+        let after=mainID.flatMap{rect(nodes[$0])}
+        emit("TOOLBAR END candidates=\(candidates), examined=\(seen.count), elapsed=\(String(format:"%.2f",ProcessInfo.processInfo.systemUptime-start))s, timeLimit=\(timedOut), queuedRemaining=\(queue.count-cursor), depthStops=\(depthStops), partialPayload=\(partial), readErrors=\(failures)")
+        emit("Host before=\(String(describing:before)); after=\(String(describing:after)). No candidate or multiple candidates is inconclusive. Menu state freshness must be tested with the menu closed.")
+    }
     func save(_ label: String) {
         let directory=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/CameraReference/Diagnostics/AXExplorer",isDirectory:true)
         let stamp=ISO8601DateFormatter().string(from:Date()).replacingOccurrences(of:":",with:"-")
@@ -171,6 +250,7 @@ final class Explorer {
             case "help": emit("""
 refresh                 Connect/reconnect; list Lightroom windows; reset IDs/skips
 windows                 Refresh AXWindows list (same session IDs)
+toolbar [MENU-TITLE]    Read toolbar command in View menu, without opening it
 node N                  Role, frame, safe attributes, parent and relationships
 children N              List direct children
 sections N              Follow AXSections (including nested dictionaries)
@@ -183,12 +263,13 @@ save LABEL              Save accumulated report under CameraReference/Diagnostic
 clear                   Start a new report; keeps current IDs and skips
 permission              Request Accessibility access; then use refresh
 quit                    Exit (save first if wanted)
-No actions or attribute writes. Titles, descriptions and control values are omitted.
+No actions or attribute writes. Only toolbar command reads menu titles; other text/values omitted.
 """)
             case "permission":
                 let options=[kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String:true] as CFDictionary
                 emit("Accessibility granted: \(AXIsProcessTrustedWithOptions(options)). If unchanged, check System Settings for this executable or Terminal; restart explorer if necessary.")
             case "refresh": refresh()
+            case "toolbar": toolbar(parts.count>1 ? parts.dropFirst().joined(separator:" "):"View")
             case "limits":
                 if let next=parseBudget(Array(parts.dropFirst())) { budget=next;emit("Limits: \(next.limit) elements, depth \(next.depth), \(next.seconds)s") }
                 else { emit("Use limits COUNT DEPTH SEC: 1–10000, 0–30, 0.1–30.") }
