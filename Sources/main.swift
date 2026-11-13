@@ -970,7 +970,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 self.lastAXMapping=displays+"\n\n"+mapping
                 self.lastAXTrial=(proposal?.summary ?? "AX proposal unavailable. See Accessibility map; normal overlay unaffected.")+String(format:"\nTrial elapsed: %.0f ms (after normal panel shown).",(ProcessInfo.processInfo.systemUptime-started)*1000)
                 if !drawPreview { self.lastAXTrial += "\nDrawing disabled; collected for automatic diagnostics.";self.copyInvocationDiagnostics();self.copyingInvocation=false;return }
-                if let proposal,let current=self.overlayHost, abs(current.frame.minX-proposal.host.minX)<2,abs(current.frame.minY-proposal.host.minY)<2,abs(current.frame.width-proposal.host.width)<2,abs(current.frame.height-proposal.host.height)<2 {
+                if let proposal,let current=self.overlayHost, axTrialHostMatches(proposedTopLeft:proposal.host,actualAppKit:current.frame,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height) {
                     let displayHeight=CGDisplayBounds(CGMainDisplayID()).height
                     for (index,rect) in proposal.panes.enumerated() {
                         let frame=CGRect(x:rect.minX,y:displayHeight-rect.maxY,width:rect.width,height:rect.height)
@@ -982,10 +982,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                         let name=proposal.panes.count==1 ? "AX single":(proposal.layout=="Side-by-side" ? (index==0 ? "AX left":"AX right"):(index==0 ? "AX top":"AX bottom"))
                         border.contentView=AXTrialBorder(size:frame.size,tint:index==0 ? .systemGreen:.systemPurple,label:name)
                         actual.addChildWindow(border,ordered:.above)
-                        if self.overlaySuspended { border.orderOut(nil) }
+                        if !self.overlaySuspended && actual.isVisible {
+                            border.orderFront(nil)
+                        } else { border.orderOut(nil) }
                         self.axTrialBorders.append(border)
+                        self.lastAXTrial += "\n\(name): requested AppKit \(frame); actual \(border.frame); visible \(border.isVisible); parent visible \(actual.isVisible); suspended \(self.overlaySuspended)."
                     }
-                } else if proposal != nil { self.lastAXTrial += "\nPreview not drawn: host changed or does not match overlay host." }
+                } else if proposal != nil { self.lastAXTrial += "\nPreview not drawn: host changed or does not match overlay host. AX top-left: \(proposal!.host); overlay AppKit: \(String(describing:self.overlayHost?.frame))." }
                 self.copyInvocationDiagnostics();self.copyingInvocation=false
             }
         }

@@ -1,6 +1,10 @@
 import AppKit
 
 // Diagnostic only. Never consumed by the production placement pipeline.
+func axTrialHostMatches(proposedTopLeft:CGRect, actualAppKit:CGRect, primaryHeight:CGFloat)->Bool {
+    let converted=CGRect(x:proposedTopLeft.minX,y:primaryHeight-proposedTopLeft.maxY,width:proposedTopLeft.width,height:proposedTopLeft.height)
+    return abs(converted.minX-actualAppKit.minX)<2 && abs(converted.minY-actualAppKit.minY)<2 && abs(converted.width-actualAppKit.width)<2 && abs(converted.height-actualAppKit.height)<2
+}
 struct AXTrialWindow {
     let frame:CGRect
     let visible:Bool

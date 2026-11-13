@@ -558,3 +558,8 @@ let trialMovedHost=CGRect(x:587,y:47,width:1950,height:1253)
 let trialMoved=axTrialProposal(host:trialMovedHost,windows:[tw(587,79,1950,70),tw(587,1149,1950,151),tw(587,139,324,1020),tw(2202,139,335,1020),tw(1472,139,83,25),tw(1558,139,113,25)])!
 assert(trialMoved.layout=="Side-by-side" && trialMoved.panes[0].maxX==1556.5)
 print("PASS: diagnostic AX raw bounds, both splits, invisible labels/panels, resized translated host; no information windows")
+
+assert(axTrialHostMatches(proposedTopLeft:CGRect(x:0,y:30,width:2560,height:1349),actualAppKit:CGRect(x:0,y:61,width:2560,height:1349),primaryHeight:1440))
+assert(!axTrialHostMatches(proposedTopLeft:CGRect(x:0,y:30,width:2560,height:1349),actualAppKit:CGRect(x:0,y:30,width:2560,height:1349),primaryHeight:1440))
+assert(axTrialHostMatches(proposedTopLeft:CGRect(x:-1080,y:-480,width:1000,height:1200),actualAppKit:CGRect(x:-1080,y:720,width:1000,height:1200),primaryHeight:1440))
+print("PASS: AX trial host matching converts top-left to AppKit, including negative display origins")

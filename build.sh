@@ -21,8 +21,8 @@ cat > build/CameraReference.app/Contents/Info.plist <<'PLIST'
 <key>CFBundleIconFile</key><string>AppIcon.icns</string>
 <key>CFBundleName</key><string>CameraReference</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>1.0.16</string>
-<key>CFBundleVersion</key><string>46</string>
+<key>CFBundleShortVersionString</key><string>1.0.18</string>
+<key>CFBundleVersion</key><string>48</string>
 <key>LSUIElement</key><true/>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>

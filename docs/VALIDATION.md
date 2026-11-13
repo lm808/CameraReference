@@ -575,3 +575,13 @@ Automated validation: full bash test.sh passed, including a 40-row synthetic AX 
 Synthetic AX fixtures cover single/split estimates, hidden labels/panels, and the translated 1950 × 1253 smaller host without information rectangles. User screenshots established the evidence described in METHODS; they do not validate the new implementation. Native acceptance checklist is TESTING.md. Main remains 1.0.15.
 
 Automated checks: `bash test.sh` passed (Swift regression executables and Lua stand-ins, including AX trial fixtures). Testing app builds with native Apple tools. No app launch, permission change or Lightroom interaction was performed by the agent.
+
+
+## 1.0.17 candidate
+
+The AX option was confirmed enabled in read-only preferences. Source review found no explicit order-front call for newly attached diagnostic panels. Added it, preserving suspension, with per-panel visibility/frame reporting. Native verification remains with the user; no live app interaction performed.
+
+
+## 1.0.18 candidate
+
+User report confirmed a valid proposal was rejected by the preview host check. Source inspection established AX top-left was compared directly against HostWindowSnapshot AppKit bounds. Corrected only the trial comparison; regression includes the reported (0,30,2560,1349) host and its AppKit (0,61,2560,1349) counterpart on the 1440-point primary display, plus a negative-origin display.

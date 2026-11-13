@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.18 — AX trial host coordinate correction (candidate)
+
+Convert AX top-left host coordinates to AppKit before comparing with the overlay host. Previously the trial incorrectly rejected unchanged windows. Production host tracking and detection remain unchanged.
+
+## 1.0.17 — show AX trial borders (candidate)
+
+Explicitly show the trial child panels after attaching them to the normal overlay. Add per-border frame/visibility diagnostics. Normal detector unchanged; native confirmation pending.
+
 ## 1.0.16 — AX diagnostic trial (candidate)
 
 Add independent single/split AX placement outlines, optional automatic diagnostic copying, and consolidated Accessibility/image inspection reporting. Production placement remains unchanged. Raw toolbar/margin corrections and native acceptance remain pending.
