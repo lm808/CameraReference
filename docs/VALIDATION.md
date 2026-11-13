@@ -558,3 +558,7 @@ The unchanged 1.0.10 comparison build also displaced off-screen placement at (-2
 Preview returns the original captured CGImage before metadata validation/normalization, including missing metadata and malformed geometry. Window movement does not reject an already acquired diagnostic preview. Normal placement and snapping keep their guards. Synthetic checks verify original image identity/dimensions on preview and rejection/cropping on placement. Native intermittent failure reproduction is left to the user. No runtime setting changes or live app interaction.
 
 1.0.14 automated checks: full bash test.sh passed, including unchanged-image preview with absent/invalid geometry and retained placement rejection/cropping. Testing build succeeded; no live UI checks performed. User constrained this update to raw-preview behaviour only and will consider a merge after brief native testing.
+
+## Acceptance and main promotion — 2026-11-12
+
+User reported 1.0.14 looks good for now and explicitly requested merge into main. Main fast-forwarded to 5494c24; normal-identity release/CameraReference.app rebuilt from accepted sources. Brief minimise lingering remains accepted. Intermittent off-screen/split failures remain open for longer-term observation; this acceptance is not a claim those cases are solved. No settings changed, app launched, plugin installed, DMG packaged or remote pushed.
