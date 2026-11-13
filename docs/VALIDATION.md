@@ -617,3 +617,7 @@ Separate executable, no app source/build changes. Native compilation, strict sig
 Adds only a read-only toolbar menu command. Pure checks cover Show/Hide inference, unknown titles and avoiding Command-T as a toolbar shortcut. No live AX/permission/menu action is performed by the agent. Native menu freshness and availability remain pending; app unchanged at 1.0.22.
 
 Native build, staged signature verification, self-test and disconnected interactive command checks passed for Explorer 1.0.1. Initial execution after an in-place staged binary replacement was killed by macOS; staging now atomically replaces the executable, after which both checks passed. This staging change affects only the standalone explorer. Shell syntax and git diff checks passed.
+
+## Standalone AX Explorer 1.0.2
+
+Delayed toolbar command built/staged successfully and strict signature verification passed. Pure tests validate finite 1–60 second delays; scripted command checks confirm invalid arguments and disconnected requests return immediately without sleeping or querying AX. Native delayed focus/menu freshness testing remains with the user. No live interaction performed; main app and screenshot detector unchanged.

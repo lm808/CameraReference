@@ -1,4 +1,4 @@
-# AX Explorer 1.0.1
+# AX Explorer 1.0.2
 
 Standalone, read-only Lightroom Accessibility investigation. It does not link CameraReference app code, capture the screen, activate Lightroom, change settings or perform AX actions. The app is not rebuilt. No Screen Recording permission is needed.
 
@@ -6,7 +6,13 @@ Standalone, read-only Lightroom Accessibility investigation. It does not link Ca
 
 Double-click the staged `release/AXExplorer/Explore.command` (opens Terminal), or run `release/AXExplorer/AXExplorer` from Terminal. Type `permission` if access has not been granted, follow System Settings, then `refresh`. macOS may attribute permission to Terminal or the executable. Do not remove existing CameraReference permissions. If access remains unavailable, restart the explorer. No automatic permission prompt on startup.
 
-## Toolbar menu state (new in 1.0.1)
+## Delayed reading (1.0.2)
+
+Use `toolbar-after 10` to give yourself ten seconds to switch to Lightroom. Leave View closed and Lightroom active. The explorer does not activate any application: it waits, verifies Lightroom is frontmost, then reads. If Lightroom is not active it skips the read and reports unknown. Immediate and delayed readings report focus before and after; missing menus also mean unknown. Delay can be 1–60 seconds, default ten; `toolbar-after 10 MENU-TITLE` supports localized menu titles. Ctrl-C exits the explorer if you need to cancel the wait.
+
+For the comparison: `refresh`, `note Develop toolbar shown`, `toolbar-after 10`; switch to Lightroom before the delay ends. Wait a few seconds beyond the delay before returning to Terminal. Repeat with `note Develop toolbar hidden` and `toolbar-after 10`, returning to Lightroom and pressing T before the reading. Save both with `save develop-toolbar-menu-delayed-pair`. Ensure Lightroom's normal menu headings have recovered first; if they are still missing, the result is inconclusive. No need to open View to prime it.
+
+## Toolbar menu state (1.0.1)
 
 Quit the previous explorer and reopen the staged Explore.command. After `refresh`, run `toolbar` with Lightroom's toolbar shown. It reads the View menu without opening it or selecting anything. Return to Lightroom, press T, return to the explorer and run `toolbar` again. Do not open View between readings. Use `note toolbar shown` / `note toolbar hidden` to label each reading, then `save develop-toolbar-menu-pair` (or Library).
 

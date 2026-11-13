@@ -76,3 +76,7 @@ Further exploration is isolated in tools/AXExplorer instead of repeatedly rebuil
 Develop full-tree shown/hidden scans examined 838/866 elements in 0.40/0.34 seconds, with no node/time/depth caps. Toolbar controls disappear but no dedicated container was found through the traversed relationships. Most generic errors were AXSections on sidebar rows/indicators; the main-window section read succeeded. One shown-scan menu-child read failed. These results motivate inspecting View's Show/Hide Toolbar menu command, not changing production placement.
 
 Explorer `toolbar` reads menu titles, shortcut/modifiers, checkmark, enabled state and identifier without actions or menu opening. Native tests must establish whether the item updates after T while the menu remains closed, separately in Library and Develop. Even if reliable, this indicates visibility, not toolbar height. Main app and screenshot detector are untouched.
+
+### Menu focus caveat — Explorer 1.0.2
+
+Develop menu pair at 16:16:58/16:17:28 (2026-11-13) exposed only Apple, Lightroom Classic, File, Edit, Window and Help. No View menu, so no toolbar-state comparison was possible. User observed matching missing menu headings after Lightroom lost/regained focus. Explorer now supports a delayed read to allow manual return to Lightroom, records focus at both ends and skips the delayed query if Lightroom is not active. Missing menu means unknown, not hidden. No activation/menu actions and no app changes.

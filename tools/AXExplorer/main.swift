@@ -2,7 +2,7 @@ import AppKit
 import ApplicationServices
 
 // Standalone read-only investigation. No actions, attribute writes, capture or app activation.
-let version = "1.0.1"
+let version = "1.0.2"
 let relationships = ["AXSections", "AXChildren", "AXContents", "AXVisibleChildren", "AXChildrenInNavigationOrder"]
 let scalars: Set<String> = ["AXRole", "AXSubrole", "AXIdentifier", "AXHidden", "AXVisible", "AXEnabled", "AXFocused", "AXMain", "AXMinimized", "AXModal", "AXFullScreen"]
 struct Budget {
@@ -19,6 +19,10 @@ func safeLabel(_ label: String) -> String {
     let s = String(label.unicodeScalars.map { CharacterSet.alphanumerics.contains($0) || $0 == "-" || $0 == "_" ? String($0) : "_" }.joined().prefix(80))
     return s.isEmpty ? "report" : s
 }
+func toolbarDelay(_ value:String) -> Double? {
+    guard let seconds=Double(value),seconds.isFinite,(1...60).contains(seconds) else { return nil }
+    return seconds
+}
 func toolbarState(_ title: String) -> String {
     switch title.trimmingCharacters(in:.whitespacesAndNewlines).lowercased() {
     case "hide toolbar": return "visible (inferred from Hide Toolbar command)"
@@ -33,6 +37,8 @@ if CommandLine.arguments.contains("--self-test") {
     precondition(parseBudget(["1000","8","5"]) != nil)
     for args in [["0","8","5"],["1000","31","5"],["1000","8","nan"],["1000","8","31"]] { precondition(parseBudget(args) == nil) }
     precondition(safeLabel("../../toolbar shown") == "______toolbar_shown")
+    precondition(toolbarDelay("10") == 10)
+    for value in ["0","61","nan","inf","oops"] { precondition(toolbarDelay(value) == nil) }
     precondition(toolbarState("Hide Toolbar").hasPrefix("visible"))
     precondition(toolbarState("Show Toolbar").hasPrefix("hidden"))
     precondition(toolbarState("Show/Hide Toolbar").hasPrefix("unknown"))
@@ -160,13 +166,30 @@ final class Explorer {
         emit("Unexplored queued nodes: \(remaining.map{"N\($0)"}.joined(separator:","))\nDepth-limited nodes: \(depthStops)\nExplicitly pruned nodes: \(pruned)")
         emit("Host before=\(String(describing:before)); after=\(String(describing:after)); unchanged=\(before != nil && before==after). IDs are session-local, not stable selectors.")
     }
+    func delayedToolbar(_ args:[String]) {
+        guard let seconds=toolbarDelay(args.first ?? "10") else { emit("Use toolbar-after SECONDS [MENU-TITLE], with 1–60 seconds.");return }
+        guard let pid,!nodes.isEmpty else { emit("Run refresh first.");return }
+        let menu=args.count>1 ? args.dropFirst().joined(separator:" "):"View"
+        emit("Reading toolbar menu in \(seconds) seconds. Switch to Lightroom now; leave its menus closed. Ctrl-C cancels the explorer.")
+        fflush(stdout)
+        Thread.sleep(forTimeInterval:seconds)
+        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
+            emit("DELAYED TOOLBAR \(Date()): Lightroom is not frontmost; reading skipped. Visibility unknown. Retry toolbar-after when ready.");return
+        }
+        toolbar(menu)
+    }
     func toolbar(_ menuTitle:String) {
         guard let pid,!nodes.isEmpty else { emit("Run refresh first.");return }
         guard NSRunningApplication(processIdentifier:pid)?.isTerminated == false else { emit("Lightroom process ended; run refresh.");return }
         guard AXIsProcessTrusted() else { emit("Accessibility unavailable; use permission then refresh.");return }
+        let frontmostBefore=NSWorkspace.shared.frontmostApplication?.processIdentifier == pid
         let start=ProcessInfo.processInfo.systemUptime
         deadline=start+budget.seconds;partial=false
-        defer { deadline=Double.greatestFiniteMagnitude }
+        defer {
+            deadline=Double.greatestFiniteMagnitude
+            let frontmostAfter=NSWorkspace.shared.frontmostApplication?.processIdentifier == pid
+            emit("Lightroom frontmost: before=\(frontmostBefore), after=\(frontmostAfter). \(frontmostBefore && frontmostAfter ? "Active at both samples; menu freshness still requires comparison.":"Focus was not confirmed at both samples; do not rely on this reading as a live visibility state.")")
+        }
         var failures=0
         func query(_ node:AXUIElement,_ key:String)->(CFTypeRef?,AXError) {
             AXUIElementSetMessagingTimeout(node,0.03)
@@ -190,7 +213,7 @@ final class Explorer {
         let named=top.map{($0,string($0,"AXTitle"))}
         let matches=named.filter{$0.1.caseInsensitiveCompare(menuTitle) == .orderedSame}
         guard matches.count==1 else {
-            emit("Expected one matching menu; found \(matches.count). Available menu titles: \(named.map{quoted($0.1)}.joined(separator:", ")). For another language use toolbar MENU-TITLE.");return
+            emit("Toolbar visibility unknown: expected one matching menu; found \(matches.count). Available menu titles: \(named.map{quoted($0.1)}.joined(separator:", ")). For another language use toolbar MENU-TITLE.");return
         }
         var queue=[(matches[0].0,0)],seen=[AXUIElement](),cursor=0,candidates=0,depthStops=0
         while cursor<queue.count,seen.count<budget.limit,ProcessInfo.processInfo.systemUptime<deadline {
@@ -251,6 +274,7 @@ final class Explorer {
 refresh                 Connect/reconnect; list Lightroom windows; reset IDs/skips
 windows                 Refresh AXWindows list (same session IDs)
 toolbar [MENU-TITLE]    Read toolbar command in View menu, without opening it
+toolbar-after [SEC] [MENU-TITLE]  Wait (default 10s), then read only if Lightroom is active
 node N                  Role, frame, safe attributes, parent and relationships
 children N              List direct children
 sections N              Follow AXSections (including nested dictionaries)
@@ -270,6 +294,7 @@ No actions or attribute writes. Only toolbar command reads menu titles; other te
                 emit("Accessibility granted: \(AXIsProcessTrustedWithOptions(options)). If unchanged, check System Settings for this executable or Terminal; restart explorer if necessary.")
             case "refresh": refresh()
             case "toolbar": toolbar(parts.count>1 ? parts.dropFirst().joined(separator:" "):"View")
+            case "toolbar-after": delayedToolbar(Array(parts.dropFirst()))
             case "limits":
                 if let next=parseBudget(Array(parts.dropFirst())) { budget=next;emit("Limits: \(next.limit) elements, depth \(next.depth), \(next.seconds)s") }
                 else { emit("Use limits COUNT DEPTH SEC: 1–10000, 0–30, 0.1–30.") }
