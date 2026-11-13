@@ -6,3 +6,6 @@ build/
 dist/
 
 release/
+
+# Local AX probing evidence (not source or runtime app state)
+investigations/ax-reports/

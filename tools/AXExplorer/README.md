@@ -1,4 +1,4 @@
-# AX Explorer 1.0.2
+# AX Explorer 1.0.3
 
 Standalone, read-only Lightroom Accessibility investigation. It does not link CameraReference app code, capture the screen, activate Lightroom, change settings or perform AX actions. The app is not rebuilt. No Screen Recording permission is needed.
 
@@ -28,7 +28,7 @@ Default menu title is English `View`; `toolbar MENU-TITLE` selects a localized m
 4. `scan` explores the application/windows with those skips. `limits 2000 10 8` increases limits without recompiling. Every report states scan limits reached, skipped/depth-limited nodes and queued unexplored IDs. Absence in a partial scan does not prove absence in AX.
 5. Hide only the toolbar. Run `clear`, `note Library toolbar hidden`, `node main`, `scan main`, and `save library-toolbar-hidden`. Ask the agent to compare reports. Use `refresh` if Lightroom restarted or references became invalid; it resets IDs and skips.
 
-Reports are saved only on `save`, with unique filenames in `~/Library/Application Support/CameraReference/Diagnostics/AXExplorer/`. They accumulate until you delete them; they do not overwrite the app's `latest.txt`. No screenshot or photo is saved. Reports include identifiers, geometry, roles, attribute names, section dictionary paths, your notes and error codes; titles/descriptions/control values are omitted except the explicit toolbar menu command described above. Review before sharing.
+Reports are saved only on `save`, with unique filenames in the development worktree’s ignored `investigations/ax-reports/` folder. They accumulate until you delete them; they do not overwrite the app's `latest.txt`. No screenshot or photo is saved. Reports include identifiers, geometry, roles, attribute names, section dictionary paths, your notes and error codes; titles/descriptions/control values are omitted except the explicit toolbar menu command described above. Review before sharing.
 
 ## Commands
 
@@ -39,3 +39,5 @@ IDs and recorded routes describe this session only. Do not use child indices as 
 ## Build and validation
 
 From the candidate worktree: `bash scripts/build-ax-explorer.sh`. It builds/stages only this tool under ignored build/release folders; no main app build, installation or launch. `release/AXExplorer/AXExplorer --self-test` checks argument validation and safe filenames without live AX calls. Native permission/traversal acceptance is performed by the user.
+
+Report location is derived from the executable location, not the shell working directory. Both staged release/AXExplorer and build/AXExplorer resolve to the worktree. A copy outside those folders saves in ax-reports beside that executable. Existing reports were moved out of Application Support; reopen Explorer 1.0.3 before saving more reports. The main app’s Diagnostics/latest.txt remains runtime state in Application Support.

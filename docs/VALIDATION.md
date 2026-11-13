@@ -621,3 +621,7 @@ Native build, staged signature verification, self-test and disconnected interact
 ## Standalone AX Explorer 1.0.2
 
 Delayed toolbar command built/staged successfully and strict signature verification passed. Pure tests validate finite 1–60 second delays; scripted command checks confirm invalid arguments and disconnected requests return immediately without sleeping or querying AX. Native delayed focus/menu freshness testing remains with the user. No live interaction performed; main app and screenshot detector unchanged.
+
+## Standalone AX Explorer 1.0.3
+
+Moved five existing probe reports from Application Support into the development worktree’s ignored investigations/ax-reports directory. Future saves resolve that directory from the executable location. Pure path checks cover release, build and externally copied executables; self-tests, native build, strict signature verification and diff checks passed. Git ignores the report directory. No live AX calls were made; main app, screenshot detector and personal settings are unchanged. Reopen the explorer to use the new save location.

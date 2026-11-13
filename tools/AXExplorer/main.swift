@@ -2,7 +2,7 @@ import AppKit
 import ApplicationServices
 
 // Standalone read-only investigation. No actions, attribute writes, capture or app activation.
-let version = "1.0.2"
+let version = "1.0.3"
 let relationships = ["AXSections", "AXChildren", "AXContents", "AXVisibleChildren", "AXChildrenInNavigationOrder"]
 let scalars: Set<String> = ["AXRole", "AXSubrole", "AXIdentifier", "AXHidden", "AXVisible", "AXEnabled", "AXFocused", "AXMain", "AXMinimized", "AXModal", "AXFullScreen"]
 struct Budget {
@@ -18,6 +18,15 @@ func parseBudget(_ args: [String]) -> Budget? {
 func safeLabel(_ label: String) -> String {
     let s = String(label.unicodeScalars.map { CharacterSet.alphanumerics.contains($0) || $0 == "-" || $0 == "_" ? String($0) : "_" }.joined().prefix(80))
     return s.isEmpty ? "report" : s
+}
+func reportDirectory(executable:URL) -> URL {
+    let folder=executable.deletingLastPathComponent()
+    let staging=folder.deletingLastPathComponent()
+    if folder.lastPathComponent=="AXExplorer",["release","build"].contains(staging.lastPathComponent) {
+        return staging.deletingLastPathComponent().appendingPathComponent("investigations/ax-reports",isDirectory:true)
+    }
+    // If copied elsewhere, keep probe data beside the executable, never in app support.
+    return folder.appendingPathComponent("ax-reports",isDirectory:true)
 }
 func toolbarDelay(_ value:String) -> Double? {
     guard let seconds=Double(value),seconds.isFinite,(1...60).contains(seconds) else { return nil }
@@ -37,6 +46,9 @@ if CommandLine.arguments.contains("--self-test") {
     precondition(parseBudget(["1000","8","5"]) != nil)
     for args in [["0","8","5"],["1000","31","5"],["1000","8","nan"],["1000","8","31"]] { precondition(parseBudget(args) == nil) }
     precondition(safeLabel("../../toolbar shown") == "______toolbar_shown")
+    precondition(reportDirectory(executable:URL(fileURLWithPath:"/repo/release/AXExplorer/AXExplorer")).path == "/repo/investigations/ax-reports")
+    precondition(reportDirectory(executable:URL(fileURLWithPath:"/repo/build/AXExplorer/AXExplorer")).path == "/repo/investigations/ax-reports")
+    precondition(reportDirectory(executable:URL(fileURLWithPath:"/other/AXExplorer")).path == "/other/ax-reports")
     precondition(toolbarDelay("10") == 10)
     for value in ["0","61","nan","inf","oops"] { precondition(toolbarDelay(value) == nil) }
     precondition(toolbarState("Hide Toolbar").hasPrefix("visible"))
@@ -248,7 +260,7 @@ final class Explorer {
         emit("Host before=\(String(describing:before)); after=\(String(describing:after)). No candidate or multiple candidates is inconclusive. Menu state freshness must be tested with the menu closed.")
     }
     func save(_ label: String) {
-        let directory=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/CameraReference/Diagnostics/AXExplorer",isDirectory:true)
+        let directory=reportDirectory(executable:URL(fileURLWithPath:CommandLine.arguments[0]).standardizedFileURL.resolvingSymlinksInPath())
         let stamp=ISO8601DateFormatter().string(from:Date()).replacingOccurrences(of:":",with:"-")
         let file=directory.appendingPathComponent("\(stamp)-\(safeLabel(label))-\(UUID().uuidString.prefix(6)).txt")
         do {
@@ -283,7 +295,7 @@ skip N / unskip N       Prune/unprune this node wherever reached during scans
 skips                   Show pruning list
 limits COUNT DEPTH SEC  Adjust without recompiling (max 10000 / 30 / 30)
 note TEXT               Add test conditions to report
-save LABEL              Save accumulated report under CameraReference/Diagnostics/AXExplorer
+save LABEL              Save report under the development worktree’s investigations/ax-reports
 clear                   Start a new report; keeps current IDs and skips
 permission              Request Accessibility access; then use refresh
 quit                    Exit (save first if wanted)
