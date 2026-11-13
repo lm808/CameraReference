@@ -1,11 +1,9 @@
-# CameraReference 1.0.14 — ongoing edge cases
+# Camera Reference 1.0.15 — diagnostic mapping
 
-User accepted 1.0.14 for daily use and requested its merge to main. Bridge remains **0.5.3**. Run `release/CameraReference.app`. No settings or plugin update needed. Minimise lingering is accepted.
+Run `release/CameraReference.app` (normal icon/name), bridge **0.5.3**. This update only expands diagnostics; accepted 1.0.14 behaviour is unchanged.
 
-- [ ] Use **Developer tools → Preview captured Lightroom window…** with Lightroom partly off-screen, including when overlay placement fails. If macOS returns an image, the raw preview should open with all padding/displacement intact. Geometry rejection must not block it.
-- [ ] Copy diagnostics alongside any abnormal preview: it should say **RAW PREVIEW** and include frame rectangles, scale and buffer size. Do not interpret a successful preview as validated placement.
-- [ ] Quick normal overlay check: placement/snapping must still reject malformed geometry; Full/split calculations are unchanged.
+- [ ] Choose **Developer tools → Inspect Accessibility layout…**. In the report, find **Accessibility & display map**. Check that AXWindows returned/examined counts and W1…Wn entries are present; unreadable or budget-limited entries must be explicit.
+- [ ] Check each display appears with its name/D-number, global bounds, backing scale and mode pixels. Unsupported AXVisible is expected on some objects and does not mean hidden.
+- [ ] Dismiss the report, keep Lightroom's window/panels unchanged, and take an original full-display screenshot. Send **Bridge diagnostics → Copy all**, the screenshot and its D-number/name. No need to clear/calibrate regions or change settings.
 
-Continue collecting intermittent Full/split and off-screen cases during ordinary use; no need to force a reproduction now. Actual capture/permission/conversion failures can still prevent an image. Preview captures afresh; it does not yet recover an earlier failed attempt. Images stay in RAM and are not saved automatically.
-
-Prior native results are in docs/VALIDATION.md. Module/app-switching and Mission Control check remains deferred. Keep collecting intermittent failures; acceptance does not establish that every edge case is fixed.
+Continue ordinary edge-case collection separately. Minimise lingering is accepted; off-screen/split intermittency and the deferred Mission Control/module-switch check remain documented in docs/BACKLOG.md and docs/VALIDATION.md.

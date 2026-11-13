@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.15 — Accessibility mapping diagnostics
+
+Expand explicit Accessibility inspection with all returned AX window entries, available roles/state and precise rectangles, matching window-list metadata, and named display geometry/scales. Dedicated copyable diagnostic section; no placement or background-monitoring changes.
+
 ## 1.0.14 — raw preview
 
 Allow diagnostic previews to show the original captured frame despite missing/inconsistent geometry or window movement. Do not crop/normalize independent-window previews. Overlay placement and snapping retain validation. Intermittent off-screen placement remains under investigation.

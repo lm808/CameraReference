@@ -530,3 +530,12 @@ assert(!hostPresentationIsShrinking(reported:animatedHost,logical:animatedHost,s
 assert(!hostPresentationIsShrinking(reported:CGRect(x:0,y:101,width:2428,height:1349),logical:logicalHost,saved:logicalHost))
 assert(!hostPresentationIsShrinking(reported:.zero,logical:logicalHost,saved:logicalHost))
 print("PASS: independent module layout preferences; animation evidence excludes movement, clipping and matching logical resize")
+
+let mappingRows=(1...40).map { AXMappingRow(index:$0,frame:$0==40 ? nil:CGRect(x:-150.25,y:26.5,width:324,height:1116),details:$0==40 ? "not read: budget":"role=AXWindow; AXVisible=unavailable") }
+let mappingText=formatAXMappingRows(mappingRows)
+assert(mappingText.components(separatedBy:"\n").count==40)
+assert(mappingText.contains("W40: rect=unavailable; not read: budget"))
+assert(mappingText.contains("W2: rect=(-150.250, 26.500, 324.000, 1116.000)"))
+assert(mappingText.contains("same rectangle as W1"))
+assert(mappingRect(CGRect(x:2560,y:-300,width:1512,height:982))=="(2560.000, -300.000, 1512.000, 982.000)")
+print("PASS: AX map retains all rows, duplicates, unknown state, subpoint and negative/multidisplay geometry")

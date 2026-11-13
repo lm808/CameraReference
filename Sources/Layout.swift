@@ -423,3 +423,111 @@ func hostPresentationIsShrinking(reported:CGRect,logical:CGRect,saved:CGRect)->B
     let sx=reported.width/logical.width,sy=reported.height/logical.height
     return abs(sx-sy)<0.025
 }
+
+// Explicit diagnostic only: these reports never feed placement or monitoring.
+func mappingRect(_ rect:CGRect)->String {
+    String(format:"(%.3f, %.3f, %.3f, %.3f)",rect.minX,rect.minY,rect.width,rect.height)
+}
+struct AXMappingRow {
+    let index:Int
+    let frame:CGRect?
+    let details:String
+}
+func formatAXMappingRows(_ rows:[AXMappingRow])->String {
+    rows.map { row in
+        let duplicates=rows.filter { $0.index<row.index && row.frame != nil && $0.frame==row.frame }.map { "W\($0.index)" }
+        return "W\(row.index): rect=\(row.frame.map(mappingRect) ?? "unavailable"); \(row.details)" + (duplicates.isEmpty ? "":"; same rectangle as "+duplicates.joined(separator:", "))
+    }.joined(separator:"\n")
+}
+// Called on main so NSScreen names/backing scales come from one UI snapshot.
+func displayMappingReport()->String {
+    let primary=CGMainDisplayID()
+    var lines=["DISPLAY MAP", "AX/CG coordinates: global top-left points; x right, y down. Rectangles are (x, y, width, height).", "Display IDs identify this snapshot; no serial numbers are collected."]
+    for (index,screen) in NSScreen.screens.enumerated() {
+        guard let id=(screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value else { continue }
+        let bounds=CGDisplayBounds(id),mode=CGDisplayCopyDisplayMode(id)
+        let pixels=mode.map { "\($0.pixelWidth) × \($0.pixelHeight)" } ?? "unavailable"
+        lines.append("D\(index+1): \(screen.localizedName); id=\(id); primary=\(id==primary); built-in=\(CGDisplayIsBuiltin(id) != 0)")
+        lines.append("  global top-left bounds=\(mappingRect(bounds)); backing scale=\(screen.backingScaleFactor); mode pixels=\(pixels); rotation=\(CGDisplayRotation(id)); mirrors display=\(CGDisplayMirrorsDisplay(id))")
+        lines.append("  AppKit bottom-left frame=\(mappingRect(screen.frame)); usable frame=\(mappingRect(screen.visibleFrame))")
+    }
+    lines.append("Send the original full-display screenshot and its D-number/name. Screenshot pixel dimensions establish the final point-to-pixel scale.")
+    return lines.joined(separator:"\n")
+}
+func accessibilityMappingReport()->String {
+    let started=Date(),start=ProcessInfo.processInfo.systemUptime
+    var lines=["AX WINDOW MAP", "Snapshot started: \(ISO8601DateFormatter().string(from:started))", "Read-only: no titles, filenames, control values or screenshots collected."]
+    guard AXIsProcessTrusted() else { return (lines+["Accessibility permission unavailable."]).joined(separator:"\n") }
+    guard let app=NSWorkspace.shared.runningApplications.first(where:isLightroomApp) else { return (lines+["Lightroom is not running."]).joined(separator:"\n") }
+    let application=AXUIElementCreateApplication(app.processIdentifier)
+    AXUIElementSetMessagingTimeout(application,0.05)
+    func read(_ element:AXUIElement,_ key:String)->(CFTypeRef?,AXError) {
+        var value:CFTypeRef?
+        let status=AXUIElementCopyAttributeValue(element,key as CFString,&value)
+        return (value,status)
+    }
+    func element(_ value:CFTypeRef?)->AXUIElement? {
+        guard let value,CFGetTypeID(value)==AXUIElementGetTypeID() else { return nil }
+        return unsafeBitCast(value,to:AXUIElement.self)
+    }
+    func field(_ node:AXUIElement,_ key:String)->String {
+        let (value,status)=read(node,key)
+        guard status == .success else { return "unavailable [\(accessibilityStatus(status))]" }
+        if let text=value as? String { return text }
+        if let number=value as? NSNumber { return number.boolValue ? "true":"false" }
+        return "unavailable"
+    }
+    func frame(_ node:AXUIElement)->(CGRect?,String) {
+        let (p,ps)=read(node,kAXPositionAttribute), (s,ss)=read(node,kAXSizeAttribute)
+        guard let p,let s,CFGetTypeID(p)==AXValueGetTypeID(),CFGetTypeID(s)==AXValueGetTypeID() else {
+            return (nil,"position=\(accessibilityStatus(ps)), size=\(accessibilityStatus(ss))")
+        }
+        var origin=CGPoint.zero,size=CGSize.zero
+        guard AXValueGetValue(unsafeBitCast(p,to:AXValue.self),.cgPoint,&origin),AXValueGetValue(unsafeBitCast(s,to:AXValue.self),.cgSize,&size) else { return (nil,"unreadable AX position/size types") }
+        return (CGRect(origin:origin,size:size),"geometry available")
+    }
+    let main=element(read(application,kAXMainWindowAttribute).0),focused=element(read(application,kAXFocusedWindowAttribute).0)
+    let mainBefore=main.flatMap { frame($0).0 }
+    lines.append("Main window rect: \(mainBefore.map(mappingRect) ?? "unavailable"); app hidden=\(field(application,kAXHiddenAttribute))")
+    let (listed,listStatus)=read(application,kAXWindowsAttribute)
+    guard let windows=listed as? [AXUIElement],listStatus == .success else {
+        return (lines+["AXWindows unavailable: \(accessibilityStatus(listStatus))"]).joined(separator:"\n")
+    }
+    // CG visibility is evidence from a different API, not inferred AX visibility.
+    let cgRows=(CGWindowListCopyWindowInfo(.optionAll,kCGNullWindowID) as? [[String:Any]])?.filter {
+        ($0[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==app.processIdentifier
+    }
+    func cgFrame(_ row:[String:Any])->CGRect? {
+        guard let data=row[kCGWindowBounds as String] as? [String:Any] else { return nil }
+        return CGRect(dictionaryRepresentation:data as CFDictionary)
+    }
+    var rows:[AXMappingRow]=[],examined=0
+    let deadline=ProcessInfo.processInfo.systemUptime+4
+    for (index,node) in windows.enumerated() {
+        guard ProcessInfo.processInfo.systemUptime<deadline else {
+            rows.append(AXMappingRow(index:index+1,frame:nil,details:"not read: four-second inspection budget reached"));continue
+        }
+        AXUIElementSetMessagingTimeout(node,0.025)
+        let (rect,geometryStatus)=frame(node)
+        let matching=(cgRows ?? []).filter { row in
+            guard let rect,let candidate=cgFrame(row) else { return false }
+            return abs(rect.minX-candidate.minX)<2 && abs(rect.minY-candidate.minY)<2 && abs(rect.width-candidate.width)<2 && abs(rect.height-candidate.height)<2
+        }.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.stringValue }
+        let detail="role=\(field(node,kAXRoleAttribute)); subrole=\(field(node,kAXSubroleAttribute)); main=\(main.map{CFEqual($0,node)} ?? false); focused=\(focused.map{CFEqual($0,node)} ?? false); minimized=\(field(node,kAXMinimizedAttribute)); AXVisible=\(field(node,"AXVisible")); \(geometryStatus); matching CG IDs=\(matching.isEmpty ? "none":matching.joined(separator:","))"
+        rows.append(AXMappingRow(index:index+1,frame:rect,details:detail));examined += 1
+    }
+    lines.append("AXWindows returned \(windows.count); examined \(examined). Every returned entry is listed, including unreadable/unexamined entries; duplicates preserved.")
+    lines.append(formatAXMappingRows(rows))
+    lines.append("CG WINDOW MAP (Lightroom only; top-left points; onScreen is not proof of being unobscured)")
+    if let cgRows {
+        for row in cgRows {
+            let id=(row[kCGWindowNumber as String] as? NSNumber)?.stringValue ?? "unknown"
+            let visible=(row[kCGWindowIsOnscreen as String] as? NSNumber).map{String($0.boolValue)} ?? "unknown"
+            lines.append("CG \(id): rect=\(cgFrame(row).map(mappingRect) ?? "unavailable"); onScreen=\(visible); layer=\((row[kCGWindowLayer as String] as? NSNumber)?.stringValue ?? "unknown"); alpha=\((row[kCGWindowAlpha as String] as? NSNumber)?.stringValue ?? "unknown")")
+        }
+    } else { lines.append("CG window metadata unavailable; Screen Recording permission can affect this supplementary list.") }
+    let mainAfter=main.flatMap { frame($0).0 }
+    lines.append("Main window after scan: \(mainAfter.map(mappingRect) ?? "unavailable"); unchanged=\(mainBefore != nil && mainBefore==mainAfter).")
+    lines.append(String(format:"Snapshot elapsed: %.0f ms. AXVisible may be unsupported; unknown never means hidden.",(ProcessInfo.processInfo.systemUptime-start)*1000))
+    return lines.joined(separator:"\n")
+}

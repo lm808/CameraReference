@@ -562,3 +562,9 @@ Preview returns the original captured CGImage before metadata validation/normali
 ## Acceptance and main promotion — 2026-11-12
 
 User reported 1.0.14 looks good for now and explicitly requested merge into main. Main fast-forwarded to 5494c24; normal-identity release/CameraReference.app rebuilt from accepted sources. Brief minimise lingering remains accepted. Intermittent off-screen/split failures remain open for longer-term observation; this acceptance is not a claim those cases are solved. No settings changed, app launched, plugin installed, DMG packaged or remote pushed.
+
+## 1.0.15 diagnostic-only update on main
+
+User explicitly authorised this update on main and requested removal of old worktrees after preserving testing assets. Inspect Accessibility layout now adds a dedicated AX/display mapping section: numbered AXWindows entries (including duplicate/unreadable/budget-limited rows), role/subrole, main/focused/minimized/optional AXVisible state, precise global rectangles, matching public CG IDs and CG on-screen/layer/alpha evidence. Display names/IDs, point bounds, backing scale, mode pixels, rotation and mirroring support screenshot alignment. No titles, filenames, control values or screenshots are queried. Geometry/state is observational and never used as placement input. Existing probe and app behaviour remain otherwise unchanged. Native mapping requires the user's screenshot/report.
+
+Automated validation: full bash test.sh passed, including a 40-row synthetic AX report preserving duplicates, unavailable entries and negative/subpoint coordinates. Normal app build succeeded. Signature/plist staging checks performed; no live AX inspection or screenshot was collected by the agent.

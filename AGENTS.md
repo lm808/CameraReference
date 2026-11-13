@@ -19,7 +19,7 @@ The user runs only staged apps: stable `release/CameraReference.app` or candidat
 - `bash scripts/package.sh`: package the existing release/ payload as a DMG/checksum under ignored dist/. Uses hdiutil; may require sandbox approval. Does not install the app or publish anything. Existing DMG is not overwritten.
 - Verify signature/plist and `git diff --check` before committing. Run checks appropriate to the change; avoid repeating unchanged suites without reason.
 
-Use plain three-component versions in CFBundleShortVersionString (currently `1.0.14`); the menu and package script read that value. Stable keeps org.local.CameraReference. User authorised testing identity org.local.CameraReference.testing with a purple icon; candidate builds use bash build.sh --testing or bash scripts/stage.sh --testing. Both use the existing org.local.CameraReference preference domain and shared support/bridge folder; run only one app at a time. Do not rebuild main’s accepted staged app while working on candidates.
+Use plain three-component versions in CFBundleShortVersionString (currently `1.0.15`); the menu and package script read that value. Stable keeps org.local.CameraReference. User authorised testing identity org.local.CameraReference.testing with a purple icon; candidate builds use bash build.sh --testing or bash scripts/stage.sh --testing. Both use the existing org.local.CameraReference preference domain and shared support/bridge folder; run only one app at a time. Do not rebuild main’s accepted staged app while working on candidates.
 
 ## Source map and flow
 

@@ -912,13 +912,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             DispatchQueue.main.async { self?.report(result);self?.showResult() }
         }
     }
+    var lastAXMapping="Not collected. Use Developer tools → Inspect Accessibility layout…."
+    var axMappingInProgress=false
     @objc func inspectLayout() {
+        guard !axMappingInProgress else { return }
         hide(); guard FeaturePermission.accessibility.ensure() else { return }
         report("Inspecting Lightroom’s accessible layout…")
         let size = lastImageSize
+        let displays=displayMappingReport()
+        let module=currentModule() ?? "unknown"
+        axMappingInProgress=true
         DispatchQueue.global(qos: .userInitiated).async {
+            let mapping="Module: \(module)\n\n"+displays+"\n\n"+accessibilityMappingReport()
             let result = probeLightroom(imageSize: size)
             DispatchQueue.main.async {
+                self.axMappingInProgress=false;self.lastAXMapping=mapping
                 self.lastLayout = result.summary; self.report(result.summary); self.showResult()
             }
         }
@@ -1179,6 +1187,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let state=(try? String(contentsOf:folder.appendingPathComponent("status.txt"),encoding:.utf8)) ?? "No plugin status received."
         return [
             DiagnosticSection(title:"App & permissions",body:"\(versionTitle)\nAccessibility: \(AXIsProcessTrusted() ? "granted":"not granted — request through Inspect Accessibility layout")\nScreen Recording: \(CGPreflightScreenCaptureAccess() ? "granted":"not granted")\nExifTool: \(findExifTool(custom:CameraPreferences.shared.string(forKey:"exiftool")) == nil ? "not found":"available")\nApp: \(Bundle.main.bundleURL.path)\nBundle ID: \(Bundle.main.bundleIdentifier ?? "unknown")\n\(storageStatus)"),
+            DiagnosticSection(title:"Accessibility & display map",body:lastAXMapping),
             DiagnosticSection(title:"Lightroom bridge",body:"Heartbeat: \(age)\nPlugin status: \(state.trimmingCharacters(in:.whitespacesAndNewlines))"),
             DiagnosticSection(title:"Overlay visibility & minimisation",body:"\(overlayVisibilityStatus)\nGeometry source: \(overlayGeometrySource)\n\(overlayLifecycleStatus)\nMoves: \(overlayMoveCount); ordering changes: \(overlayOrderCount); level changes: \(overlayLevelChangeCount).\n\nEvent history (uptime seconds):\n" + lifecycleTrace.joined(separator:"\n")),
             DiagnosticSection(title:"Placement & capture",body:lastLayout),
