@@ -40,3 +40,5 @@ Completed functionality belongs in README; implementation rationale in METHODS; 
 - Compare fresh child/parent AX reports with toolbar shown/hidden, then after resizing. Establish whether a real toolbar container replaces the provisional offsets.
 - Validate geometry hints across modules/scales/hidden panels. All preview adjustment defaults remain zero.
 - AX placement backend switch remains deferred until preview geometry is accepted.
+
+- Maintain [AX assistance investigation log](AX-ASSISTANCE.md): potential search-band hints, candidate disambiguation, toolbar/hidden-panel evidence, split guidance and cache cross-checks. Trial suggestions diagnostically before changing the established detector.

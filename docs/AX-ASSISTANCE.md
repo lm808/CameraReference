@@ -1,0 +1,48 @@
+# AX assistance for screenshot detection — investigation log
+
+This is a record of ways Accessibility evidence could assist the established screenshot detector. It is not approval to change that detector. Keep capture, Full rectangle validation, split margin scanning, caching and visible-overlay behaviour intact until a specific change is authorised and tested. AX preview geometry remains independent of actual placement.
+
+## Evidence collected on 13 November 2026
+
+Native reports from 1.0.19, Develop single view on HP E273q (2560 × 1440, scale 1). Coordinates below are global top-left macOS points. These measurements are specific observations, not universal constants.
+
+| Report | Host (x, y, width, height) | Toolbar | Raw AX bottom | Screenshot-placement bottom | Main-window toolbar checkboxes |
+|---|---|---|---:|---:|---:|
+| 13:34:54 | 0, 30, 2560, 1349 | Shown | 1228 | 1197 | 2 |
+| 13:38:21 | 0, 30, 2560, 1349 | Hidden | 1228 | 1240 | 0 |
+| 13:46:11 | 673, 113, 1823, 1165 | Shown | 1127 | 1096 | 2 |
+| 13:47:29 | 673, 113, 1823, 1165 | Hidden | 1127 | 1139 | 0 |
+
+The 13:46 placement used previously accepted cached bounds; the other listed placement reports show fresh detection. The hidden-toolbar gain is 43 pt at both sizes. Observed bottom corrections are −31 shown and +12 hidden; the older +13 hint was an inference and is superseded by these measurements for this setup. Config defaults remain zero; no personal config was changed.
+
+At both sizes, side scroll-area inner edges match the screenshot placement's left/right edges exactly: 306/2243 for the large window, 979/2179 for the smaller one. Raw AX panel-edge corrections are left −18, right +18, top −12. Side scroll areas end 2 pt above the shown-toolbar viewport bottom and do not change when the toolbar hides. They therefore cannot directly define the bottom in both states.
+
+The two likely toolbar checkboxes sit 8 pt below the shown-toolbar viewport bottom, directly under the main AX window. They disappear in both hidden-toolbar reports. No AXToolbar container was exposed. A complete exposed child traversal found 303 elements shown and 301 hidden; the initial large-window traversal took 66 ms. Absence of these particular controls is not yet a universal hidden-toolbar test.
+
+Earlier evidence: hidden panel AX rectangles can persist while their matched CG windows have alpha=0; AXVisible is unsupported. Information-overlay rectangles can disappear after resizing/recreation, so they are unsuitable anchors. Reference/Active label geometry survived tested information-overlay changes and can suggest split orientation, but the geometric label classifier is experimental.
+
+## Potential assistance by detector stage
+
+| Stage | How AX could help | Evidence / limits | Next validation |
+|---|---|---|---|
+| Capture geometry | Logical main-window frame can cross-check window-list/capture metadata and coordinate conversion. | Already useful for host tracking; AX cannot repair a distorted pixel buffer or prove its scale/origin. | Off-screen and multi-display cases separately; never silently stretch a capture to fit AX. |
+| Border search ranges | Visible surrounding panels and their child scroll areas could suggest narrow search bands near the expected UI edges. | Side inner edges agree in the two tested sizes. Raw outer panels include margins and toolbar errors. | Compare suggested bands with unchanged full-search results across panel widths, hidden panels, Library and scales. Initially report suggestions only. |
+| Photo-edge versus panel-edge ambiguity | Give candidate rectangles extra supporting evidence when their edges agree with independently measured panel boundaries; flag candidates that cut across visible UI. | Screenshot validation currently relies on a uniform inner surround and four supported transitions; a uniform-edged photo could mimic that. AX supplies structural evidence, not photo recognition. | Use ambiguous/dark/uniform-border photographs. Compare candidate rankings without changing the chosen result first. |
+| Top/bottom bounds and toolbar | Child-control geometry may indicate toolbar presence and anchor a small correction or a targeted screenshot scan. | Checkbox appearance/disappearance and fixed offsets repeated across two sizes; no actual toolbar container. Side scroll bottoms are insufficient alone. | Toolbar customisation, Library, hidden filmstrip, panel changes and other scales. Missing controls must remain inconclusive until tested. |
+| Hidden panels | Matched CG opacity can exclude retained AX panel rectangles; host edges provide a fallback starting region. | Panel rectangles can remain exposed when hidden. CG opacity is additional evidence, not pure AX; stale/unmatched entries require care. | Individual and combined hidden panels, auto-hide hover states, resize and module transitions. |
+| View and split orientation | Visible Reference/Active label pairs can choose single, side-by-side or stacked layout, guiding the existing split scanner. | Opt-in invocation-based experiment exists. User requests live monitoring with menu updates only on a change. Successful scan with no clear pair means single; read failure retains uncertainty. | Test live transitions, resize, labels recreated, Library and info overlay off. Keep normal detector geometry unchanged. |
+| Split divider location | A label gap and 50/50 estimate could suggest where the existing bottom/left margin scanner should look or help explain a rejected divider. | Label rectangles are labels, not pane bounds. Raw outer bounds can shift the midpoint. | Compare against actual scanner dividers in both orientations, varied aspect ratios and unequal pane arrangements. No unapproved midpoint fallback. |
+| Cache invalidation | A change in visible panel/control geometry could signal that cached placement needs checking for the next invocation. | AX can miss visual-only changes. No measured replacement for the existing screenshot boundary checks yet. | Log AX changes alongside existing invalidation results; measure missed changes and false positives before altering cache policy. |
+| Diagnostics and speed | Save paired AX estimates and screenshot results with timing/provenance; deeper inspection can run after presentation. | Opt-in latest.txt saving exists. Child refresh is currently manual; automatic post-invocation refresh is requested for a future update. | Ensure coherent host/module snapshots, cancellation, fresh timestamps and no placement delay. Measure typical and worst-case collection cost. |
+
+## Guardrails and open work
+
+- Missing or incomplete AX data must not be treated as a proven panel boundary. Do not gate working screenshot detection on speculative AX geometry.
+- Keep points, raster pixels and AppKit coordinates distinct. Match observations to the same host size, module and display; distinguish fresh detection from cached placement.
+- Never use control indices, window IDs or filenames as permanent identifiers. Account for hidden ancestors and scroll clipping: a reported child rectangle need not be visible.
+- Screen Recording remains required for screenshot detection even if AX supplies view/search hints.
+- Do not infer Library/Grid/Loupe solely from lack of Reference/Active labels. The agreed “single” fallback describes the overlay layout, not positive proof of Loupe.
+- Live view monitoring and automatic child-diagnostic collection are requested follow-ups, not implemented by this log update.
+- Before implementation, trial proposed AX assistance as diagnostic suggestions alongside the unchanged result. Record disagreements as well as successes.
+
+Update this file as evidence arrives. Keep raw diagnostic files and screenshots outside Git; record relevant measurements and limitations here, implementation rationale in METHODS, and accepted test outcomes in VALIDATION.

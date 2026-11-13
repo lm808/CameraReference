@@ -182,3 +182,5 @@ Preview adjustments use macOS points: edge offsets positive right/down, hidden-e
 Explicit Refresh AX traverses children of every exposed AX window (2-second, 500-element, depth-12 bounds), reporting roles, subroles, geometry and report-local parent IDs. Missing children/AXToolbar roles do not establish hidden state. It does not read titles, values or descriptions and does not run during ordinary toggles. Compare toolbar shown/hidden on the same window before interpreting candidates.
 
 Opt-in report saving atomically overwrites `CameraReference/Diagnostics/latest.txt` on invocation status/completion and explicit AX refresh; no history or images. Report timestamps distinguish retained child scans from a newer invocation. The previous auto-copy preference is read as a fallback until the new save preference is set; the clipboard is no longer automatically written.
+
+Potential AX assistance to individual stages of the existing screenshot detector, with native observations and unresolved assumptions, is tracked in [AX-ASSISTANCE.md](AX-ASSISTANCE.md). This investigation log does not authorise changes to the working detector.
