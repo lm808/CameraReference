@@ -1,6 +1,8 @@
-# Camera Reference Testing 1.0.21 — live AX and complete reports
+# Camera Reference Testing 1.0.22 — AXSections diagnostic
 
 Use this worktree’s staged `release/CameraReference Testing.app`; quit stable first. Main stays 1.0.15; bridge stays 0.5.3. Native acceptance pending.
+
+New focused check: in Library Loupe, keep window/panels unchanged. With **Save diagnostics after invocation** enabled, show the toolbar, invoke and wait 10 seconds; ask the agent to read the report. Then hide the toolbar and repeat. AX TOOLBAR STRUCTURE should now include AXSections status, bounded payload structure and any referenced elements. Unsupported/empty results are useful evidence too. Repeat in Develop only after this pair is reviewed.
 
 - [ ] Enable **Experimental features → Automatically detect Lightroom view**. Without invoking an overlay, switch single/side-by-side/stacked views while Lightroom is active. Within about two seconds (plus AX read time), reopen the menu: only relevant pane choices appear. Leave the layout unchanged: no recurring menu changes.
 - [ ] Choose right/bottom panes, change layouts and return: the choices persist independently. Disable automatic view detection: the saved explicit menu selection returns.

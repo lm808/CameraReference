@@ -603,3 +603,7 @@ Testing app built successfully with native Swift tools. This change adds read-on
 Testing app built and staged successfully; strict signature verification, staged version check and `git diff --check` passed. Full `bash test.sh` suite passed. ScreenProbe, ViewportDetector, PhotoDetector and SplitLayout sources are unchanged from 1.0.20. Scheduling changes are confined to the app coordinator.
 
 Live polling, menu transitions and automatic report freshness require user acceptance in Lightroom; automated geometry tests do not verify native timing. Diagnostics retain bounded traversal limits and report truncation rather than promising every accessible element. No app launch, live AX query, permission change or personal settings edit was performed. Main and its staged app remain untouched.
+
+## 1.0.22 candidate — AXSections
+
+Native testing build passed. Diagnostic-only traversal added inside accessibilityToolbarReport; screenshot detector files and runtime view/placement coordinator unchanged. Existing full regression suite passed in 1.0.21; it was not rerun for this isolated reporting change. Native AXSections payload/toolbar evidence remains pending. No live app interaction or personal settings edits performed.

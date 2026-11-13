@@ -128,3 +128,7 @@ Consolidate Application Support under Camera Reference, with Bridge subfolder an
 - Introduce read-only JPEG source selection/extraction, explicit export, manual calibration/snapping, single-photo UI-boundary detection and diagnostics.
 
 Detailed findings and accepted results are in docs/VALIDATION.md, not this user-facing log.
+
+## 1.0.22
+
+- Inspect AXSections structure and element references in automatically saved toolbar diagnostics; no placement changes.

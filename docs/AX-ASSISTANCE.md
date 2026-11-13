@@ -60,3 +60,7 @@ Goal clarified: assess AX-only placement, not introduce a screenshot-dependent h
 
 
 1.0.21 implements live inference polling and automatic complete bounded diagnostics after invocation. These scheduling changes do not establish toolbar-boundary reliability; the shown/hidden structural comparison remains pending.
+
+### Library toolbar pair — 1.0.21, 2026-11-13 15:08/15:09
+
+Same host (0,30,2560,1349). Shown screenshot UI bottom y=1197; hidden y=1240 (+43 pt). Raw AX bottom stays 1228. Main-window text (829,1210,1277,17) and checkbox (2132,1205,83,21) disappear when hidden; their actual parent is the main window. Side scroll-area bounds remain unchanged. Visibility unsupported; focused probe capped at 180. This confirms control disappearance but not a stable toolbar container/state. 1.0.22 adds AXSections structural inspection to investigate the unqueried relationship; native results pending.

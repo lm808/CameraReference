@@ -622,7 +622,32 @@ func accessibilityToolbarReport()->String {
         guard nodes.count<180 else { limited=true;return "not queued (limit)" }
         let id="T\(nodes.count)";nodes.append(node);queue.append((node,depth,via));return id
     }
+    // AXSections may contain dictionaries, not just an array of AX elements.
+    // Record structure and element references only; never dump text/value payloads.
+    func sections(_ raw:CFTypeRef?)->(description:String,links:[(AXUIElement,String)]) {
+        var descriptions=[String](),links=[(AXUIElement,String)](),visited=0
+        func walk(_ value:Any,_ path:String,_ depth:Int) {
+            guard visited<80,depth<=4 else { descriptions.append("\(path): structure limit");return }
+            visited += 1
+            let cf=value as CFTypeRef
+            if CFGetTypeID(cf)==AXUIElementGetTypeID() {
+                links.append((unsafeBitCast(cf,to:AXUIElement.self),path));descriptions.append("\(path): AX element");return
+            }
+            if let dictionary=value as? [String:Any] {
+                descriptions.append("\(path): dictionary keys=[\(dictionary.keys.sorted().joined(separator:", "))]")
+                for key in dictionary.keys.sorted().prefix(24) { walk(dictionary[key]!,path+"."+key,depth+1) }
+            } else if let array=value as? [Any] {
+                descriptions.append("\(path): array count=\(array.count)")
+                for (index,item) in array.prefix(24).enumerated() { walk(item,path+"[\(index)]",depth+1) }
+            } else {
+                descriptions.append("\(path): non-element payload omitted (CF type \(CFGetTypeID(cf)))")
+            }
+        }
+        if let raw { walk(raw,"AXSections",0) } else { descriptions.append("AXSections: no payload") }
+        return (descriptions.joined(separator:"; "),links)
+    }
     _=add(main,0,"main")
+    for (node,path) in sections(read(main,"AXSections").0).links { _=add(node,1,"main."+path) }
     // Prioritise main content before catalogue/sidebar descendants consume the budget.
     for key in ["AXChildren","AXContents","AXVisibleChildren"] {
         for node in elements(read(main,key).0) { _=add(node,1,"main.\(key)") }
@@ -653,6 +678,13 @@ func accessibilityToolbarReport()->String {
             let parentID=parentRole == "AXApplication" ? "application":add(parent,min(depth+1,3),"\(id).AXParent")
             lines.append("  actual AXParent=\(parentID) role=\(parentRole) frame=\(parentFrame.map { String(describing:$0) } ?? "unavailable")")
         } else { lines.append("  AXParent unavailable, status=\(parentStatus.rawValue)") }
+        let (sectionRaw,sectionStatus)=read(node,"AXSections")
+        let sectionInfo=sections(sectionRaw)
+        var sectionIDs=[String]()
+        if depth<2 {
+            for (element,path) in sectionInfo.links { sectionIDs.append(add(element,depth+1,id+"."+path)) }
+        }
+        lines.append("  AXSections: status=\(sectionStatus.rawValue), refs=\(sectionIDs.joined(separator:",")); \(sectionInfo.description)\(depth<2 ? "":"; descendants not traversed (shallow probe)")")
         for key in ["AXChildren","AXContents","AXVisibleChildren","AXToolbarButton"] {
             let (raw,status)=read(node,key),related=elements(raw)
             var ids=[String]()
