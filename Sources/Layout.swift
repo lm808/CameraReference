@@ -589,3 +589,79 @@ func accessibilityControlReport()->String {
     limited = limited || cursor<queue.count
     return "Collected: \(Date())\nTop-left global points. E numbers are local to this report.\n\(windows.count) window roots; \(cursor) unique elements; \(limited ? "INCOMPLETE: budget/depth/node limit":"complete exposed child traversal").\nAXToolbar roles: \(toolbarCount). Absence does not prove the toolbar is hidden.\nElapsed: \(Int((ProcessInfo.processInfo.systemUptime-started)*1000)) ms.\n"+lines.joined(separator:"\n")
 }
+
+// Focused structural probe: main window and shallow related elements first.
+// Query only public AX attributes. Never read control values, titles or descriptions.
+func accessibilityToolbarReport()->String {
+    guard AXIsProcessTrusted(),let app=NSWorkspace.shared.runningApplications.first(where:isLightroomApp) else { return "Toolbar probe unavailable: permission or Lightroom missing." }
+    let application=AXUIElementCreateApplication(app.processIdentifier)
+    AXUIElementSetMessagingTimeout(application,0.02)
+    var errors=0
+    func read(_ node:AXUIElement,_ key:String)->(CFTypeRef?,AXError) {
+        var value:CFTypeRef?
+        let status=AXUIElementCopyAttributeValue(node,key as CFString,&value)
+        if status != .success && status != .attributeUnsupported && status != .noValue { errors += 1 }
+        return (value,status)
+    }
+    func elements(_ raw:CFTypeRef?)->[AXUIElement] {
+        guard let raw else { return [] }
+        if CFGetTypeID(raw)==AXUIElementGetTypeID() { return [unsafeBitCast(raw,to:AXUIElement.self)] }
+        return raw as? [AXUIElement] ?? []
+    }
+    func rect(_ node:AXUIElement)->CGRect? {
+        guard let p=read(node,"AXPosition").0,let s=read(node,"AXSize").0,CFGetTypeID(p)==AXValueGetTypeID(),CFGetTypeID(s)==AXValueGetTypeID() else { return nil }
+        var point=CGPoint.zero,size=CGSize.zero
+        guard AXValueGetValue(unsafeBitCast(p,to:AXValue.self),.cgPoint,&point),AXValueGetValue(unsafeBitCast(s,to:AXValue.self),.cgSize,&size) else { return nil }
+        return CGRect(origin:point,size:size)
+    }
+    guard let main=elements(read(application,"AXMainWindow").0).first else { return "Main AX window unavailable." }
+    let before=rect(main),started=ProcessInfo.processInfo.systemUptime
+    var nodes:[AXUIElement]=[],queue:[(AXUIElement,Int,String)]=[],lines=[String](),cursor=0,limited=false
+    func add(_ node:AXUIElement,_ depth:Int,_ via:String)->String {
+        if let index=nodes.firstIndex(where:{ CFEqual($0,node) }) { return "T\(index)" }
+        guard nodes.count<180 else { limited=true;return "not queued (limit)" }
+        let id="T\(nodes.count)";nodes.append(node);queue.append((node,depth,via));return id
+    }
+    _=add(main,0,"main")
+    // Prioritise main content before catalogue/sidebar descendants consume the budget.
+    for key in ["AXChildren","AXContents","AXVisibleChildren"] {
+        for node in elements(read(main,key).0) { _=add(node,1,"main.\(key)") }
+    }
+    for node in elements(read(application,"AXWindows").0) { _=add(node,0,"AXWindows") }
+    while cursor<queue.count && ProcessInfo.processInfo.systemUptime-started<2 {
+        let (node,depth,via)=queue[cursor],id="T\(cursor)";cursor += 1
+        AXUIElementSetMessagingTimeout(node,0.02)
+        let role=read(node,"AXRole").0 as? String ?? "unknown"
+        let bounds=rect(node)
+        lines.append("\(id) via=\(via) role=\(role) frame=\(bounds.map { String(describing:$0) } ?? "unavailable")")
+        var rawNames:CFArray?
+        let namesStatus=AXUIElementCopyAttributeNames(node,&rawNames)
+        let names=(rawNames as? [String] ?? []).sorted()
+        lines.append("  supported attributes (\(namesStatus.rawValue)): \(names.joined(separator:", "))")
+        // AXHidden is normally application-level; unsupported on a control is unknown.
+        for key in ["AXHidden","AXVisible"] {
+            let (value,status)=read(node,key)
+            let flag:String
+            if let value,CFGetTypeID(value)==CFBooleanGetTypeID() { flag=CFBooleanGetValue(unsafeBitCast(value,to:CFBoolean.self)) ? "true":"false" }
+            else { flag="unknown" }
+            lines.append("  \(key)=\(flag), status=\(status.rawValue)")
+        }
+        let (parentRaw,parentStatus)=read(node,"AXParent")
+        if let parent=elements(parentRaw).first {
+            let parentRole=read(parent,"AXRole").0 as? String ?? "unknown"
+            let parentFrame=rect(parent)
+            let parentID=parentRole == "AXApplication" ? "application":add(parent,min(depth+1,3),"\(id).AXParent")
+            lines.append("  actual AXParent=\(parentID) role=\(parentRole) frame=\(parentFrame.map { String(describing:$0) } ?? "unavailable")")
+        } else { lines.append("  AXParent unavailable, status=\(parentStatus.rawValue)") }
+        for key in ["AXChildren","AXContents","AXVisibleChildren","AXToolbarButton"] {
+            let (raw,status)=read(node,key),related=elements(raw)
+            var ids=[String]()
+            if depth<2 {
+                for child in related { ids.append(add(child,depth+1,"\(id).\(key)")) }
+            }
+            lines.append("  \(key): status=\(status.rawValue), elements=\(related.count)\(depth<2 ? ", refs="+ids.joined(separator:","):", descendants not traversed (shallow probe)")")
+        }
+    }
+    let after=rect(main)
+    return "Collected: \(Date())\nFocused toolbar probe; top-left global points; no text/value reads.\nHost before: \(String(describing:before)); after: \(String(describing:after)); unchanged=\(before != nil && before==after).\nExamined \(cursor)/\(queue.count); capped=\(limited || cursor<queue.count); unexpected read errors=\(errors); elapsed \(Int((ProcessInfo.processInfo.systemUptime-started)*1000)) ms.\nShallow related-element traversal only; no claim of exhaustive AX coverage. AXToolbarButton is a title-bar toggle when provided, not toolbar bounds. Unsupported visibility is unknown.\n"+lines.joined(separator:"\n")
+}

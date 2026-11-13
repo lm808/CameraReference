@@ -593,3 +593,7 @@ Automated: full `bash test.sh` suite passed after shared-config/parser changes. 
 The all-window child-control traversal and automatic-view routing still require native acceptance. No app launch, Lightroom interaction, permission change or personal config edit was performed by the agent. Candidate config additions occur when the user runs the app; `# AX:` directives remain comments to stable 1.0.15. Main and its release staging were not rebuilt.
 
 Next evidence: single view, toolbar shown versus hidden at unchanged host size, then toolbar shown at a smaller size. Collect screenshots plus explicit Refresh AX reports before experimenting with the commented geometry hints. Zero defaults intentionally leave unresolved raw bounds visible. Saved text reports overwrite `CameraReference/Diagnostics/latest.txt`; read each case before the next replaces it.
+
+## 1.0.20 candidate — focused toolbar structure
+
+Testing app built successfully with native Swift tools. This change adds read-only diagnostic queries on explicit Refresh AX, with element/depth/time limits and failure reporting. No geometry/detector/placement algorithm changed; full unchanged image suites were not rerun. Native attribute availability and toolbar shown/hidden comparison remain unverified. No app launched or live AX query made by the agent. Earlier saved reports were inspected only.

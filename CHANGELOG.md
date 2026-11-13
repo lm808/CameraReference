@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.20 — Focused AX toolbar investigation (candidate)
+
+- Added structural AX diagnostics to investigate overlooked toolbar containers or visibility state; no placement changes.
+
 ## 1.0.19 — AX investigation controls (candidate)
 
 - Optional AX view classification feeds the existing capture detector; per-orientation pane selection remains available.

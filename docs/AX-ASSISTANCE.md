@@ -46,3 +46,14 @@ Earlier evidence: hidden panel AX rectangles can persist while their matched CG 
 - Before implementation, trial proposed AX assistance as diagnostic suggestions alongside the unchanged result. Record disagreements as well as successes.
 
 Update this file as evidence arrives. Keep raw diagnostic files and screenshots outside Git; record relevant measurements and limitations here, implementation rationale in METHODS, and accepted test outcomes in VALIDATION.
+
+
+## Structural inspection gaps and next probe (1.0.20)
+
+Code review found that 1.0.19 only traversed AXChildren; its parent labels described traversal, not a queried AXParent. It did not enumerate supported attribute names, AXContents, AXVisibleChildren or control-level visibility status. Library exhausted 500 nodes in nested sidebar/catalogue data. Thus earlier reports cannot establish that AX exposes no toolbar boundary.
+
+The focused probe queries these public structural attributes, prioritises main-window controls, reads actual parent frames and lists supported names without reading titles/values/descriptions. It limits work to 180 elements, shallow descendants and two seconds, explicitly reports errors/truncation and host geometry before/after. AXHidden is application-specific in the SDK, so support on a control is not assumed. AXVisibleChildren being unsupported or absent is not hidden-state evidence. AXToolbarButton, if present, identifies a window toolbar toggle rather than the toolbar rectangle itself.
+
+Library reports 14:10:02 (shown) and 14:11:24 (hidden) exposed one main-child checkbox at (2132,1205,83,21) and text at (829,1210,1277,17), both disappearing when hidden. Side scroll bounds remained unchanged. These are incidental controls, not accepted stable identifiers. User confirms Library geometry matches Develop; those Library reports did not contain screenshot placement measurements.
+
+Goal clarified: assess AX-only placement, not introduce a screenshot-dependent hybrid as its replacement. Existing screenshot detector remains untouched. A new shown/hidden pair from the focused probe is required before concluding whether a stable AX-only boundary/state exists. No such conclusion has yet been established.

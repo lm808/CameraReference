@@ -1002,6 +1002,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var lastAXTrial="AX preview not run."
     var lastAXInspection="Not inspected."
     var lastAXControls="Not collected. Use Diagnostics → Refresh AX."
+    var lastAXToolbar="Not collected. Use Diagnostics → Refresh AX."
     var axTrialBorders:[NSPanel]=[]
     var axTrialGeneration=0
     var axTrialEnabled:Bool { CameraPreferences.shared.bool(forKey:"developerAXTrial") }
@@ -1084,10 +1085,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         axMappingInProgress=true
         DispatchQueue.global(qos: .userInitiated).async {
             let mapping="Module: \(module)\n\n"+displays+"\n\n"+accessibilityMappingReport()
+            let toolbar=accessibilityToolbarReport()
             let controls=accessibilityControlReport()
             let result = probeLightroom(imageSize: size)
             DispatchQueue.main.async {
-                self.axMappingInProgress=false;self.lastAXMapping=mapping;self.lastAXControls=controls
+                self.axMappingInProgress=false;self.lastAXMapping=mapping;self.lastAXControls=controls;self.lastAXToolbar=toolbar
                 self.lastAXInspection = "Diagnostic inspection only; this does not change calibration or detection mode.\n"+result.summary; self.saveInvocationDiagnostics(); self.showDiagnostics()
             }
         }
@@ -1354,6 +1356,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             DiagnosticSection(title:"Saved diagnostics",body:diagnosticSaveStatus),
             DiagnosticSection(title:"Automatic view experiment",body:lastViewDetection),
             DiagnosticSection(title:"AX placement trial",body:lastAXTrial),
+            DiagnosticSection(title:"AX toolbar structure",body:lastAXToolbar),
             DiagnosticSection(title:"AX controls & parents",body:lastAXControls),
             DiagnosticSection(title:"Accessibility image inspection",body:lastAXInspection),
             DiagnosticSection(title:"Last result",body:lastResult),

@@ -184,3 +184,6 @@ Explicit Refresh AX traverses children of every exposed AX window (2-second, 500
 Opt-in report saving atomically overwrites `CameraReference/Diagnostics/latest.txt` on invocation status/completion and explicit AX refresh; no history or images. Report timestamps distinguish retained child scans from a newer invocation. The previous auto-copy preference is read as a fallback until the new save preference is set; the clipboard is no longer automatically written.
 
 Potential AX assistance to individual stages of the existing screenshot detector, with native observations and unresolved assumptions, is tracked in [AX-ASSISTANCE.md](AX-ASSISTANCE.md). This investigation log does not authorise changes to the working detector.
+
+
+The 1.0.20 focused toolbar probe runs on explicit AX refresh only, before the general child scan. It enumerates public attribute names and structural relations, includes true AXParent frames, and keeps failures/unsupported states distinct from false visibility. It never enters placement or screenshot detection.

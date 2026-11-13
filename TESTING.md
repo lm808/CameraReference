@@ -1,6 +1,8 @@
-# Camera Reference Testing 1.0.19 — AX investigation
+# Camera Reference Testing 1.0.20 — AX investigation
 
 Run this worktree’s `release/CameraReference Testing.app` with bridge 0.5.3. Quit the stable app first; settings are shared. Main and its staged 1.0.15 app remain unchanged. Live acceptance is pending.
+
+First: with **Save diagnostics after invocation** enabled, use **Diagnostics → Refresh AX** in Library Loupe with toolbar shown. Tell the agent to check the report before hiding the toolbar and refreshing again. The new **AX toolbar structure** section reports supported attributes, actual parents and alternative containment relationships. No overlay invocation is needed for this structural test. Repeat in Develop only if the Library comparison is inconclusive. Manual Refresh AX is still required in this build.
 
 Start with automatic view detection **off**, AX preview **on**, and all AX config numbers **zero**.
 
