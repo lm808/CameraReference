@@ -454,7 +454,7 @@ func displayMappingReport()->String {
     lines.append("Send the original full-display screenshot and its D-number/name. Screenshot pixel dimensions establish the final point-to-pixel scale.")
     return lines.joined(separator:"\n")
 }
-func accessibilityMappingReport()->String {
+func accessibilityMappingReport(evidence: ((CGRect,[AXTrialWindow])->Void)? = nil)->String {
     let started=Date(),start=ProcessInfo.processInfo.systemUptime
     var lines=["AX WINDOW MAP", "Snapshot started: \(ISO8601DateFormatter().string(from:started))", "Read-only: no titles, filenames, control values or screenshots collected."]
     guard AXIsProcessTrusted() else { return (lines+["Accessibility permission unavailable."]).joined(separator:"\n") }
@@ -527,6 +527,15 @@ func accessibilityMappingReport()->String {
         }
     } else { lines.append("CG window metadata unavailable; Screen Recording permission can affect this supplementary list.") }
     let mainAfter=main.flatMap { frame($0).0 }
+    if let host=mainBefore, mainAfter==mainBefore, examined==windows.count, cgRows != nil {
+        let evidenceRows=rows.compactMap { row -> AXTrialWindow? in
+            guard let rect=row.frame else { return nil }
+            let matches=(cgRows ?? []).filter { cgFrame($0)==rect }
+            let visible=matches.contains { (($0[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 0)>0 && ($0[kCGWindowLayer as String] as? NSNumber)?.intValue==0 }
+            return AXTrialWindow(frame:rect,visible:visible)
+        }
+        evidence?(host,evidenceRows)
+    }
     lines.append("Main window after scan: \(mainAfter.map(mappingRect) ?? "unavailable"); unchanged=\(mainBefore != nil && mainBefore==mainAfter).")
     lines.append(String(format:"Snapshot elapsed: %.0f ms. AXVisible may be unsupported; unknown never means hidden.",(ProcessInfo.processInfo.systemUptime-start)*1000))
     return lines.joined(separator:"\n")

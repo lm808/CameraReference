@@ -539,3 +539,22 @@ assert(mappingText.contains("W2: rect=(-150.250, 26.500, 324.000, 1116.000)"))
 assert(mappingText.contains("same rectangle as W1"))
 assert(mappingRect(CGRect(x:2560,y:-300,width:1512,height:982))=="(2560.000, -300.000, 1512.000, 982.000)")
 print("PASS: AX map retains all rows, duplicates, unknown state, subpoint and negative/multidisplay geometry")
+
+// AX trial uses panel/label evidence only; no production detector dependency.
+let trialHost=CGRect(x:0,y:30,width:2560,height:1349)
+func tw(_ x:Double,_ y:Double,_ w:Double,_ h:Double,_ visible:Bool=true)->AXTrialWindow { AXTrialWindow(frame:CGRect(x:x,y:y,width:w,height:h),visible:visible) }
+let trialPanels=[tw(0,62,2560,70),tw(0,1228,2560,151),tw(0,122,324,1116),tw(2225,122,335,1116)]
+let trialSingle=axTrialProposal(host:trialHost,windows:trialPanels)!
+assert(trialSingle.layout=="Single view" && trialSingle.panes==[CGRect(x:324,y:132,width:1901,height:1096)])
+let trialSide=axTrialProposal(host:trialHost,windows:trialPanels+[tw(1190,122,83,25),tw(1276,122,113,25)])!
+assert(trialSide.layout=="Side-by-side" && trialSide.panes.count==2)
+assert(trialSide.panes[0].maxX==1274.5 && trialSide.panes[1].minX==1274.5)
+let trialStack=axTrialProposal(host:trialHost,windows:trialPanels+[tw(2128,632,113,25),tw(2128,660,113,25)])!
+assert(trialStack.layout=="Above-and-below" && (657...660).contains(trialStack.panes[0].maxY))
+assert(axTrialProposal(host:trialHost,windows:trialPanels+[tw(1190,122,83,25,false),tw(1276,122,113,25,false)])!.layout=="Single view")
+let hiddenLeft=axTrialProposal(host:trialHost,windows:Array(trialPanels.prefix(2))+[tw(0,122,324,1116,false),trialPanels[3]])!
+assert(hiddenLeft.panes[0].minX==18)
+let trialMovedHost=CGRect(x:587,y:47,width:1950,height:1253)
+let trialMoved=axTrialProposal(host:trialMovedHost,windows:[tw(587,79,1950,70),tw(587,1149,1950,151),tw(587,139,324,1020),tw(2202,139,335,1020),tw(1472,139,83,25),tw(1558,139,113,25)])!
+assert(trialMoved.layout=="Side-by-side" && trialMoved.panes[0].maxX==1556.5)
+print("PASS: diagnostic AX raw bounds, both splits, invisible labels/panels, resized translated host; no information windows")

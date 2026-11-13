@@ -86,3 +86,7 @@ Library and Develop use separate saved calibration keys within the same GUI pref
 Diagnostic capture previews show the raw image even when geometry checks would reject overlay placement. Use **Developer tools → Preview captured Lightroom window…** to inspect padding or displacement, then copy Bridge diagnostics. A preview captures afresh and stays in RAM; it is not proof that placement is valid.
 
 For Accessibility-to-screenshot mapping, run **Developer tools → Inspect Accessibility layout…**, then copy the **Accessibility & display map** section (or Copy all). It lists AX rectangles and display names/scales without reading titles or control values. Send an original full-display screenshot taken with Lightroom's geometry unchanged, and identify its D-number/name. Unavailable visibility properties are reported as unknown, not hidden.
+
+### Candidate AX diagnostics
+
+In the 1.0.16 testing candidate, Developer tools offers **Diagnostics…** with **Refresh AX** and **Copy all**. Optional **Show AX placement preview** draws a separate green/purple geometry estimate without changing normal placement. Optional **Copy diagnostics after invocation** replaces the clipboard automatically. Both default off; raw toolbar/margin mismatches are expected during this trial.

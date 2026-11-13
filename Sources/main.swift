@@ -110,6 +110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if !overlaySuspended { overlayGeometrySettler.reset() }
         cancelPanelCheck();overlaySuspended=true
         overlayResumeAfter=ProcessInfo.processInfo.systemUptime+0.4
+        for border in axTrialBorders { border.orderOut(nil) }
         panel.orderOut(nil)
     }
     func reconcileOverlayHost() {
@@ -151,6 +152,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             if overlaySuspended {
                 recordLifecycle("restore: host visible and settled")
                 overlaySuspended=false;_ = orderOverlayAboveLightroom(initial:true)
+                for border in axTrialBorders { border.orderFront(nil) }
             }
         }
     }
@@ -264,7 +266,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let levelChanged=panel.level != desiredLevel
         // Lower immediately on app deactivation, even if host metadata is
         // temporarily unavailable. Never leave a globally floating overlay.
-        if levelChanged { panel.level=desiredLevel;overlayLevelChangeCount += 1 }
+        if levelChanged { panel.level=desiredLevel;overlayLevelChangeCount += 1
+            for border in axTrialBorders { border.level=desiredLevel }
+        }
         guard !workspaceOverview,!overlaySuspended else { return false }
         if floating,!initial,overlayHost != nil {
             // Lightroom clicks cannot cover this level. No 5Hz reordering.
@@ -457,14 +461,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         add("Clear region setting", #selector(clearAllRegionData), to: settings)
         let developer = submenu("Developer tools")
         developer.addItem(detail); developer.addItem(.separator())
-        add("Check selected photo", #selector(checkPhoto), to: developer)
-        add("Show last result / timing…", #selector(showResult), to: developer)
-        add("Inspect Lightroom view state…", #selector(inspectViewState), to: developer)
-        add("Inspect Accessibility layout…", #selector(inspectLayout), to: developer)
-        add("Keep on-screen capture baseline…", #selector(keepCaptureBaseline), to: developer)
-        add("Preview captured Lightroom window…", #selector(previewCapture), to: developer)
-        add("Find viewing area…", #selector(inspectScreen), to: developer)
-        add("Bridge diagnostics…", #selector(showDiagnostics), to: developer)
+        add("Diagnostics…", #selector(showDiagnostics), to: developer)
+        let trial=add("Show AX placement preview", #selector(toggleAXTrial), to: developer)
+        trial.state = axTrialEnabled ? .on:.off
+        let copy=add("Copy diagnostics after invocation", #selector(toggleAutoDiagnostics), to: developer)
+        copy.state = autoDiagnostics ? .on:.off
+        let actions=NSMenu();let actionsItem=NSMenuItem(title:"Capture / bridge actions",action:nil,keyEquivalent:"")
+        actionsItem.submenu=actions;developer.addItem(actionsItem)
+        add("Check selected photo", #selector(checkPhoto), to: actions)
+        add("Inspect Lightroom view state…", #selector(inspectViewState), to: actions)
+        add("Keep on-screen capture baseline…", #selector(keepCaptureBaseline), to: actions)
+        add("Preview captured Lightroom window…", #selector(previewCapture), to: actions)
+        add("Find viewing area…", #selector(inspectScreen), to: actions)
         menu.addItem(.separator())
         add("Quit Camera Reference", #selector(quit), to: menu)
         status.menu = menu
@@ -548,6 +556,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var invocationStart:TimeInterval?
     func report(_ text: String) {
         lastResult = text; detail.title = String(text.prefix(100)); status.button?.toolTip = text
+        DispatchQueue.main.async { [weak self] in
+            guard let self,self.copyingInvocation else { return }
+            self.copyInvocationDiagnostics()
+            if self.pending == nil && self.screenInspectionID == nil && self.panel == nil { self.copyingInvocation=false }
+        }
     }
     func updateIcon() {
         let visible = panel != nil
@@ -564,6 +577,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         updateToggleTitle()
     }
     func hide() {
+        clearAXTrialBorders()
         if destination == .overlay { cancelRequest() }
         (panel?.contentView as? ReferenceView)?.releaseContent()
         panel?.orderOut(nil); panel = nil;overlayHost=nil;overlayGeometrySettler.reset();overlayAccessibility=nil;overlayBaselineWindows=[];overlayDialogVisible=false;overlayEpoch=nil;overlaySuspended=false;updateIcon()
@@ -635,6 +649,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     @objc func checkPhoto() { request(.check) }
     func request(_ target: Destination) {
+        copyingInvocation = target == .overlay || target == .window
         guard !regionResetting,requireSupportedModule() else { return }
         cancelPanelCheck();nextPanelCheck=ProcessInfo.processInfo.systemUptime+reloadDetectionConfig().panelCheckIntervalSeconds
         cancelScreenInspection(); cancelRequest()
@@ -779,6 +794,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard p.isVisible else { hide();report("Overlay panel did not become visible; see geometry diagnostics.");return nil }
         updateIcon()
         if let started=invocationStart { lastTiming += String(format:"; total to panel shown %.0f ms",(ProcessInfo.processInfo.systemUptime-started)*1000) }
+        runAXTrial(after:p)
         return view
     }
     @objc func openFloating() {
@@ -909,14 +925,75 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         report("Inspecting Lightroom menu state…")
         DispatchQueue.global(qos:.userInitiated).async { [weak self] in
             let result=probeLightroomViewState()
-            DispatchQueue.main.async { self?.report(result);self?.showResult() }
+            DispatchQueue.main.async { self?.report(result);self?.showDiagnostics() }
         }
     }
-    var lastAXMapping="Not collected. Use Developer tools → Inspect Accessibility layout…."
+    var lastAXMapping="Not collected. Use Diagnostics → Refresh AX."
+    var copyingInvocation=false
+    var lastAXTrial="AX preview not run."
+    var lastAXInspection="Not inspected."
+    var axTrialBorders:[NSPanel]=[]
+    var axTrialGeneration=0
+    var axTrialEnabled:Bool { CameraPreferences.shared.bool(forKey:"developerAXTrial") }
+    var autoDiagnostics:Bool { CameraPreferences.shared.bool(forKey:"developerAutoCopyDiagnostics") }
+    @objc func toggleAXTrial(_ item:NSMenuItem) {
+        if !axTrialEnabled && !FeaturePermission.accessibility.ensure() { return }
+        CameraPreferences.shared.set(!axTrialEnabled,forKey:"developerAXTrial")
+        item.state=axTrialEnabled ? .on:.off
+        if !axTrialEnabled { clearAXTrialBorders() }
+    }
+    @objc func toggleAutoDiagnostics(_ item:NSMenuItem) {
+        CameraPreferences.shared.set(!autoDiagnostics,forKey:"developerAutoCopyDiagnostics")
+        item.state=autoDiagnostics ? .on:.off
+    }
+    func copyInvocationDiagnostics() {
+        guard autoDiagnostics else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(diagnosticReport(diagnosticSections()),forType:.string)
+    }
+    func clearAXTrialBorders() {
+        axTrialGeneration += 1
+        for border in axTrialBorders { border.parent?.removeChildWindow(border);border.orderOut(nil) }
+        axTrialBorders=[]
+    }
+    func runAXTrial(after actual:NSPanel) {
+        clearAXTrialBorders()
+        guard axTrialEnabled || autoDiagnostics else { lastAXTrial="AX preview disabled.";return }
+        let drawPreview=axTrialEnabled
+        let generation=axTrialGeneration, displays=displayMappingReport(), started=ProcessInfo.processInfo.systemUptime
+        lastAXTrial="AX preview collecting…"
+        DispatchQueue.global(qos:.utility).async {
+            var proposal:AXTrialProposal?
+            let mapping=accessibilityMappingReport { host,windows in proposal=axTrialProposal(host:host,windows:windows) }
+            DispatchQueue.main.async {
+                guard self.axTrialGeneration==generation,self.panel === actual else { return }
+                self.lastAXMapping=displays+"\n\n"+mapping
+                self.lastAXTrial=(proposal?.summary ?? "AX proposal unavailable. See Accessibility map; normal overlay unaffected.")+String(format:"\nTrial elapsed: %.0f ms (after normal panel shown).",(ProcessInfo.processInfo.systemUptime-started)*1000)
+                if !drawPreview { self.lastAXTrial += "\nDrawing disabled; collected for automatic diagnostics.";self.copyInvocationDiagnostics();self.copyingInvocation=false;return }
+                if let proposal,let current=self.overlayHost, abs(current.frame.minX-proposal.host.minX)<2,abs(current.frame.minY-proposal.host.minY)<2,abs(current.frame.width-proposal.host.width)<2,abs(current.frame.height-proposal.host.height)<2 {
+                    let displayHeight=CGDisplayBounds(CGMainDisplayID()).height
+                    for (index,rect) in proposal.panes.enumerated() {
+                        let frame=CGRect(x:rect.minX,y:displayHeight-rect.maxY,width:rect.width,height:rect.height)
+                        let border=NSPanel(contentRect:frame,styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
+                        border.isOpaque=false;border.backgroundColor = .clear;border.hasShadow=false;border.ignoresMouseEvents=true
+                        border.level=actual.level
+                        border.animationBehavior = .none;border.isReleasedWhenClosed=false;border.hidesOnDeactivate=false
+                        border.collectionBehavior=[.canJoinAllSpaces,.fullScreenAuxiliary,.ignoresCycle,.transient]
+                        let name=proposal.panes.count==1 ? "AX single":(proposal.layout=="Side-by-side" ? (index==0 ? "AX left":"AX right"):(index==0 ? "AX top":"AX bottom"))
+                        border.contentView=AXTrialBorder(size:frame.size,tint:index==0 ? .systemGreen:.systemPurple,label:name)
+                        actual.addChildWindow(border,ordered:.above)
+                        if self.overlaySuspended { border.orderOut(nil) }
+                        self.axTrialBorders.append(border)
+                    }
+                } else if proposal != nil { self.lastAXTrial += "\nPreview not drawn: host changed or does not match overlay host." }
+                self.copyInvocationDiagnostics();self.copyingInvocation=false
+            }
+        }
+    }
     var axMappingInProgress=false
     @objc func inspectLayout() {
         guard !axMappingInProgress else { return }
-        hide(); guard FeaturePermission.accessibility.ensure() else { return }
+        guard FeaturePermission.accessibility.ensure() else { return }
         report("Inspecting Lightroom’s accessible layout…")
         let size = lastImageSize
         let displays=displayMappingReport()
@@ -927,7 +1004,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let result = probeLightroom(imageSize: size)
             DispatchQueue.main.async {
                 self.axMappingInProgress=false;self.lastAXMapping=mapping
-                self.lastLayout = result.summary; self.report(result.summary); self.showResult()
+                self.lastAXInspection = "Diagnostic inspection only; this does not change calibration or detection mode.\n"+result.summary; self.showDiagnostics()
             }
         }
     }
@@ -1188,6 +1265,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         return [
             DiagnosticSection(title:"App & permissions",body:"\(versionTitle)\nAccessibility: \(AXIsProcessTrusted() ? "granted":"not granted — request through Inspect Accessibility layout")\nScreen Recording: \(CGPreflightScreenCaptureAccess() ? "granted":"not granted")\nExifTool: \(findExifTool(custom:CameraPreferences.shared.string(forKey:"exiftool")) == nil ? "not found":"available")\nApp: \(Bundle.main.bundleURL.path)\nBundle ID: \(Bundle.main.bundleIdentifier ?? "unknown")\n\(storageStatus)"),
             DiagnosticSection(title:"Accessibility & display map",body:lastAXMapping),
+            DiagnosticSection(title:"AX placement trial",body:lastAXTrial),
+            DiagnosticSection(title:"Accessibility image inspection",body:lastAXInspection),
+            DiagnosticSection(title:"Last result",body:lastResult),
             DiagnosticSection(title:"Lightroom bridge",body:"Heartbeat: \(age)\nPlugin status: \(state.trimmingCharacters(in:.whitespacesAndNewlines))"),
             DiagnosticSection(title:"Overlay visibility & minimisation",body:"\(overlayVisibilityStatus)\nGeometry source: \(overlayGeometrySource)\n\(overlayLifecycleStatus)\nMoves: \(overlayMoveCount); ordering changes: \(overlayOrderCount); level changes: \(overlayLevelChangeCount).\n\nEvent history (uptime seconds):\n" + lifecycleTrace.joined(separator:"\n")),
             DiagnosticSection(title:"Placement & capture",body:lastLayout),
@@ -1197,8 +1277,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     @objc func showDiagnostics() {
         let sections=diagnosticSections()
-        hide();diagnosticsWindow?.close()
-        diagnosticsWindow=DiagnosticsController(sections:sections)
+        diagnosticsWindow?.close()
+        diagnosticsWindow=DiagnosticsController(sections:sections,refresh: { [weak self] in self?.inspectLayout() })
     }
     @objc func showResult() {
         hide(); NSApp.activate(ignoringOtherApps: true)

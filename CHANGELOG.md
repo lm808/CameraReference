@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.16 — AX diagnostic trial (candidate)
+
+Add independent single/split AX placement outlines, optional automatic diagnostic copying, and consolidated Accessibility/image inspection reporting. Production placement remains unchanged. Raw toolbar/margin corrections and native acceptance remain pending.
+
 ## 1.0.15 — Accessibility mapping diagnostics
 
 Expand explicit Accessibility inspection with all returned AX window entries, available roles/state and precise rectangles, matching window-list metadata, and named display geometry/scales. Dedicated copyable diagnostic section; no placement or background-monitoring changes.

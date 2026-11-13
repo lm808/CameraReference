@@ -25,3 +25,11 @@ Completed functionality belongs in README; implementation rationale in METHODS; 
 
 - Library Loupe/module transitions passed in 1.0.11; per-module layout memory and on-screen placement passed in 1.0.12. Off-screen capture remains blocked: 1.0.13 exposed inconsistent content geometry and later successes; 1.0.14 enables raw previews during failure. Collect native intermittent cases before changing mapping again. Consider retaining the last failed frame/diagnostics separately from later successes. Main accepted at 1.0.14 for continued use. Brief minimise lingering is accepted; no further early-command monitoring planned.
 - Later: investigate AX panel-derived viewport bounds and explicit 50/50 split fallback; preserve capture detection until accepted.
+
+
+### AX diagnostic candidate 1.0.16
+
+- Native validation of independent green/purple outlines and their lifecycle is pending.
+- Determine exact toolbar/backdrop edges; current panel-edge estimate is deliberately raw.
+- Validate label heuristics across Library, display scales, session changes and hidden panels.
+- Only after acceptance, discuss switching actual placement to AX and retiring layout selection. Do not alter the existing detector during this trial.

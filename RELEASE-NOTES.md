@@ -1,9 +1,9 @@
-# Camera Reference 1.0.15
+# Camera Reference Testing 1.0.16
 
-Run `release/CameraReference.app`. Normal app identity/name; bridge remains **0.5.3**. No settings or plugin changes required.
+Candidate only: run `release/CameraReference Testing.app` in the AX investigation worktree. Bridge remains 0.5.3. Stable main/release remains 1.0.15. Quit one app before running the other; settings are shared.
 
-Diagnostic-only update: **Developer tools → Inspect Accessibility layout…** populates **Accessibility & display map** in Bridge diagnostics. It includes numbered AX windows, roles/state/rectangles, supplementary CG visibility metadata and display names, bounds, scales and mode pixel dimensions. Every AXWindows entry is represented; unsupported properties and time-limited reads are explicitly marked. No screenshot is taken and no titles or control values are collected.
+Developer tools now groups capture/bridge actions and provides one Diagnostics window, including Refresh AX and Copy all. Optional **Show AX placement preview** adds click-through green/purple borders after normal placement. Both split panes are drawn; layout is inferred from visible label geometry independently of the production layout menu. No clear pair means single view. Information-overlay rectangles and session-specific IDs are not used.
 
-Send **Copy all** with an original full-display screenshot taken without moving/resizing Lightroom or changing panels. Identify the display by its D-number/name. The report supplies coordinate origins and scaling information.
+The estimate uses visible surrounding panels, window-edge insets for hidden panels, and a nominal midpoint constrained into the central label gap. It is deliberately uncorrected for toolbar/margin differences. It never supplies placement to the current detector.
 
-Placement, capture, caching, settings and minimisation behaviour are unchanged. Intermittent off-screen/split behaviour remains under investigation. No DMG or remote push.
+Optional **Copy diagnostics after invocation** replaces the clipboard with reports as invocation status updates, then with the completed AX report. Both options default off. Accessibility inspection does not capture screenshots; existing Screen Recording features are unchanged. No detection-backend switch, DMG, install or push.

@@ -19,7 +19,7 @@ The user runs only staged apps: stable `release/CameraReference.app` or candidat
 - `bash scripts/package.sh`: package the existing release/ payload as a DMG/checksum under ignored dist/. Uses hdiutil; may require sandbox approval. Does not install the app or publish anything. Existing DMG is not overwritten.
 - Verify signature/plist and `git diff --check` before committing. Run checks appropriate to the change; avoid repeating unchanged suites without reason.
 
-Use plain three-component versions in CFBundleShortVersionString (currently `1.0.15`); the menu and package script read that value. Stable keeps org.local.CameraReference. User authorised testing identity org.local.CameraReference.testing with a purple icon; candidate builds use bash build.sh --testing or bash scripts/stage.sh --testing. Both use the existing org.local.CameraReference preference domain and shared support/bridge folder; run only one app at a time. Do not rebuild main’s accepted staged app while working on candidates.
+Use plain three-component versions in CFBundleShortVersionString (candidate `1.0.16`; stable main `1.0.15`); the menu and package script read that value. Stable keeps org.local.CameraReference. User authorised testing identity org.local.CameraReference.testing with a purple icon; candidate builds use bash build.sh --testing or bash scripts/stage.sh --testing. Both use the existing org.local.CameraReference preference domain and shared support/bridge folder; run only one app at a time. Do not rebuild main’s accepted staged app while working on candidates.
 
 ## Source map and flow
 
@@ -34,6 +34,7 @@ Use plain three-component versions in CFBundleShortVersionString (currently `1.0
 | `PhotoDetector.swift` | Legacy/diagnostic photo-edge detection and related fixtures; not a replacement for UI Fit calculation |
 | `DetectionConfig.swift` | Advanced config schema, parser, metadata cache and legacy filename migration |
 | `SplitLayout.swift` | Explicit pane geometry, floating half-viewport fit, placement memory, comparison/order helpers |
+| `AXTrial.swift` | Diagnostic-only independent panel/label proposal and border view; never feed it to production placement without user acceptance |
 | `Layout.swift` | Lightroom window metadata/coordinate helpers, bounded AX probes, overlay host state decisions and overview heuristic |
 | `Interaction.swift` | Image navigation, display geometry and placement checks |
 | `Views.swift` | Shared photo view, overlay/floating panels, floating chrome, previews/toasts/menu diagrams |

@@ -1,9 +1,12 @@
-# Camera Reference 1.0.15 — diagnostic mapping
+# Camera Reference Testing 1.0.16 — AX diagnostic trial
 
-Run `release/CameraReference.app` (normal icon/name), bridge **0.5.3**. This update only expands diagnostics; accepted 1.0.14 behaviour is unchanged.
+Run this worktree's `release/CameraReference Testing.app`, with bridge 0.5.3. Quit the stable app first; both share settings. Main and its staged 1.0.15 app are unchanged. No new bridge required.
 
-- [ ] Choose **Developer tools → Inspect Accessibility layout…**. In the report, find **Accessibility & display map**. Check that AXWindows returned/examined counts and W1…Wn entries are present; unreadable or budget-limited entries must be explicit.
-- [ ] Check each display appears with its name/D-number, global bounds, backing scale and mode pixels. Unsupported AXVisible is expected on some objects and does not mean hidden.
-- [ ] Dismiss the report, keep Lightroom's window/panels unchanged, and take an original full-display screenshot. Send **Bridge diagnostics → Copy all**, the screenshot and its D-number/name. No need to clear/calibrate regions or change settings.
+- [ ] With both new developer options off, confirm ordinary overlay placement, repeated toggles and manual calibration behave as before.
+- [ ] Enable **Developer tools → Show AX placement preview** (Accessibility required). Invoke in single view: one green outline. Invoke in side-by-side/stacked Reference View: green left/top and purple right/bottom, regardless of the app's existing layout/pane selection. Normal photo placement still follows that selection.
+- [ ] Turn Lightroom photo information off; hide panels and resize; invoke again. Outlines must use fresh panel/label evidence, not information rectangles. Raw edge estimates deliberately include unresolved toolbar/margin errors: report these with a screenshot.
+- [ ] Dismiss/reinvoke quickly, move Lightroom, switch apps, minimise/restore: no late or orphan trial borders; borders do not intercept clicks. Disable the option: outlines disappear without dismissing the photo.
+- [ ] **Diagnostics… → Refresh AX** shows a new snapshot timestamp and image-inspection section in the same window. **Copy all** includes normal placement, AX trial, display map and timings. No separate inspection alert to copy.
+- [ ] Enable **Copy diagnostics after invocation**: clipboard is replaced by the full report automatically, including the completed AX result. Confirm with preview both on and off. A normal invocation failure should also copy its status. Disable to stop automatic clipboard writes.
 
-Continue ordinary edge-case collection separately. Minimise lingering is accepted; off-screen/split intermittency and the deferred Mission Control/module-switch check remain documented in docs/BACKLOG.md and docs/VALIDATION.md.
+Live acceptance is pending. No Screen Capture / AX placement switch yet. The normal detector is unchanged; the AX calculation is a heuristic experiment, not a verified replacement.

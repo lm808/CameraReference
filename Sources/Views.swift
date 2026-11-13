@@ -277,23 +277,28 @@ final class DiagnosticsController:NSObject,NSWindowDelegate {
     private let sections:[DiagnosticSection]
     private let chooser=NSPopUpButton(frame:.zero,pullsDown:false)
     private let text=NSTextView()
-    init(sections:[DiagnosticSection]) {
+    private var refreshAction:(()->Void)?
+    @objc private func refreshReport() { refreshAction?() }
+    init(sections:[DiagnosticSection],refresh:(()->Void)? = nil) {
+        self.refreshAction=refresh
         self.sections=sections;super.init()
         let panel=NSWindow(contentRect:CGRect(x:0,y:0,width:760,height:560),styleMask:[.titled,.closable,.resizable],backing:.buffered,defer:false)
         panel.title="Camera Reference — Bridge diagnostics";panel.isReleasedWhenClosed=false;panel.delegate=self
         let root=NSView();panel.contentView=root
         chooser.addItems(withTitles:["All sections"]+sections.map(\.title));chooser.target=self;chooser.action=#selector(selectSection)
         let copy=NSButton(title:"Copy all",target:self,action:#selector(copyAll))
+        let refreshButton=NSButton(title:"Refresh AX",target:self,action:#selector(refreshReport))
         let scroll=NSScrollView();scroll.hasVerticalScroller=true;scroll.borderType = .bezelBorder
         text.isEditable=false;text.isSelectable=true;text.isRichText=false
         text.font=NSFont.monospacedSystemFont(ofSize:12,weight:.regular)
         text.textContainerInset=CGSize(width:12,height:12);text.isVerticallyResizable=true;text.isHorizontallyResizable=false
         text.autoresizingMask=[.width];text.textContainer?.widthTracksTextView=true
         scroll.documentView=text
-        for view in [chooser,copy,scroll] as [NSView] { view.translatesAutoresizingMaskIntoConstraints=false;root.addSubview(view) }
+        for view in [chooser,copy,refreshButton,scroll] as [NSView] { view.translatesAutoresizingMaskIntoConstraints=false;root.addSubview(view) }
         NSLayoutConstraint.activate([
             chooser.leadingAnchor.constraint(equalTo:root.leadingAnchor,constant:16),chooser.topAnchor.constraint(equalTo:root.topAnchor,constant:14),
-            chooser.trailingAnchor.constraint(lessThanOrEqualTo:copy.leadingAnchor,constant:-12),
+            chooser.trailingAnchor.constraint(lessThanOrEqualTo:refreshButton.leadingAnchor,constant:-12),
+            refreshButton.trailingAnchor.constraint(equalTo:copy.leadingAnchor,constant:-12),refreshButton.centerYAnchor.constraint(equalTo:chooser.centerYAnchor),
             copy.trailingAnchor.constraint(equalTo:root.trailingAnchor,constant:-16),copy.centerYAnchor.constraint(equalTo:chooser.centerYAnchor),
             scroll.topAnchor.constraint(equalTo:chooser.bottomAnchor,constant:12),scroll.leadingAnchor.constraint(equalTo:root.leadingAnchor,constant:16),
             scroll.trailingAnchor.constraint(equalTo:root.trailingAnchor,constant:-16),scroll.bottomAnchor.constraint(equalTo:root.bottomAnchor,constant:-16)
