@@ -493,10 +493,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         shortcutItem = add("Keyboard shortcuts…", #selector(changeShortcut), to: settings)
 
         settings.addItem(.separator())
-        add("Advanced settings…", #selector(editAdvancedSettings), to: settings)
-        add("Edit config file", #selector(openDetectionConfig), to: settings)
         add("Choose ExifTool…", #selector(chooseExifTool), to: settings)
         add("Clear region setting", #selector(clearAllRegionData), to: settings)
+        add("Advanced settings…", #selector(editAdvancedSettings), to: settings)
         let developer = submenu("Developer tools")
         developer.addItem(detail); developer.addItem(.separator())
         add("Diagnostics…", #selector(showDiagnostics), to: developer)

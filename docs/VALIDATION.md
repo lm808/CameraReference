@@ -652,3 +652,9 @@ User clarification: the +25 pt Library correction applies only to inferred split
 Editor regression executable passed: exact CRLF round-trip, directive/inline/preceding comment retention, value-only replacement, unknown-row visibility, invalid ranges and multiline input rejection, external-edit conflict refusal, and atomic save. File-coordination tests required execution outside the command restriction; all writes used unique temporary fixtures, never personal config. The Library single-view/both-split geometry assertions passed in the preceding source correction and that correction is now included in the staged app.
 
 Testing app compiled without warnings; staged signature and plist verified (1.0.25, org.local.CameraReference.testing). Diff whitespace checks passed. Screenshot detector/capture/split source files are unchanged. No app launch or live interaction; native editor usability and placement remain for user testing. Main and stable staging are untouched; # AX: removal is deferred until the requested merge.
+
+## 1.0.26 — Config menu cleanup
+
+Removed only the standalone Edit config file menu entry; source inspection confirms the editor button retains its existing action. Testing build and staged signature/plist checks passed; diff whitespace checks passed. No behaviour tests repeated for this menu-only change. Native menu check remains in TESTING.md. No app launch; main unchanged.
+
+Advanced settings… is the final Settings menu item.

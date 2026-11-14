@@ -57,7 +57,7 @@ GUI preferences and calibration state remain in macOS-managed preferences. Advan
 
 `~/Library/Application Support/CameraReference/config.conf`
 
-Open it through **Settings → Edit config file**. Existing `detection.conf` is copied automatically when no new file exists; existing values are preserved and the original remains as a backup. See [configuration](docs/CONFIGURATION.md) and the [example file](config/config.example.conf).
+Open it through **Settings → Advanced settings… → Open config file**. Existing `detection.conf` is copied automatically when no new file exists; existing values are preserved and the original remains as a backup. See [configuration](docs/CONFIGURATION.md) and the [example file](config/config.example.conf).
 
 `sideSearchPercent = 40` is the current preferred setting. New configs default to 40 and all four bounds set to `ui`. Existing explicit settings are preserved.
 

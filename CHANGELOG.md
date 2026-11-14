@@ -149,3 +149,9 @@ Detailed findings and accepted results are in docs/VALIDATION.md, not this user-
 
 - Add a file-driven advanced config editor with editable values, comments, validation and external-edit protection.
 - Include the +25 pt Library bottom correction only for split views. Preserve the existing screenshot detector.
+
+## 1.0.26 (candidate)
+
+- Remove the standalone Edit config file menu item; use Open config file inside Advanced settings.
+
+Advanced settings… is the final Settings menu item.

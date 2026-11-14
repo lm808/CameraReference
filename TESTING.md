@@ -1,7 +1,8 @@
-# Camera Reference Testing 1.0.25
+# Camera Reference Testing 1.0.26
 
 Quit stable first; use this worktree's release/CameraReference Testing.app. Main remains 1.0.15. Native checks pending; no live testing by the agent.
 
+- [ ] Advanced settings… is last in Settings. Settings has no separate Edit config file item; Open config file remains available inside Advanced settings.
 - [ ] Settings → Advanced settings…: Name / Value / Comment columns and warning are readable. Double-click a value; Save applies it. Cancel/window close leaves the file unchanged. Comments have full hover text.
 - [ ] Invalid value: Save reports an error and leaves the file unchanged. Correct it and save successfully. Edit externally while the window is open: Save refuses to overwrite; cancel/reopen shows the latest file.
 - [ ] Both ordinary and # AX: settings appear; editing preserves comments/directives. A new supported entry added in plain text appears on reopening without an editor update.

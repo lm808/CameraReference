@@ -15,7 +15,7 @@ Each setting has one authoritative storage location. Calibration remains interna
 
 `~/Library/Application Support/CameraReference/config.conf`
 
-Settings → Edit config file opens this plain-text file. Parsed settings stay in memory; metadata checks detect edits. Valid changes apply on the next invocation/check as appropriate, without changing an already drawn photo midway. Invalid edits retain the last valid settings and are reported on explicit use. Background checks do not show configuration alerts.
+Settings → Advanced settings… → Open config file opens this plain-text file. Parsed settings stay in memory; metadata checks detect edits. Valid changes apply on the next invocation/check as appropriate, without changing an already drawn photo midway. Invalid edits retain the last valid settings and are reported on explicit use. Background checks do not show configuration alerts.
 
 | Setting | Default | Allowed values / purpose |
 |---|---|---|
