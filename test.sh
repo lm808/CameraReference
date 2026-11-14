@@ -23,3 +23,7 @@ if [ "$#" -eq 2 ]; then
   xcrun swiftc -O -module-cache-path build/module-cache Sources/DetectionConfig.swift Sources/SplitLayout.swift Sources/Snapping.swift Sources/ViewportDetector.swift Sources/PhotoDetector.swift Sources/ScreenProbe.swift tests/margin-crops/main.swift -o build/margin-crop-tests
   ./build/margin-crop-tests "$1" "$2"
 fi
+
+# File-driven advanced settings editor: no live app or AX interaction.
+xcrun swiftc -swift-version 5 -module-cache-path build/module-cache Sources/DetectionConfig.swift Sources/ConfigEditor.swift tests/config-editor/main.swift -o build/config-editor-tests
+./build/config-editor-tests

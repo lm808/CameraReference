@@ -71,3 +71,7 @@ All signed offsets start at raw AX boundaries: **right/up positive; left/down ne
 Bottom correction is cumulative: filmstrip correction + toolbar height when shown/unknown + Library correction in Library split views only (zero in single view). The user-calibrated Library split-view allowance defaults to +25 pt; positive moves the bottom upwards. Toolbar-unavailable diagnostics say assumed shown. Filmstrip shown/toolbar hidden's -11 pt remains inferred. Correct the combined area, then split at its midpoint constrained between labels.
 
 These defaults ship in the parser and example for fresh installations. They apply to AX preview and experimental AX-only placement, never the screenshot detector. Geometry is read anew per AX invocation; no placement cache. JPEG RAM caching remains enabled.
+
+### Advanced settings editor
+
+Settings → Advanced settings… reads the current file into Name, Value and Comment columns; only values are editable. Rows and explanations come from assignments, preceding comment lines and inline comments, with no separate editor schema. Unchanged lines, ordering, line endings and `# AX:` prefixes are preserved. New file entries appear on reopening. Save validates with the existing parser and performs a coordinated atomic write only if the file still matches the opened content. Unknown entries remain visible/preserved, but unsupported active keys still fail existing parser validation. Cancel and the close button discard unsaved edits. Open config file retains the existing external editor action.

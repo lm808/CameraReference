@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     func updateFloatingTitle() { floating?.title=floatingTitle + String(format:" — %.1f%%",floatingZoom) }
     let detectionSettings=DetectionConfigStore()
+    var configEditor:ConfigEditorController?
     var observedWindowFrame:CGRect?
     var hasObservedWindow=false
     var lastImageSize: CGSize?
@@ -492,6 +493,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         shortcutItem = add("Keyboard shortcuts…", #selector(changeShortcut), to: settings)
 
         settings.addItem(.separator())
+        add("Advanced settings…", #selector(editAdvancedSettings), to: settings)
         add("Edit config file", #selector(openDetectionConfig), to: settings)
         add("Choose ExifTool…", #selector(chooseExifTool), to: settings)
         add("Clear region setting", #selector(clearAllRegionData), to: settings)
@@ -1156,6 +1158,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 }
             }
         }
+    }
+    @objc func editAdvancedSettings() {
+        if let editor=configEditor,editor.window?.isVisible == true { editor.showWindow(nil);NSApp.activate(ignoringOtherApps:true);return }
+        do {
+            try detectionSettings.ensureFile()
+            configEditor=try ConfigEditorController(url:detectionSettings.url,onSave:{ [weak self] in _ = self?.reloadDetectionConfig() },openFile:{ [weak self] in self?.openDetectionConfig() })
+            configEditor?.showWindow(nil);NSApp.activate(ignoringOtherApps:true)
+        } catch { report("Could not read config.conf: \(error.localizedDescription)");showResult() }
     }
     @objc func openDetectionConfig() {
         do {

@@ -144,3 +144,8 @@ Detailed findings and accepted results are in docs/VALIDATION.md, not this user-
 - Add independent experimental AX-only automatic placement, with no screenshot fallback or background captures.
 - Add calibrated, configurable shown/hidden offsets using right/up-positive signs and cumulative bottom corrections; keep a separate Library allowance.
 - Preserve screenshot detection, manual precedence, JPEG caching and the independent AX preview.
+
+## 1.0.25 (candidate)
+
+- Add a file-driven advanced config editor with editable values, comments, validation and external-edit protection.
+- Include the +25 pt Library bottom correction only for split views. Preserve the existing screenshot detector.

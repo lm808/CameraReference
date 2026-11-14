@@ -1,6 +1,11 @@
-# Camera Reference Testing 1.0.24
+# Camera Reference Testing 1.0.25
 
 Quit stable first; use this worktree's release/CameraReference Testing.app. Main remains 1.0.15. Native checks pending; no live testing by the agent.
+
+- [ ] Settings → Advanced settings…: Name / Value / Comment columns and warning are readable. Double-click a value; Save applies it. Cancel/window close leaves the file unchanged. Comments have full hover text.
+- [ ] Invalid value: Save reports an error and leaves the file unchanged. Correct it and save successfully. Edit externally while the window is open: Save refuses to overwrite; cancel/reopen shows the latest file.
+- [ ] Both ordinary and # AX: settings appear; editing preserves comments/directives. A new supported entry added in plain text appears on reopening without an editor update.
+- [ ] Library single view has no additional Library offset. Library side-by-side and above-and-below use +25 pt; Develop is unchanged.
 
 - [ ] With AX-only OFF: existing screenshot Full/split placement, cache hits/background checks and manual calibration still work as before.
 - [ ] Enable Experimental features → Use AX data only for placement. With automatic viewing area ON, overlay and floating display use AX; diagnostics say capture skipped, no placement cache. No Screen Recording prompt or new captured preview. Background checks report disabled.

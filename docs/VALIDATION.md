@@ -645,3 +645,10 @@ Synthetic coverage includes signed shown/hidden borders, cumulative filmstrip/to
 User calibrated the additional Library bottom correction to +25 pt and updated their personal config. Source defaults and fresh-install template now use 25; current documentation and the existing geometry assertions reflect that default. Historical zero-default notes above describe the earlier build. No personal config, detector, version or staged app changed.
 
 User clarification: the +25 pt Library correction applies only to inferred split views, never single view. Updated the condition and regression checks for both split orientations and unchanged Library single view. No app rebuild or version change.
+
+
+## 1.0.25 — File-driven config editor
+
+Editor regression executable passed: exact CRLF round-trip, directive/inline/preceding comment retention, value-only replacement, unknown-row visibility, invalid ranges and multiline input rejection, external-edit conflict refusal, and atomic save. File-coordination tests required execution outside the command restriction; all writes used unique temporary fixtures, never personal config. The Library single-view/both-split geometry assertions passed in the preceding source correction and that correction is now included in the staged app.
+
+Testing app compiled without warnings; staged signature and plist verified (1.0.25, org.local.CameraReference.testing). Diff whitespace checks passed. Screenshot detector/capture/split source files are unchanged. No app launch or live interaction; native editor usability and placement remain for user testing. Main and stable staging are untouched; # AX: removal is deferred until the requested merge.
