@@ -638,3 +638,8 @@ Removed exhaustive control/AXSections routines from the app; retained window/dis
 Full automated regression suite passed during implementation; core behaviour/config/AX geometry checks were rerun after the final append-only config adjustment and passed. Testing build completed without compiler warnings; staged signature verification passed, with version 1.0.24 and testing bundle identity. `git diff --check` passed. ScreenProbe.swift, ViewportDetector.swift, PhotoDetector.swift and SplitLayout.swift have no changes from the previous candidate.
 
 Synthetic coverage includes signed shown/hidden borders, cumulative filmstrip/toolbar corrections, independent Library allowance, manual/backend precedence and selected-pane geometry. Explicit screen inspection, capture previews and calibration snapping retain their existing paths in AX mode; automatic AX placement skips screenshot cache/capture, and background placement captures are disabled. No live app was launched or Lightroom queried; native acceptance remains in TESTING.md. Library's extra allowance remains zero pending measurement; filmstrip shown with toolbar hidden is an inferred offset combination requiring confirmation. Main and its staged daily-use app remain unchanged.
+
+
+### Library default follow-up (no version/build change)
+
+User calibrated the additional Library bottom correction to +25 pt and updated their personal config. Source defaults and fresh-install template now use 25; current documentation and the existing geometry assertions reflect that default. Historical zero-default notes above describe the earlier build. No personal config, detector, version or staged app changed.

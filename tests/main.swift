@@ -615,7 +615,9 @@ assert(noBottom.panes[0].maxY==1319)
 var hiddenToolbar=v2;hiddenToolbar.axToolbarState="hidden"
 let allHidden=axTrialProposal(host:trialHost,windows:[],settings:hiddenToolbar)!
 assert(allHidden.panes[0]==CGRect(x:17,y:79,width:2526,height:1283))
-var lib=v2;lib.axLibraryBottomOffsetPoints=25
+assert(DetectionConfig().axLibraryBottomOffsetPoints == 25)
+assert(v2.axLibraryBottomOffsetPoints == 25)
+let lib=v2
 assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:lib,module:"library")!.panes[0].maxY==1171)
 assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:lib,module:"develop")!.panes[0].maxY==1196)
 let custom=try DetectionConfig.parse("# AX: axShownTopOffsetPoints=20\n# AX: axShownLeftOffsetPoints=-10")

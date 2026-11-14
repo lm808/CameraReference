@@ -18,7 +18,7 @@ struct DetectionConfig: Equatable {
     var axFilmstripShownOffsetPoints:CGFloat = -11
     var axFilmstripHiddenOffsetPoints:CGFloat=17
     var axToolbarHeightPoints:CGFloat=43
-    var axLibraryBottomOffsetPoints:CGFloat=0
+    var axLibraryBottomOffsetPoints:CGFloat=25
     var axBaseHiddenLeftInsetPoints:CGFloat=18
     var axBaseHiddenRightInsetPoints:CGFloat=18
     var axBaseHiddenTopInsetPoints:CGFloat=50
@@ -38,7 +38,7 @@ struct DetectionConfig: Equatable {
     # AX: axFilmstripShownOffsetPoints = -11 # inferred for filmstrip shown / toolbar hidden
     # AX: axFilmstripHiddenOffsetPoints = 17
     # AX: axToolbarHeightPoints = 43
-    # AX: axLibraryBottomOffsetPoints = 0 # uncalibrated; extra upward allowance for Library
+    # AX: axLibraryBottomOffsetPoints = 25 # extra upward allowance for Library
     # Base hidden insets measure inward from the window; offsets apply afterwards.
     # AX: axBaseHiddenLeftInsetPoints = 18
     # AX: axBaseHiddenRightInsetPoints = 18

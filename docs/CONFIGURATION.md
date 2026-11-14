@@ -64,10 +64,10 @@ All signed offsets start at raw AX boundaries: **right/up positive; left/down ne
 | axShownTopOffsetPoints / axHiddenTopOffsetPoints | +11 / +1 |
 | axFilmstripShownOffsetPoints / axFilmstripHiddenOffsetPoints | -11 / +17 |
 | axToolbarHeightPoints | 43 |
-| axLibraryBottomOffsetPoints | 0 |
+| axLibraryBottomOffsetPoints | 25 |
 | axBaseHiddenLeftInsetPoints / axBaseHiddenRightInsetPoints | 18 / 18 |
 | axBaseHiddenTopInsetPoints / axBaseHiddenBottomInsetPoints | 50 / 0 |
 
-Bottom correction is cumulative: filmstrip correction + toolbar height when shown/unknown + Library correction in Library. The Library allowance is deliberately zero until calibrated; positive moves the bottom upwards. Toolbar-unavailable diagnostics say assumed shown. Filmstrip shown/toolbar hidden's -11 pt remains inferred. Correct the combined area, then split at its midpoint constrained between labels.
+Bottom correction is cumulative: filmstrip correction + toolbar height when shown/unknown + Library correction in Library. The user-calibrated Library allowance defaults to +25 pt; positive moves the bottom upwards. Toolbar-unavailable diagnostics say assumed shown. Filmstrip shown/toolbar hidden's -11 pt remains inferred. Correct the combined area, then split at its midpoint constrained between labels.
 
 These defaults ship in the parser and example for fresh installations. They apply to AX preview and experimental AX-only placement, never the screenshot detector. Geometry is read anew per AX invocation; no placement cache. JPEG RAM caching remains enabled.
