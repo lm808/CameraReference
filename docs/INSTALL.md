@@ -18,7 +18,7 @@ Run `bash scripts/stage.sh` to build and refresh release/. Launch **release/Came
 1. Quit any older Camera Reference process.
 2. Open the disk image and drag **CameraReference.app** onto **Applications**.
 3. Launch the copy in Applications, not the copy inside the disk image.
-4. On first use of automatic detection, allow Screen Recording (or Screen & System Audio Recording, depending on macOS). Accessibility is optional: read-only diagnostics use it, and existing permission improves dialog/minimise state checks. Core placement does not require it; the lifecycle timer never prompts.
+4. AX-only placement uses Accessibility access and always detects the view. Screen Recording is optional and is never requested by the app. Grant it yourself in macOS Privacy & Security if you want screenshot detection, capture previews or calibration snapping. Without it, manual calibration works without snapping.
 
 The current build is ad-hoc signed, not Developer ID signed or notarised. Downloaded copies may be blocked by Gatekeeper. Only proceed if you trust the source; macOS’s Privacy & Security panel may offer **Open Anyway** after a blocked launch. Do not disable Gatekeeper globally. Apple’s instructions: https://support.apple.com/102445 . A notarised release remains future distribution work.
 
@@ -48,7 +48,7 @@ Use TESTING.md in the repository for staged-app acceptance; DMG installation is 
 
 ### Stable and testing copies
 
-Use `bash scripts/stage.sh --testing` in the candidate worktree for Camera Reference Testing (purple icon, `org.local.CameraReference.testing`). Stable builds keep `org.local.CameraReference`. Keep main’s accepted app while testing; quit one before starting the other because settings/bridge are shared. The testing identity requires its own Screen Recording and optional Accessibility approval. Separate identity protects stable’s permissions entry; ad-hoc-signed testing updates may still require renewed approval. No permission is granted or reset by the build scripts.
+Use `bash scripts/stage.sh --testing` in the candidate worktree for Camera Reference Testing (purple icon, `org.local.CameraReference.testing`). Stable builds keep `org.local.CameraReference`. Keep main’s accepted app while testing; quit one before starting the other because settings/bridge are shared. The testing identity uses its own permissions entries: Accessibility for AX features, optional Screen Recording for screenshot features. Separate identity protects stable’s permissions entry; ad-hoc-signed testing updates may still require renewed approval. No permission is granted or reset by the build scripts.
 
 Testing app path: `release/CameraReference Testing.app` (purple with T badge). Add this exact file in permission settings; leave the stable entry alone. Quit and reopen this exact build after approval if required. Current builds are ad-hoc signed; rebuilding does not guarantee resolution of a stale or unrecognised macOS grant. No valid signing certificate was found during the 1.0.11 rebuild; persistent certificate signing remains outstanding.
 

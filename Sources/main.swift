@@ -158,12 +158,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     let imageCache=SelectionImageCache()
-    var automaticPlacementMode:AutomaticPlacementMode {
+    var screenshotDetectionEnabled:Bool {
+        (CameraPreferences.shared.object(forKey:"useScreenshotDetection") as? Bool) ?? (legacyPlacementMode != .accessibility)
+    }
+    var legacyPlacementMode:AutomaticPlacementMode {
         AutomaticPlacementMode.resolve(saved:CameraPreferences.shared.string(forKey:"automaticPlacementMode"),
             legacy:CameraPreferences.shared.object(forKey:"experimentalAXPlacement") as? Bool)
     }
-    var axPlacementEnabled:Bool { automaticPlacementMode == .accessibility }
-    var assistedPlacementEnabled:Bool { automaticPlacementMode == .assisted }
+    var screenshotAssistanceEnabled:Bool {
+        (CameraPreferences.shared.object(forKey:"screenshotAXAssistance") as? Bool) ?? (legacyPlacementMode == .assisted)
+    }
+    var automaticPlacementMode:AutomaticPlacementMode {
+        screenshotDetectionEnabled ? (screenshotAssistanceEnabled ? .assisted:.screenshot):.accessibility
+    }
+    var axPlacementEnabled:Bool { !screenshotDetectionEnabled }
+    var assistedPlacementEnabled:Bool { screenshotDetectionEnabled && screenshotAssistanceEnabled }
+    var screenshotToggleItem:NSMenuItem?,assistedToggleItem:NSMenuItem?,viewToggleItem:NSMenuItem?
     var assistedSignature:String?
     var assistedChecks=0,assistedAXChanges=0,assistedAXFailures=0,assistedPixelChanges=0,assistedPixelFailures=0
     var assistedCheckSeconds:Double=0,assistedAXSeconds:Double=0
@@ -177,7 +187,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
         return hints
     }
-    var automaticViewEnabled:Bool { CameraPreferences.shared.bool(forKey:"experimentalAutomaticView") }
+    var automaticViewEnabled:Bool { automaticPlacementMode.usesAXViewDetection(screenshotOption:CameraPreferences.shared.bool(forKey:"experimentalAutomaticView")) }
     var detectedLayout:OverlayLayout?
     var detectedLayoutModule:String?
     var viewProbeID:UUID?
@@ -252,6 +262,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func cancelPanelCheck() { panelCheckTask?.cancel();panelCheckTask=nil;panelCheckID=nil }
     func checkPanelBoundariesIfDue() {
         guard !axPlacementEnabled else { cancelPanelCheck();panelCheckStatus="AX-only mode: background screenshot checks disabled; fresh AX geometry on invocation.";return }
+        guard FeaturePermission.screenCapture.granted else { cancelPanelCheck();panelCheckStatus="Background capture paused: Screen Recording permission unavailable.";return }
         guard #available(macOS 14.0,*),ProcessInfo.processInfo.systemUptime>=nextPanelCheck,
               panelCheckTask==nil,screenTask==nil,pending==nil,calibration==nil,!recording,!regionResetting,
               !workspaceOverview,!overlaySuspended,isLightroom(),supportedLightroomModule(currentModule()),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
@@ -466,7 +477,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             };return
         }
         if let ui=cachedUI(epoch:epoch,settings:settings,layout:.full) { show(ui);return }
-        guard supportedLightroomModule(currentModule()),#available(macOS 14.0,*),FeaturePermission.screenCapture.ensure() else { report("Calibrate a UI working area, or open Library or Develop to size the floating photo.");return }
+        guard supportedLightroomModule(currentModule()),#available(macOS 14.0,*),FeaturePermission.screenCapture.granted else { report("Screenshot sizing unavailable. Screen Recording permission and macOS 14 are required. Use AX placement or manual calibration.");return }
         startPhotoDetection(imageSize:imageSize,layout:.full) { [weak self] probe in
             guard let self else { return }
             if let epoch,self.selectionEpoch() != epoch { self.report("Selection changed during capture; invoke again.");return }
@@ -537,15 +548,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         developer.addItem(.separator())
         let experimental=NSMenu();let experimentalItem=NSMenuItem(title:"Experimental features",action:nil,keyEquivalent:"")
         experimentalItem.submenu=experimental;developer.addItem(experimentalItem)
-        let view=add("Automatically detect Lightroom view",#selector(toggleAutomaticView),to:experimental)
-        view.state=automaticViewEnabled ? .on:.off
-        let placementMenu=NSMenu()
-        let placementItem=NSMenuItem(title:"Automatic placement method",action:nil,keyEquivalent:"")
-        placementItem.submenu=placementMenu;experimental.addItem(placementItem)
-        for mode in AutomaticPlacementMode.allCases {
-            let item=add(mode.title,#selector(selectPlacementMethod),to:placementMenu)
-            item.representedObject=mode.rawValue;item.state=automaticPlacementMode==mode ? .on:.off
-        }
+        screenshotToggleItem=add("Use screenshot detection",#selector(toggleScreenshotDetection),to:experimental)
+        assistedToggleItem=add("AX-assisted placement",#selector(toggleScreenshotAssistance),to:experimental)
+        viewToggleItem=add("AX view detection",#selector(toggleAutomaticView),to:experimental)
+        assistedToggleItem?.indentationLevel=1;viewToggleItem?.indentationLevel=1
+        updateDetectionMenu()
         let trial=add("Show AX placement preview",#selector(toggleAXTrial),to:experimental)
         trial.state=axTrialEnabled ? .on:.off
         let actions=NSMenu();let actionsItem=NSMenuItem(title:"Capture / bridge actions",action:nil,keyEquivalent:"")
@@ -717,7 +724,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let active=panel != nil || destination == .overlay || viewProbeID != nil || detectionCompletion != nil
         toggleItem?.title=(active ? "Hide overlay" : "Show overlay") + "   " + shortcutText(key:keyLabel,modifiers:currentShortcut.1)
     }
-    func menuNeedsUpdate(_ menu:NSMenu) { updateToggleTitle();updateLayoutMenu() }
+    func menuNeedsUpdate(_ menu:NSMenu) { updateToggleTitle();updateLayoutMenu();updateDetectionMenu() }
     @objc func menuToggle() { toggle() }
     func toggle() {
         if recording || calibration != nil { return }
@@ -1007,7 +1014,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let enabled = !CameraPreferences.shared.bool(forKey: regionKey("automaticBounds"))
         CameraPreferences.shared.set(enabled, forKey: regionKey("automaticBounds")); autoItem.state = enabled ? .on : .off
         cancelScreenInspection();cancelRequest();hide();invalidateAutomaticGeometry()
-        if enabled { _ = axPlacementEnabled ? FeaturePermission.accessibility.ensure():FeaturePermission.screenCapture.ensure() }
+        if enabled { _ = axPlacementEnabled ? FeaturePermission.accessibility.ensure():FeaturePermission.screenCapture.granted }
         report(enabled ? "Automatic detection enabled. Manual calibration is the fallback." : "Using manual calibration.")
     }
     @objc func inspectViewState() {
@@ -1019,6 +1026,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     @objc func toggleAutomaticView(_ item:NSMenuItem) {
+        guard screenshotDetectionEnabled else { return }
         if !automaticViewEnabled && !FeaturePermission.accessibility.ensure() { return }
         cancelRequest();cancelScreenInspection()
         CameraPreferences.shared.set(!automaticViewEnabled,forKey:"experimentalAutomaticView")
@@ -1094,15 +1102,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     var diagnosticSaveStatus="Automatic report saving has not run."
     var diagnosticSaveURL:URL { folder.deletingLastPathComponent().appendingPathComponent("Diagnostics/latest.txt") }
-    @objc func selectPlacementMethod(_ item:NSMenuItem) {
-        guard let raw=item.representedObject as? String,let mode=AutomaticPlacementMode(rawValue:raw) else { return }
-        if mode != .screenshot && !FeaturePermission.accessibility.ensure() { return }
+    func updateDetectionMenu() {
+        screenshotToggleItem?.state=screenshotDetectionEnabled ? .on:.off
+        assistedToggleItem?.state=screenshotAssistanceEnabled ? .on:.off
+        viewToggleItem?.state=automaticViewEnabled ? .on:.off
+        assistedToggleItem?.isHidden = !screenshotDetectionEnabled
+        viewToggleItem?.isHidden = !screenshotDetectionEnabled
+    }
+    func placementOptionsChanged() {
         cancelScreenInspection();cancelPanelCheck();cancelRequest()
-        CameraPreferences.shared.set(mode.rawValue,forKey:"automaticPlacementMode")
-        for sibling in item.menu?.items ?? [] { sibling.state=(sibling === item) ? .on:.off }
-        assistedSignature=nil
-        invalidateAutomaticGeometry()
-        report("Automatic placement: \(mode.title). Manual placement takes precedence; automatic view detection is separate.")
+        assistedSignature=nil;liveViewGeneration += 1;nextLiveViewCheck=0
+        detectedLayout=nil;detectedLayoutModule=nil
+        invalidateAutomaticGeometry();updateDetectionMenu();updateLayoutMenu()
+        report("Placement: \(automaticPlacementMode.title). AX view detection \(automaticViewEnabled ? "on":"off"). Manual calibration takes precedence.")
+    }
+    @objc func toggleScreenshotDetection() {
+        if screenshotDetectionEnabled && !FeaturePermission.accessibility.ensure() { return }
+        CameraPreferences.shared.set(!screenshotDetectionEnabled,forKey:"useScreenshotDetection")
+        placementOptionsChanged()
+    }
+    @objc func toggleScreenshotAssistance() {
+        guard screenshotDetectionEnabled else { return }
+        if !screenshotAssistanceEnabled && !FeaturePermission.accessibility.ensure() { return }
+        CameraPreferences.shared.set(!screenshotAssistanceEnabled,forKey:"screenshotAXAssistance")
+        placementOptionsChanged()
     }
     @objc func toggleAXTrial(_ item:NSMenuItem) {
         if !axTrialEnabled && !FeaturePermission.accessibility.ensure() { return }
@@ -1242,7 +1265,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let selectionKind="ui"
         let calibrationModule=currentModule()
         let controller=CalibrationController();controller.snapRadius=settings.snapDistancePoints; calibration=controller
-        if overlayLayout != .full { controller.instruction="Select the entire \(overlayLayout.label.lowercased()) pane backdrop between panels and divider, including photo margins. ⌥ snaps; Esc cancels." }
+        if overlayLayout != .full { controller.instruction="Select the entire \(overlayLayout.label.lowercased()) pane backdrop between panels and divider, including photo margins. Esc cancels." }
         controller.completed = { [weak self] result in
             guard let self else { return }
             self.calibrationTask?.cancel(); self.calibrationTask=nil
@@ -1263,7 +1286,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             }
             else { self.report("Calibration cancelled. Previous region retained.") }
         }
-        guard #available(macOS 14.0,*),FeaturePermission.screenCapture.ensure() else {
+        guard #available(macOS 14.0,*),FeaturePermission.screenCapture.granted else {
             if calibration === controller { controller.start(proposal:proposal,snapAvailable:false) }; return
         }
         guard calibration === controller else { return }
@@ -1315,9 +1338,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     @objc func previewCapture() { showCapturePreview(keepBaseline:false) }
     func showCapturePreview(keepBaseline:Bool) {
         guard !regionResetting,requireSupportedModule() else { return }
+        guard #available(macOS 14.0,*),FeaturePermission.screenCapture.granted else {
+            report("Capture preview unavailable: Screen Recording permission is not available (macOS 14 or newer required). No capture taken.");showResult();return
+        }
         hide();calibration?.finish(nil)
         if !keepBaseline { capturePreview?.close();capturePreview=nil }
-        guard #available(macOS 14.0,*),FeaturePermission.screenCapture.ensure() else { return }
         startPhotoDetection(imageSize:.zero,previewCapture:true) { [weak self] result in
             guard let self else { return }
             guard let image=result.previewImage,let frame=result.windowFrame,let id=result.windowID else {
@@ -1348,9 +1373,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard !regionResetting,requireSupportedModule() else { return }
         guard screenTask == nil else { report("Screen inspection is already running."); return }
         guard #available(macOS 14.0, *) else { report("Screen-based inspection requires macOS 14 or newer. Manual calibration remains available."); showResult(); return }
+        guard FeaturePermission.screenCapture.granted else {
+            report("Screen inspection unavailable: no Screen Recording permission. AX placement and manual calibration remain available.");showResult();return
+        }
         hide(); calibration?.finish(nil)
         guard supportedLightroomModule(currentModule()) else { report("Select a photograph in Lightroom Library or Develop before screen inspection."); return }
-        guard FeaturePermission.screenCapture.ensure() else { return }
         request(.detect) // Obtain the current JPEG aspect ratio, never a previous photo's.
     }
     func displayManual(_ image:CGImage,in area:CGRect,snapshot:ExportSnapshot?) {
@@ -1384,8 +1411,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             showUI(image,ui:ui,snapshot:snapshot,settings:settings)
             return
         }
-        guard #available(macOS 14.0,*), FeaturePermission.screenCapture.ensure() else {
-            report("Automatic detection needs Screen Recording permission. Turn it off to use manual calibration."); return
+        guard #available(macOS 14.0,*), FeaturePermission.screenCapture.granted else {
+            report("Screenshot detection unavailable: Screen Recording permission and macOS 14 are required. Use AX placement or manual calibration."); return
         }
         startPhotoDetection(imageSize:CGSize(width:image.width,height:image.height)) { [weak self] result in
             guard let self, self.isLightroom(), supportedLightroomModule(self.currentModule()) else { return }

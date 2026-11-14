@@ -67,7 +67,7 @@ func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
 }
 @available(macOS 14.0, *)
 func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,seed:CGRect? = nil,maxPixelWidth:CGFloat? = nil,axHints:AXScreenHints? = nil) async -> ScreenProbeResult {
-    guard CGPreflightScreenCaptureAccess() else { return ScreenProbeResult(candidate:nil,summary:"Screen Recording permission is required. Use Inspect screen layout again to open permission settings.") }
+    guard CGPreflightScreenCaptureAccess() else { return ScreenProbeResult(candidate:nil,summary:"Screen Recording permission is unavailable. No capture taken. Use AX placement or manual calibration.") }
     let probeStarted=ProcessInfo.processInfo.systemUptime
     let ticket=await ScreenGeometryCache.shared.ticket()
     var failureContext="Enumerating Lightroom windows."

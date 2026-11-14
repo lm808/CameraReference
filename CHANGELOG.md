@@ -2,7 +2,8 @@
 
 ## 1.0.29 — AX-assisted screenshot candidate
 
-- Separate AX / assisted / pure screenshot placement selector; independent view detection.
+- Use screenshot detection toggle with independent AX assistance and AX view options; AX-only always detects the view.
+- No Screen Recording prompts; unavailable capture pauses checks and leaves free calibration usable.
 - Raw AX search bands with pixel validation and original-search fallback.
 - Session diagnostics measure retained background checks and changes missed by AX.
 

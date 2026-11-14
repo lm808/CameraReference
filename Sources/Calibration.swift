@@ -52,7 +52,7 @@ private final class CalibrationView: NSView {
     override func mouseUp(with event: NSEvent) {
         mouseDragged(with:event); anchor=nil
         guard let r=selection, r.width>100, r.height>100, bounds.contains(r) else {
-            selection=nil; hint="Select over 100 × 100 points on one display. Hold ⌥ Option to snap. Esc cancels."; needsDisplay=true; return
+            selection=nil; hint="Select over 100 × 100 points on one display. " + (snapEdges.isEmpty ? "Snapping unavailable. ":"Hold ⌥ Option to snap. ") + "Esc cancels."; needsDisplay=true; return
         }
         finish?(r)
     }

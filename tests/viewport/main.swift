@@ -330,3 +330,10 @@ expect(AutomaticPlacementMode.resolve(saved:nil,legacy:nil) == .accessibility,"F
 expect(AutomaticPlacementMode.resolve(saved:nil,legacy:false) == .screenshot,"Preserve explicit screenshot preference")
 expect(AutomaticPlacementMode.resolve(saved:"assisted",legacy:true) == .assisted,"New choice takes precedence")
 print("PASS: AX-assisted pixel bounds/splits, hidden panels, fallback, offset independence, signatures and preference migration")
+
+expect(AutomaticPlacementMode.accessibility.usesAXViewDetection(screenshotOption:false),"AX-only must always detect view")
+for mode:AutomaticPlacementMode in [.assisted,.screenshot] {
+    expect(!mode.usesAXViewDetection(screenshotOption:false),"Screenshot view detection must be independently optional")
+    expect(mode.usesAXViewDetection(screenshotOption:true),"Screenshot view detection option must be honoured")
+}
+print("PASS: mandatory AX-only view detection and independent screenshot view detection")

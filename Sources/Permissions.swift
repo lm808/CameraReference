@@ -9,12 +9,15 @@ enum FeaturePermission:Hashable {
     var name: String { self == .accessibility ? "Accessibility" : "Screen Recording" }
     @discardableResult func ensure() -> Bool {
         if granted { return true }
+        // Screen Recording is optional and must never prompt, even on explicit
+        // capture actions. Callers explain unavailability or use free calibration.
+        if self == .screenCapture { return false }
         // Request once per launch. A stale TCC grant cannot be repaired by
         // repeatedly triggering the native request. Never report it as granted.
         if Self.requested.insert(self).inserted {
             if self == .accessibility {
                 _ = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String:true] as CFDictionary)
-            } else { _ = CGRequestScreenCaptureAccess() }
+            }
             if granted { return true }
         }
         let appName=Bundle.main.object(forInfoDictionaryKey:"CFBundleDisplayName") as? String ?? "Camera Reference"

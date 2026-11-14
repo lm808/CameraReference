@@ -4,10 +4,12 @@ Run release/CameraReference Testing.app in worktrees/ax-assisted-screenshot-dete
 
 ## This update
 
-- [ ] Select each automatic placement method in Developer tools → Experimental features. Switching method does not dismiss the visible overlay. Manual placement still takes precedence, and AX view detection remains independent.
+- [ ] Toggle Use screenshot detection in Developer tools → Experimental features. Its two indented options are independent; AX-only always detects the view. Switching method does not dismiss the visible overlay. Manual placement still takes precedence, and AX view detection remains independent in screenshot mode.
 - [ ] AX-assisted: Full, both split orientations and each pane; show/hide each panel and toolbar; resize to minimum. Compare against Pure screenshot. Collect diagnostics for disagreement.
 - [ ] Repeat overlay/float invocation on the same image. Check cache reuse and the assisted evidence counters after internal layout changes. Leave retained screenshot checks enabled for this trial.
 - [ ] Pure screenshot and AX-only still behave as before; AX-only reports background capture disabled. AX preview remains independently selectable.
+
+- [ ] Without Screen Recording permission, calibration opens without snapping or permission prompts. Preview/inspection explain unavailability without closing an existing overlay; background capture pauses. AX-only continues to work with Accessibility.
 
 ## Carried forward
 
