@@ -191,3 +191,7 @@ See AX-ASSISTANCE.md for evidence and possible future uses; these do not authori
 Manual placement is checked first. For automatic placement, the AX switch branches before screenshot-cache lookup or Screen Recording permission. The original screenshot route remains below the branch, unchanged. AX queries the panel/label map and toolbar state, applies v2 corrections, selects the requested pane (or fresh inferred view when automatic view detection is enabled), validates the host and selection/module/request generation, then passes UI bounds to the existing Fit/display path. Floating sizing uses the combined AX area. No AX placement cache; JPEG RAM cache is independent.
 
 AX-only selection disables background placement pixel checks. Explicit screen inspection, capture previews and calibration snapping retain their existing screenshot paths. Switching backend cancels outstanding placement/request work and invalidates placement memory; a visible overlay is retained. AX failure offers manual calibration, never screenshot fallback. Window/CG metadata and AX attributes are read without capturing pixels. Boundary preview remains a separate switch.
+
+### Small-window AX panels (1.0.28)
+
+The former width < 30% rule rejected visible 324 pt panels in 1047 pt and 900 pt windows. AX panel classification now retains tall visible rectangles attached to exactly one side of the host, excluding full-width rectangles. Existing visibility, host containment and height checks remain; screenshot detection and geometry offsets are unchanged.

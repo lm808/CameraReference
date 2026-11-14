@@ -689,3 +689,11 @@ Automated Swift/Lua regression suites passed. The config-editor fixture required
 Native search/fallback checks are pending in TESTING.md; user authorised merge with those limits and the three deferred placement-testing items retained. Full user annotations for 1.0.26 are preserved above. Existing screenshot detector and capture sources are byte-identical to main 1.0.15. No live application interaction, permission changes or screenshots performed.
 
 Promotion completed: main fast-forwarded to the completed work; stable 1.0.27 built and staged at release/CameraReference.app. Signature and stable bundle ID org.local.CameraReference verified. The active config was converted with a before-write fingerprint check and atomic replacement; all 26 active values preserved. Previous personal config and retired testing/build payload are retained under ignored build/retired-ax-investigation; probing reports are retained under ignored investigations/ax-reports. No launch, installation, DMG or push.
+
+## 1.0.28 — Small-window side-panel classification
+
+Reports from 2026-11-14 22:49:37 and 22:51:21 UTC show Library hosts 1047 × 702 and 900 × 702 pt, with both visible side panels 324 × 469 pt. The old 30% width threshold rejected both panels and produced false hidden-side evidence. Removed that threshold; require attachment to exactly one host side while retaining visibility, containment and vertical extent checks.
+
+Core regression executable passed, including both reported host positions/sizes, expected corrected bounds, each hidden side, full-width tall distractors and short edge controls. Existing large-window and split AX checks also passed. Screenshot detector/capture and offsets are unchanged; personal config untouched. Native acceptance remains pending.
+
+Main build and staged signature/plist verified: 1.0.28, org.local.CameraReference. No app launch, permission changes, packaging or push.

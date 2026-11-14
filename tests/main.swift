@@ -546,6 +546,22 @@ func tw(_ x:Double,_ y:Double,_ w:Double,_ h:Double,_ visible:Bool=true)->AXTria
 let trialPanels=[tw(0,62,2560,70),tw(0,1228,2560,151),tw(0,122,324,1116),tw(2225,122,335,1116)]
 let trialSingle=axTrialProposal(host:trialHost,windows:trialPanels)!
 assert(trialSingle.layout=="Single view" && trialSingle.panes==[CGRect(x:307,y:121,width:1935,height:1075)])
+// Reported Library minimum-window cases: 324 pt panels exceed the old 30% cap.
+for (x,width) in [(1513.0,1047.0),(1660.0,900.0)] {
+    let host=CGRect(x:x,y:677,width:width,height:702)
+    let strips=[tw(x,709,width,70),tw(x,1228,width,151)]
+    let left=tw(x,769,324,469),right=tw(2236,769,324,469)
+    // Full-width tall content and short edge controls must not become side panels.
+    let distractions=[tw(x,779,width,400),tw(x,800,60,25),tw(2225,122,335,1116,false)]
+    let both=axTrialProposal(host:host,windows:strips+[left,right]+distractions,module:"library")!
+    assert(both.panes[0]==CGRect(x:x+307,y:768,width:2253-(x+307),height:428))
+    assert(both.summary.contains("Panel evidence L/R/T/B: true/true/true/true"))
+    let noLeft=axTrialProposal(host:host,windows:strips+[tw(x,769,324,469,false),right]+distractions)!
+    assert(noLeft.panes[0].minX==x+17 && noLeft.panes[0].maxX==2253)
+    let noRight=axTrialProposal(host:host,windows:strips+[left,tw(2236,769,324,469,false)]+distractions)!
+    assert(noRight.panes[0].minX==x+307 && noRight.panes[0].maxX==host.maxX-17)
+}
+print("PASS: 1047/900 pt AX windows retain wide side panels; hidden sides and full-width/short distractors remain excluded")
 let trialSide=axTrialProposal(host:trialHost,windows:trialPanels+[tw(1190,122,83,25),tw(1276,122,113,25)])!
 assert(trialSide.layout=="Side-by-side" && trialSide.panes.count==2)
 assert(trialSide.panes[0].maxX==1274.5 && trialSide.panes[1].minX==1274.5)

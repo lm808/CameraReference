@@ -1,7 +1,5 @@
-# Camera Reference 1.0.27
+# Camera Reference 1.0.28
 
-Advanced settings now searches names and comments. Config files use ordinary name = value entries; obsolete experimental entries have been removed while preserving active values. Unknown toolbar visibility has a configurable fallback: shown (default), hidden, or lastKnown; no history assumes shown.
+Fixes AX side-panel recognition in small Lightroom windows. Tall, visible rectangles attached to exactly one window side are retained regardless of their percentage width; full-width rectangles remain excluded. No offset changes or screenshot detector changes.
 
-Includes the accepted config editor and AX-only placement option, independent AX boundary preview, and the +25 pt Library correction only in split views. The existing screenshot detector is unchanged. Search and fallback native checks remain pending; known small-window AX and hidden-right-panel screenshot failures remain in TESTING.md.
-
-No DMG packaged. AX-assisted screenshot detection is planned separately and is not implemented here.
+Regression checks cover the reported 1047 × 702 and 900 × 702 Library windows. Native confirmation remains in TESTING.md; other deferred placement issues remain open. No DMG packaged.

@@ -162,3 +162,7 @@ Advanced settings… is the final Settings menu item.
 - Use plain config assignments and remove obsolete experimental entries.
 - Configure unknown toolbar visibility as shown, hidden, or lastKnown.
 - Promote the accepted editor/AX work while retaining unresolved placement cases in the test list. Screenshot detection is unchanged.
+
+## 1.0.28
+
+- Recognise AX side panels in small Lightroom windows without the 30% panel-width cutoff. Screenshot detection is unchanged.

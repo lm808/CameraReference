@@ -18,7 +18,12 @@ struct AXTrialProposal {
 func axTrialProposal(host:CGRect, windows:[AXTrialWindow], settings:DetectionConfig = DetectionConfig(), module:String? = nil)->AXTrialProposal? {
     guard host.width>200,host.height>200 else { return nil }
     let visible=windows.filter(\.visible).map(\.frame).filter { host.contains($0) && $0 != host }
-    let sides=visible.filter { $0.height>host.height*0.5 && $0.width<host.width*0.3 }
+    // Panel widths stay roughly fixed as Lightroom shrinks. Require a tall
+    // rectangle attached to exactly one side, not a percentage-width cutoff.
+    let sides=visible.filter {
+        let onLeft=abs($0.minX-host.minX)<4,onRight=abs($0.maxX-host.maxX)<4
+        return $0.height>host.height*0.5 && $0.width>0 && onLeft != onRight
+    }
     let leftPanel=sides.filter { abs($0.minX-host.minX)<4 }.map(\.maxX).max()
     let rightPanel=sides.filter { abs($0.maxX-host.maxX)<4 }.map(\.minX).min()
     let strips=visible.filter { $0.width>host.width*0.9 && $0.height<host.height*0.25 }

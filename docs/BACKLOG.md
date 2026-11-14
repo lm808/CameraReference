@@ -47,7 +47,7 @@ Completed functionality belongs in README; implementation rationale in METHODS; 
 
 ## Retained follow-up after 1.0.27
 
-- Small-window AX bounds may cover visible side panels; investigate separately.
+- Small-window AX width-filter fix is implemented in 1.0.28; native confirmation remains in TESTING.md.
 - Screenshot detection fails in Develop side-by-side with right panel hidden; regression status unknown.
 - Broader AX edge-case validation remains deferred to normal use (TESTING.md).
 - Implement AX-assisted screenshot placement as a separate experimental opt-in; retain the old detector path and measure the unique contribution/cost of periodic screenshot checks before considering their removal. See AX-ASSISTANCE.md.

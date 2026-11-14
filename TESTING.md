@@ -1,4 +1,4 @@
-# Camera Reference 1.0.27
+# Camera Reference 1.0.28
 
 Run release/CameraReference.app on main. Automated checks and user acceptance are separate. Prior test annotations are preserved verbatim in docs/VALIDATION.md.
 
@@ -12,6 +12,6 @@ Run release/CameraReference.app on main. Automated checks and user acceptance ar
 
 ## Deferred to-dos — do not remove until resolved
 
-- [ ] Investigate small-window AX prediction covering visible side panels.
+- [ ] Confirm small-window AX fix: at 1047 × 702 and minimum 900 × 702, both shown panels are recognised and overlay stays in the centre. Repeat with each side hidden, then a large window. Source fix and synthetic checks passed; native acceptance pending.
 - [ ] Investigate screenshot detection failure in Develop side-by-side with the right panel hidden; regression status unknown.
 - [ ] Broader AX edge-case testing during normal use: panel combinations, both split orientations/panes, window sizes and displays. Record diagnostics for failures.
