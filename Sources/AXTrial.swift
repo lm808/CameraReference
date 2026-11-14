@@ -49,7 +49,7 @@ func axTrialProposal(host:CGRect, windows:[AXTrialWindow], settings:DetectionCon
     let topShift=topPanel == nil ? settings.axHiddenTopOffsetPoints:settings.axShownTopOffsetPoints
     let filmstripShift=bottomPanel == nil ? settings.axFilmstripHiddenOffsetPoints:settings.axFilmstripShownOffsetPoints
     let toolbarShift=settings.axToolbarState == "hidden" ? 0:settings.axToolbarHeightPoints
-    let libraryShift=module == "library" ? settings.axLibraryBottomOffsetPoints:0
+    let libraryShift=module == "library" && layout != "Single view" ? settings.axLibraryBottomOffsetPoints:0
     left += leftShift;right += rightShift
     top -= topShift;bottom -= filmstripShift+toolbarShift+libraryShift
     notes.append("Signed offsets (right/up positive): L \(leftShift), R \(rightShift), T \(topShift); bottom filmstrip \(filmstripShift) + toolbar \(toolbarShift) + Library \(libraryShift).")

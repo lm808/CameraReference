@@ -643,3 +643,5 @@ Synthetic coverage includes signed shown/hidden borders, cumulative filmstrip/to
 ### Library default follow-up (no version/build change)
 
 User calibrated the additional Library bottom correction to +25 pt and updated their personal config. Source defaults and fresh-install template now use 25; current documentation and the existing geometry assertions reflect that default. Historical zero-default notes above describe the earlier build. No personal config, detector, version or staged app changed.
+
+User clarification: the +25 pt Library correction applies only to inferred split views, never single view. Updated the condition and regression checks for both split orientations and unchanged Library single view. No app rebuild or version change.

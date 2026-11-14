@@ -618,8 +618,14 @@ assert(allHidden.panes[0]==CGRect(x:17,y:79,width:2526,height:1283))
 assert(DetectionConfig().axLibraryBottomOffsetPoints == 25)
 assert(v2.axLibraryBottomOffsetPoints == 25)
 let lib=v2
-assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:lib,module:"library")!.panes[0].maxY==1171)
+assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:lib,module:"library")!.panes[0].maxY==1196)
 assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:lib,module:"develop")!.panes[0].maxY==1196)
+for labels in [[tw(1190,122,83,25),tw(1276,122,113,25)], [tw(2128,632,113,25),tw(2128,660,113,25)]] {
+    let library=axTrialProposal(host:trialHost,windows:trialPanels+labels,settings:lib,module:"library")!
+    let develop=axTrialProposal(host:trialHost,windows:trialPanels+labels,settings:lib,module:"develop")!
+    assert(library.panes.count == 2 && develop.panes.count == 2)
+    assert(library.panes.last!.maxY == develop.panes.last!.maxY-25)
+}
 let custom=try DetectionConfig.parse("# AX: axShownTopOffsetPoints=20\n# AX: axShownLeftOffsetPoints=-10")
 assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:custom)!.panes[0].minY==112)
 assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:custom)!.panes[0].minX==314)

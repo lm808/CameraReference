@@ -38,7 +38,7 @@ struct DetectionConfig: Equatable {
     # AX: axFilmstripShownOffsetPoints = -11 # inferred for filmstrip shown / toolbar hidden
     # AX: axFilmstripHiddenOffsetPoints = 17
     # AX: axToolbarHeightPoints = 43
-    # AX: axLibraryBottomOffsetPoints = 25 # extra upward allowance for Library
+    # AX: axLibraryBottomOffsetPoints = 25 # extra upward allowance for Library split views only
     # Base hidden insets measure inward from the window; offsets apply afterwards.
     # AX: axBaseHiddenLeftInsetPoints = 18
     # AX: axBaseHiddenRightInsetPoints = 18
