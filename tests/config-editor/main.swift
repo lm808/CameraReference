@@ -1,5 +1,5 @@
 import Foundation
-let original="# Section\r\nsideSearchPercent = 40  # search range\r\n# AX: axLibraryBottomOffsetPoints = 25 # split only\r\n# untouched\r\n"
+let original="# Section\r\nsideSearchPercent = 40  # search range\r\naxLibraryBottomOffsetPoints = 25 # split only\r\n# untouched\r\n"
 var doc=ConfigEditorDocument(original)
 assert(doc.rows.count==2 && doc.rows[0].name=="sideSearchPercent")
 assert(doc.rows[0].comment=="Section search range")
@@ -23,4 +23,15 @@ do { _ = try invalid.rendered();fatalError("Multiline input must be rejected") }
 let future=ConfigEditorDocument("futureSetting = hello # future comment\n")
 assert(future.rows.count==1 && future.rows[0].value=="hello")
 assert(try! future.rendered()==future.original)
-print("PASS: file-driven config rows, exact round-trip, directive/comment preservation, validation, conflict protection and atomic save")
+print("PASS: file-driven config rows, exact round-trip, comment preservation, validation, conflict protection and atomic save")
+
+assert(doc.matchingRows("LIBRARY")==[1])
+assert(doc.matchingRows("search range")==[0])
+assert(doc.matchingRows("nothing matches").isEmpty)
+assert(doc.matchingRows(" ")==[0,1])
+var filtered=ConfigEditorDocument(original)
+let row=filtered.matchingRows("library")[0]
+filtered.rows[row].value="35"
+assert(try! filtered.rendered()==original.replacingOccurrences(of:"= 25",with:"= 35"))
+assert(filtered.rows[0].value=="40")
+print("PASS: name/comment search, case-insensitivity, empty/no matches, correct filtered-row editing")

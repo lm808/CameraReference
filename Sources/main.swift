@@ -1098,7 +1098,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         lastAXTrial="AX preview collecting…"
         DispatchQueue.global(qos:.utility).async {
             var proposal:AXTrialProposal?
-            let toolbar=accessibilityToolbarReading()
+            let toolbar=accessibilityToolbarReading(fallback:settings.toolbarUnknownFallback,module:module)
             var previewSettings=settings;previewSettings.axToolbarState=toolbar.effectiveState
             let mapping=accessibilityMappingReport { host,windows in proposal=axTrialProposal(host:host,windows:windows,settings:previewSettings,module:module) }
             DispatchQueue.main.async {
@@ -1138,13 +1138,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func collectCompleteDiagnostics(openWindow:Bool=false) {
         guard openWindow || autoDiagnostics else { return }
         if axMappingInProgress { if diagnosticRunningGeneration != diagnosticGeneration { diagnosticPending=true };return }
-        let generation=diagnosticGeneration,displays=displayMappingReport(),module=currentModule()
+        let generation=diagnosticGeneration,displays=displayMappingReport(),module=currentModule(),settings=reloadDetectionConfig()
         axMappingInProgress=true;diagnosticRunningGeneration=generation
         lastAXToolbar="Collecting toolbar visibility…"
         saveInvocationDiagnostics()
         DispatchQueue.global(qos:.utility).async {
             let mapping="Module: \(module ?? "unknown")\n\n"+displays+"\n\n"+accessibilityMappingReport()
-            let toolbar=accessibilityToolbarReading()
+            let toolbar=accessibilityToolbarReading(fallback:settings.toolbarUnknownFallback,module:module)
             DispatchQueue.main.async {
                 self.axMappingInProgress=false
                 if generation==self.diagnosticGeneration && module==self.currentModule() {
@@ -1377,7 +1377,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let started=ProcessInfo.processInfo.systemUptime
         screenInspectionID=id;screenModule=module;detectionCompletion={ _ in };updateToggleTitle()
         screenTask=Task.detached(priority:.userInitiated) { [weak self] in
-            let toolbar=accessibilityToolbarReading()
+            let toolbar=accessibilityToolbarReading(fallback:settings.toolbarUnknownFallback,module:module)
             var adjusted=settings;adjusted.axToolbarState=toolbar.effectiveState
             var proposal:AXTrialProposal?
             let mapping=accessibilityMappingReport { host,windows in proposal=axTrialProposal(host:host,windows:windows,settings:adjusted,module:module) }

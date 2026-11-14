@@ -658,3 +658,32 @@ Testing app compiled without warnings; staged signature and plist verified (1.0.
 Removed only the standalone Edit config file menu entry; source inspection confirms the editor button retains its existing action. Testing build and staged signature/plist checks passed; diff whitespace checks passed. No behaviour tests repeated for this menu-only change. Native menu check remains in TESTING.md. No app launch; main unchanged.
 
 Advanced settings… is the final Settings menu item.
+
+## User acceptance notes for 1.0.26 (verbatim)
+
+# Camera Reference Testing 1.0.26
+
+Quit stable first; use this worktree's release/CameraReference Testing.app. Main remains 1.0.15. Native checks pending; no live testing by the agent.
+
+- [x ] Advanced settings… is last in Settings. Settings has no separate Edit config file item; Open config file remains available inside Advanced settings.
+- [x, a search function should be included. ] Settings → Advanced settings…: Name / Value / Comment columns and warning are readable. Double-click a value; Save applies it. Cancel/window close leaves the file unchanged. Comments have full hover text.
+- [x ] Invalid value: Save reports an error and leaves the file unchanged. Correct it and save successfully. Edit externally while the window is open: Save refuses to overwrite; cancel/reopen shows the latest file.
+- [x not tested as directive will be ommited. " appears on reopening without an editor update" is very unclear.] Both ordinary and # AX: settings appear; editing preserves comments/directives. A new supported entry added in plain text appears on reopening without an editor update.
+- [x ] Library single view has no additional Library offset. Library side-by-side and above-and-below use +25 pt; Develop is unchanged.
+
+- [Deve sbs split with right panel hidden fails to detect. Not sure if this is regression. ] With AX-only OFF: existing screenshot Full/split placement, cache hits/background checks and manual calibration still work as before.
+- [x ] Enable Experimental features → Use AX data only for placement. With automatic viewing area ON, overlay and floating display use AX; diagnostics say capture skipped, no placement cache. No Screen Recording prompt or new captured preview. Background checks report disabled.
+- [x ] With AX-only ON, explicit capture-preview/baseline commands and manual calibration edge snapping still work. Turn main automatic placement OFF: saved manual region wins. Turn it back ON: fresh AX geometry is used.
+- [Will defer this test. so far good, will catch edge cases during normal use. currently identified one: when window is small, the AX prediction covers the panels on the side shown ] Develop all shown, each panel hidden, and multiple panels hidden: Full/side-by-side/above-and-below bounds use corrected outer edges before splitting. Select either pane; with automatic view inference OFF, explicit layout applies (mismatch offers manual calibration). With it ON, fresh inference selects layout and remembered pane.
+- [x, "Unknown toolbar status assumes shown" expose setting in config. Alternative is use last know state. ] Toolbar shown/hidden and filmstrip shown/hidden: corrections are cumulative. Unknown toolbar status assumes shown. Filmstrip shown + toolbar hidden (-11 pt total) needs confirmation.
+- [ x] Library split views use their separate configurable bottom allowance (default +25 pt, confirmed by the user). Do not calibrate against failed Library split screenshot detection.
+- [x clean up before next merge with main] Edit a v2 offset: right/up positive; placement and independent AX preview both respond next invocation. Existing source/config preferences remain unchanged; old v1 values remain but are ignored. Preview toggle works with either backend.
+- [ x] Rapid invocation/cancellation, photo/module switch and window movement during AX reads: no stale result appears. AX failure never captures; cancellation keeps settings. Existing visible-overlay movement/minimisation behaviour remains usable.
+
+For comparisons, read Diagnostics/latest.txt after each case; no saved images needed. Test another window size after the fixed-size baseline.
+
+## 1.0.27 — Search, toolbar fallback and plain config
+
+Automated Swift/Lua regression suites passed. The config-editor fixture required macOS file coordination access outside the command restriction and passed separately. Search tests cover case-insensitive names/comments, no matches, empty query, and correct edits through filtered indexes. Toolbar tests cover fresh-state precedence, shown/hidden fallback, last-known reuse, separate Library/Develop and process contexts, and no-history default. Example text equals generated defaults; prepared personal config parses and preserves all 26 active values while removing 11 obsolete entries. Testing build passed without warnings.
+
+Native search/fallback checks are pending in TESTING.md; user authorised merge with those limits and the three deferred placement-testing items retained. Full user annotations for 1.0.26 are preserved above. Existing screenshot detector and capture sources are byte-identical to main 1.0.15. No live application interaction, permission changes or screenshots performed.

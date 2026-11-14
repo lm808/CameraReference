@@ -1,6 +1,6 @@
 import AppKit
 
-// File-driven rows: preserve every byte outside the edited value, including directives.
+// File-driven rows: preserve every byte outside the edited value.
 struct ConfigEditorDocument {
     struct Row {
         let line:Int
@@ -14,7 +14,7 @@ struct ConfigEditorDocument {
     var rows:[Row]=[]
     init(_ text:String) {
         original=text
-        let pattern = #"^(\s*(?:# AX: )?([A-Za-z][A-Za-z0-9_]*)\s*=\s*)([^#\r]*?)(\s*(?:#.*)?\r?)$"#
+        let pattern = #"^(\s*([A-Za-z][A-Za-z0-9_]*)\s*=\s*)([^#\r]*?)(\s*(?:#.*)?\r?)$"#
         let regex=try! NSRegularExpression(pattern:pattern)
         var comments:[String]=[]
         for (index,line) in text.components(separatedBy:"\n").enumerated() {
@@ -30,6 +30,10 @@ struct ConfigEditorDocument {
                 else { comments=[] }
             }
         }
+    }
+    func matchingRows(_ query:String)->[Int] {
+        let query=query.trimmingCharacters(in:.whitespacesAndNewlines)
+        return rows.indices.filter { query.isEmpty || rows[$0].name.localizedCaseInsensitiveContains(query) || rows[$0].comment.localizedCaseInsensitiveContains(query) }
     }
     func rendered() throws -> String {
         var lines=original.components(separatedBy:"\n")
@@ -62,10 +66,12 @@ struct ConfigEditorDocument {
     }
 }
 
-final class ConfigEditorController:NSWindowController,NSTableViewDataSource,NSTableViewDelegate {
+final class ConfigEditorController:NSWindowController,NSTableViewDataSource,NSTableViewDelegate,NSSearchFieldDelegate {
     private var configDocument:ConfigEditorDocument
     private let url:URL
     private let table=NSTableView()
+    private let search=NSSearchField()
+    private var visibleRows:[Int]=[]
     private let onSave:()->Void
     private let openFile:()->Void
     init(url:URL,onSave:@escaping()->Void,openFile:@escaping()->Void) throws {
@@ -74,7 +80,9 @@ final class ConfigEditorController:NSWindowController,NSTableViewDataSource,NSTa
         let window=NSWindow(contentRect:NSRect(x:0,y:0,width:960,height:560),styleMask:[.titled,.closable,.resizable],backing:.buffered,defer:false)
         super.init(window:window)
         window.title="Advanced settings";window.minSize=NSSize(width:760,height:360);window.isReleasedWhenClosed=false
+        visibleRows=configDocument.matchingRows("")
         let root=window.contentView!
+        search.placeholderString="Search names and comments";search.delegate=self
         let warning=NSTextField(wrappingLabelWithString:"Advanced settings. Incorrect values may affect placement or performance. Changes apply after saving.")
         warning.font = .boldSystemFont(ofSize:13)
         let scroll=NSScrollView();scroll.hasVerticalScroller=true;scroll.borderType = .bezelBorder
@@ -88,24 +96,29 @@ final class ConfigEditorController:NSWindowController,NSTableViewDataSource,NSTa
         let cancel=NSButton(title:"Cancel",target:self,action:#selector(cancelChanges));cancel.keyEquivalent="\u{1b}"
         let file=NSButton(title:"Open config file",target:self,action:#selector(openTextFile))
         let buttons=NSStackView(views:[file,NSView(),cancel,save]);buttons.orientation = .horizontal;buttons.spacing=10
-        for view in [warning,scroll,buttons] { view.translatesAutoresizingMaskIntoConstraints=false;root.addSubview(view) }
+        for view in [warning,search,scroll,buttons] { view.translatesAutoresizingMaskIntoConstraints=false;root.addSubview(view) }
         NSLayoutConstraint.activate([
             warning.topAnchor.constraint(equalTo:root.topAnchor,constant:16),warning.leadingAnchor.constraint(equalTo:root.leadingAnchor,constant:16),warning.trailingAnchor.constraint(equalTo:root.trailingAnchor,constant:-16),
-            scroll.topAnchor.constraint(equalTo:warning.bottomAnchor,constant:12),scroll.leadingAnchor.constraint(equalTo:root.leadingAnchor,constant:16),scroll.trailingAnchor.constraint(equalTo:root.trailingAnchor,constant:-16),
+            search.topAnchor.constraint(equalTo:warning.bottomAnchor,constant:12),search.leadingAnchor.constraint(equalTo:root.leadingAnchor,constant:16),search.trailingAnchor.constraint(equalTo:root.trailingAnchor,constant:-16),
+            scroll.topAnchor.constraint(equalTo:search.bottomAnchor,constant:10),scroll.leadingAnchor.constraint(equalTo:root.leadingAnchor,constant:16),scroll.trailingAnchor.constraint(equalTo:root.trailingAnchor,constant:-16),
             buttons.topAnchor.constraint(equalTo:scroll.bottomAnchor,constant:12),buttons.leadingAnchor.constraint(equalTo:root.leadingAnchor,constant:16),buttons.trailingAnchor.constraint(equalTo:root.trailingAnchor,constant:-16),buttons.bottomAnchor.constraint(equalTo:root.bottomAnchor,constant:-16)
         ])
         window.center()
     }
     required init?(coder:NSCoder) { fatalError() }
-    func numberOfRows(in tableView:NSTableView)->Int { configDocument.rows.count }
+    func numberOfRows(in tableView:NSTableView)->Int { visibleRows.count }
     func tableView(_ tableView:NSTableView,objectValueFor tableColumn:NSTableColumn?,row:Int)->Any? {
-        let entry=configDocument.rows[row]
+        let entry=configDocument.rows[visibleRows[row]]
         switch tableColumn?.identifier.rawValue { case "name":return entry.name;case "value":return entry.value;default:return entry.comment }
     }
     func tableView(_ tableView:NSTableView,setObjectValue object:Any?,for tableColumn:NSTableColumn?,row:Int) {
-        if tableColumn?.identifier.rawValue == "value",let text=object as? String { configDocument.rows[row].value=text }
+        if tableColumn?.identifier.rawValue == "value",let text=object as? String { configDocument.rows[visibleRows[row]].value=text }
     }
-    func tableView(_ tableView:NSTableView,toolTipFor cell:NSCell,rect:NSRectPointer,tableColumn:NSTableColumn?,row:Int,mouseLocation:NSPoint)->String { configDocument.rows[row].comment }
+    func tableView(_ tableView:NSTableView,toolTipFor cell:NSCell,rect:NSRectPointer,tableColumn:NSTableColumn?,row:Int,mouseLocation:NSPoint)->String { configDocument.rows[visibleRows[row]].comment }
+    func controlTextDidChange(_ notification:Notification) {
+        guard notification.object as? NSSearchField === search else { return }
+        visibleRows=configDocument.matchingRows(search.stringValue);table.reloadData()
+    }
     @objc private func saveChanges() {
         guard window?.makeFirstResponder(nil)==true else { return }
         do { try configDocument.save(to:url);onSave();close() }

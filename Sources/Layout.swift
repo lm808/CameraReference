@@ -545,8 +545,22 @@ func accessibilityMappingReport(evidence: ((CGRect,[AXTrialWindow])->Void)? = ni
 struct AXToolbarReading {
     let shown:Bool?
     let report:String
-    var effectiveState:String { shown == false ? "hidden":"shown" }
+    var resolvedShown:Bool?=nil
+    var effectiveState:String { (resolvedShown ?? shown ?? true) ? "shown":"hidden" }
 }
+// Per Lightroom process/module, in memory only; never borrow Develop state for Library.
+final class AXToolbarHistory {
+    private let lock=NSLock()
+    private var states:[String:Bool]=[:]
+    func resolve(shown:Bool?,fallback:String,context:String)->(shown:Bool,reason:String) {
+        lock.lock();defer { lock.unlock() }
+        if let shown { states[context]=shown;return (shown,"fresh menu reading") }
+        if fallback == "hidden" { return (false,"configured fallback: hidden") }
+        if fallback == "lastKnown",let previous=states[context] { return (previous,"last known state for this Lightroom process/module") }
+        return (true,fallback == "lastKnown" ? "no previous state; assumed shown":"configured fallback: shown")
+    }
+}
+private let axToolbarHistory=AXToolbarHistory()
 func axToolbarTitleState(_ title:String)->Bool? {
     switch title.trimmingCharacters(in:.whitespacesAndNewlines).lowercased() {
     case "hide toolbar":return true
@@ -554,11 +568,14 @@ func axToolbarTitleState(_ title:String)->Bool? {
     default:return nil
     }
 }
-func accessibilityToolbarReading()->AXToolbarReading {
+func accessibilityToolbarReading(fallback:String="shown",module:String?=nil)->AXToolbarReading {
     let start=ProcessInfo.processInfo.systemUptime
+    let running=NSWorkspace.shared.runningApplications.first(where:isLightroomApp)
+    let context="\(running?.processIdentifier ?? -1):\(module ?? "unknown")"
     var notes=["Collected: \(Date())"],errors=[String](),visited=0
     func result(_ shown:Bool?,_ reason:String)->AXToolbarReading {
-        return AXToolbarReading(shown:shown,report:(notes+[reason,shown == nil ? "Effective toolbar: assumed shown (preview only).":"Effective toolbar: \(shown! ? "shown":"hidden") (fresh menu reading).","Examined \(visited); elapsed \(Int((ProcessInfo.processInfo.systemUptime-start)*1000)) ms."]+errors).joined(separator:"\n"))
+        let resolved=axToolbarHistory.resolve(shown:shown,fallback:fallback,context:context)
+        return AXToolbarReading(shown:shown,report:(notes+[reason,"Effective toolbar: \(resolved.shown ? "shown":"hidden") (\(resolved.reason)).","Examined \(visited); elapsed \(Int((ProcessInfo.processInfo.systemUptime-start)*1000)) ms."]+errors).joined(separator:"\n"),resolvedShown:resolved.shown)
     }
     guard AXIsProcessTrusted(),let app=NSWorkspace.shared.runningApplications.first(where:isLightroomApp) else { return result(nil,"Permission or Lightroom unavailable.") }
     let pid=app.processIdentifier

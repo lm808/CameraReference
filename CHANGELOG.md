@@ -155,3 +155,10 @@ Detailed findings and accepted results are in docs/VALIDATION.md, not this user-
 - Remove the standalone Edit config file menu item; use Open config file inside Advanced settings.
 
 Advanced settings… is the final Settings menu item.
+
+## 1.0.27
+
+- Search advanced settings by name or comment.
+- Use plain config assignments and remove obsolete experimental entries.
+- Configure unknown toolbar visibility as shown, hidden, or lastKnown.
+- Promote the accepted editor/AX work while retaining unresolved placement cases in the test list. Screenshot detection is unchanged.

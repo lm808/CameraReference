@@ -44,3 +44,10 @@ Completed functionality belongs in README; implementation rationale in METHODS; 
 - Maintain [AX assistance investigation log](AX-ASSISTANCE.md): potential search-band hints, candidate disambiguation, toolbar/hidden-panel evidence, split guidance and cache cross-checks. Trial suggestions diagnostically before changing the established detector.
 
 - 1.0.21 implements live AX menu inference and automatic complete diagnostic collection. Native acceptance and stable toolbar-boundary evidence remain pending.
+
+## Retained follow-up after 1.0.27
+
+- Small-window AX bounds may cover visible side panels; investigate separately.
+- Screenshot detection fails in Develop side-by-side with right panel hidden; regression status unknown.
+- Broader AX edge-case validation remains deferred to normal use (TESTING.md).
+- Implement AX-assisted screenshot placement as a separate experimental opt-in; retain the old detector path and measure the unique contribution/cost of periodic screenshot checks before considering their removal. See AX-ASSISTANCE.md.

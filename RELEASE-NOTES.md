@@ -1,11 +1,7 @@
-# Camera Reference Testing 1.0.26
+# Camera Reference 1.0.27
 
-Adds Settings → Advanced settings… with a file-driven Name / Value / Comment list, an advanced-settings warning, validation and protection against overwriting external changes. Plain-text editing remains available. Existing values and # AX: directives are preserved.
+Advanced settings now searches names and comments. Config files use ordinary name = value entries; obsolete experimental entries have been removed while preserving active values. Unknown toolbar visibility has a configurable fallback: shown (default), hidden, or lastKnown; no history assumes shown.
 
-The default +25 pt Library bottom correction now applies only in split views; single view and Develop receive no additional Library correction. This includes the previously committed source correction in the staged app.
+Includes the accepted config editor and AX-only placement option, independent AX boundary preview, and the +25 pt Library correction only in split views. The existing screenshot detector is unchanged. Search and fallback native checks remain pending; known small-window AX and hidden-right-panel screenshot failures remain in TESTING.md.
 
-Screenshot detection remains unchanged. Native testing pending; no packaged release.
-
-The standalone Edit config file menu item is removed; access plain-text editing through the editor’s Open config file button.
-
-Advanced settings… is the final Settings menu item.
+No DMG packaged. AX-assisted screenshot detection is planned separately and is not implemented here.

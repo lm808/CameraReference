@@ -564,29 +564,37 @@ assert(!axTrialHostMatches(proposedTopLeft:CGRect(x:0,y:30,width:2560,height:134
 assert(axTrialHostMatches(proposedTopLeft:CGRect(x:-1080,y:-480,width:1000,height:1200),actualAppKit:CGRect(x:-1080,y:720,width:1000,height:1200),primaryHeight:1440))
 print("PASS: AX trial host matching converts top-left to AppKit, including negative display origins")
 
-// Trial config defaults/comments, old-app compatibility and append-only migration.
+// Accepted geometry defaults and append-only plain config generation.
 let axDefaults=try DetectionConfig.parse(DetectionConfig.template)
-assert(axDefaults.axLeftOffsetPoints==0 && axDefaults.axToolbarShownBottomOffsetPoints==0)
-let axFine=try DetectionConfig.parse("# AX: axLeftOffsetPoints = -18 # observed\n# AX: axRightOffsetPoints = 18\n# AX: axTopOffsetPoints = -12\n# AX: axToolbarState = shown\n# AX: axToolbarShownBottomOffsetPoints = -31")
-assert(axFine.key==DetectionConfig().key) // Production placement/cache untouched.
+assert(axDefaults.axShownLeftOffsetPoints == -17 && axDefaults.toolbarUnknownFallback == "shown")
+let axFine=try DetectionConfig.parse("axShownLeftOffsetPoints=-17\naxShownRightOffsetPoints=17\naxShownTopOffsetPoints=11")
+assert(axFine.key==DetectionConfig().key)
 let fineProposal=axTrialProposal(host:trialHost,windows:trialPanels,settings:axFine)!
-assert(fineProposal.panes[0].minX==307 && fineProposal.panes[0].minY==121) // Legacy offsets not reinterpreted.
+assert(fineProposal.panes[0].minX==307 && fineProposal.panes[0].minY==121)
 assert(fineProposal.panes[0].maxY==1196 && fineProposal.panes[0].maxX==2242)
-let axHidden=try DetectionConfig.parse("# AX: axToolbarState=hidden\n# AX: axToolbarHiddenBottomOffsetPoints=13")
+var axHidden=axFine;axHidden.axToolbarState="hidden"
 assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:axHidden)!.panes[0].maxY==1239)
-assert(axTrialProposal(host:trialHost,windows:trialPanels+[tw(1190,122,83,25),tw(1276,122,113,25)],settings:axFine)!.layout=="Side-by-side")
-assert((try? DetectionConfig.parse("# AX: axLeftOffsetPoints=nan")) == nil)
-assert((try? DetectionConfig.parse("# AX: axToolbarState=maybe")) == nil)
+assert((try? DetectionConfig.parse("axShownLeftOffsetPoints=nan")) == nil)
+assert((try? DetectionConfig.parse("toolbarUnknownFallback=maybe")) == nil)
+let history=AXToolbarHistory()
+assert(history.resolve(shown:nil,fallback:"lastKnown",context:"1:library").shown)
+assert(!history.resolve(shown:false,fallback:"shown",context:"1:library").shown)
+assert(!history.resolve(shown:nil,fallback:"lastKnown",context:"1:library").shown)
+assert(history.resolve(shown:nil,fallback:"lastKnown",context:"1:develop").shown)
+assert(history.resolve(shown:nil,fallback:"lastKnown",context:"2:library").shown)
+assert(history.resolve(shown:nil,fallback:"shown",context:"1:library").shown)
+assert(!history.resolve(shown:nil,fallback:"hidden",context:"1:develop").shown)
+assert(history.resolve(shown:true,fallback:"hidden",context:"1:develop").shown)
 let axConfigDir=FileManager.default.temporaryDirectory.appendingPathComponent("ax-config-\(UUID().uuidString)")
 try FileManager.default.createDirectory(at:axConfigDir,withIntermediateDirectories:true)
 let axConfigURL=axConfigDir.appendingPathComponent("config.conf")
-try "left=photo\nsideSearchPercent=30\n# AX: axLeftOffsetPoints=-9\n".write(to:axConfigURL,atomically:true,encoding:.utf8)
+try "left=photo\nsideSearchPercent=30\naxShownLeftOffsetPoints=-9\n".write(to:axConfigURL,atomically:true,encoding:.utf8)
 let axStore=DetectionConfigStore(url:axConfigURL)
 try axStore.ensureFile()
 let axMigrated=try String(contentsOf:axConfigURL,encoding:.utf8)
 assert(axMigrated.contains("left=photo") && axMigrated.contains("sideSearchPercent=30"))
 let loadedAX=try axStore.reload()
-assert(loadedAX.axLeftOffsetPoints == -9)
+assert(loadedAX.axShownLeftOffsetPoints == -9)
 try axStore.ensureFile()
 let repeatedAX=try String(contentsOf:axConfigURL,encoding:.utf8)
 assert(repeatedAX==axMigrated)
@@ -626,7 +634,7 @@ for labels in [[tw(1190,122,83,25),tw(1276,122,113,25)], [tw(2128,632,113,25),tw
     assert(library.panes.count == 2 && develop.panes.count == 2)
     assert(library.panes.last!.maxY == develop.panes.last!.maxY-25)
 }
-let custom=try DetectionConfig.parse("# AX: axShownTopOffsetPoints=20\n# AX: axShownLeftOffsetPoints=-10")
+let custom=try DetectionConfig.parse("axShownTopOffsetPoints=20\naxShownLeftOffsetPoints=-10")
 assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:custom)!.panes[0].minY==112)
 assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:custom)!.panes[0].minX==314)
 assert(custom.key==v2.key) // Screenshot placement/cache settings unaffected.

@@ -53,7 +53,7 @@ JPEG bytes, decoded images, captured pixels and automatic placement caches are h
 
 ## Experimental AX geometry (v2)
 
-Use the `# AX:` entries in config.conf; the prefix keeps stable versions compatible. New keys are appended when the candidate loads the config. Explicit v2 values are preserved; legacy v1 entries remain but no longer control AX geometry. Screenshot settings and their cache key are unaffected.
+Use ordinary name = value entries in config.conf. Missing geometry keys are appended with defaults; explicit values are preserved. Obsolete v1 settings and prefixed directives have been removed. Screenshot settings and their cache key are unaffected.
 
 All signed offsets start at raw AX boundaries: **right/up positive; left/down negative**. The code subtracts vertical offsets from top-left Y coordinates. Base hidden insets are distances inward from the window, applied before signed corrections.
 
@@ -68,10 +68,10 @@ All signed offsets start at raw AX boundaries: **right/up positive; left/down ne
 | axBaseHiddenLeftInsetPoints / axBaseHiddenRightInsetPoints | 18 / 18 |
 | axBaseHiddenTopInsetPoints / axBaseHiddenBottomInsetPoints | 50 / 0 |
 
-Bottom correction is cumulative: filmstrip correction + toolbar height when shown/unknown + Library correction in Library split views only (zero in single view). The user-calibrated Library split-view allowance defaults to +25 pt; positive moves the bottom upwards. Toolbar-unavailable diagnostics say assumed shown. Filmstrip shown/toolbar hidden's -11 pt remains inferred. Correct the combined area, then split at its midpoint constrained between labels.
+Bottom correction is cumulative: filmstrip correction + toolbar height when shown/unknown + Library correction in Library split views only (zero in single view). The user-calibrated Library split-view allowance defaults to +25 pt; positive moves the bottom upwards. Unknown toolbar visibility uses toolbarUnknownFallback: shown (default), hidden, or lastKnown. Last-known state is held in RAM per Lightroom process and module; if none exists, assume shown. Diagnostics distinguish fresh readings from fallback. Filmstrip shown/toolbar hidden's -11 pt remains inferred. Correct the combined area, then split at its midpoint constrained between labels.
 
 These defaults ship in the parser and example for fresh installations. They apply to AX preview and experimental AX-only placement, never the screenshot detector. Geometry is read anew per AX invocation; no placement cache. JPEG RAM caching remains enabled.
 
 ### Advanced settings editor
 
-Settings → Advanced settings… reads the current file into Name, Value and Comment columns; only values are editable. Rows and explanations come from assignments, preceding comment lines and inline comments, with no separate editor schema. Unchanged lines, ordering, line endings and `# AX:` prefixes are preserved. New file entries appear on reopening. Save validates with the existing parser and performs a coordinated atomic write only if the file still matches the opened content. Unknown entries remain visible/preserved, but unsupported active keys still fail existing parser validation. Cancel and the close button discard unsaved edits. Open config file retains the existing external editor action.
+Settings → Advanced settings… reads the current file into Name, Value and Comment columns; only values are editable. Rows and explanations come from assignments, preceding comment lines and inline comments, with no separate editor schema. Unchanged lines, ordering, line endings are preserved. Search matches names and comments, case-insensitively, while retaining unsaved edits to filtered-out rows. New supported settings entered in the file appear when the editor is reopened; no editor code change is required. Save validates with the existing parser and performs a coordinated atomic write only if the file still matches the opened content. Unknown entries remain visible/preserved, but unsupported active keys still fail existing parser validation. Cancel and the close button discard unsaved edits. Open config file retains the existing external editor action.
