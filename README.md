@@ -91,13 +91,15 @@ For Accessibility-to-screenshot mapping, run **Developer tools → Inspect Acces
 
 
 
-Experimental AX tools are grouped under **Developer tools → Experimental features** . Optional automatic view detection chooses the layout; the established screen detector still determines placement. AX preview and AX placement use the accepted configurable geometry offsets in `config.conf`. All entries use ordinary name = value syntax.
+Experimental AX tools are grouped under **Developer tools → Experimental features** . Optional automatic view detection chooses the layout independently of the placement method. AX preview and AX placement use the accepted configurable geometry offsets in `config.conf`. All entries use ordinary name = value syntax.
 
 For investigation, enable **Save diagnostics after invocation** to maintain one text report at `~/Library/Application Support/CameraReference/Diagnostics/latest.txt`. **Diagnostics → Refresh AX** refreshes window mapping and toolbar-menu evidence and refreshes this file when saving is enabled. Manual **Copy all** remains available. No screenshots are saved automatically.
 
 In the investigation build, automatic AX view detection polls while Lightroom is active. Saving diagnostics also gathers fresh window and toolbar-menu data after invocation; manual Refresh AX is optional.
 
 
-The app also offers **Developer tools → Experimental features → Use AX data only for placement**. With Automatic viewing area enabled, it selects AX instead of screenshot placement; manual calibration still takes precedence. AX automatic placement and its background checks take no screenshots. Explicit capture previews and calibration snapping remain available. It requires Accessibility access and uses fresh geometry on invocation. Keep **Show AX placement preview** independently enabled to compare. Turn AX-only off to restore the existing screenshot path. This remains experimental; calibrated offsets and Library allowance are described in docs/CONFIGURATION.md.
+**Developer tools → Experimental features → Automatic placement method** selects **AX only**, **AX-assisted screenshot**, or **Pure screenshot**. Manual calibration takes precedence over all three. New settings default to AX; an existing explicit AX/screenshot choice is preserved.
 
-Use **Settings → Advanced settings…** for a file-driven Name / Value / Comment table. Double-click a value to edit it, then Save. Comments are available in full on hover. Cancel discards edits; Open config file keeps plain-text editing available. Saving validates the existing config format and refuses to overwrite external edits. Search filters names and comments without discarding edits to hidden rows.
+AX-only placement requires Accessibility and uses fresh geometry without automatic screenshots. Assisted placement uses raw AX panel edges to narrow the pixel search, without calibrated AX offsets; inconclusive guidance falls back to the original screenshot search. Pure screenshot retains the established detector and cache behaviour. Explicit capture previews and calibration snapping remain available in all modes.
+
+**Automatically detect Lightroom view** remains an independent option, as does **Show AX placement preview**. Assisted diagnostics count AX changes, screenshot-only boundary changes and validation failures, with AX/capture costs. All periodic screenshot checks are retained during this trial. These modes remain experimental; AX-only offsets are described in docs/CONFIGURATION.md.

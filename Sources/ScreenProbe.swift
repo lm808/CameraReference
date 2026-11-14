@@ -56,9 +56,9 @@ func appKitRect(_ rect:CGRect,primaryHeight:CGFloat)->CGRect {
     CGRect(x:rect.minX,y:primaryHeight-rect.maxY,width:rect.width,height:rect.height)
 }
 @available(macOS 14.0, *)
-func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,seed:CGRect? = nil,maxPixelWidth:CGFloat? = nil) async -> ScreenProbeResult {
+func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,seed:CGRect? = nil,maxPixelWidth:CGFloat? = nil,axHints:AXScreenHints? = nil) async -> ScreenProbeResult {
     for attempt in 0..<3 {
-        let result=await captureStableLayout(imageSize:imageSize,forCalibration:forCalibration,previewCapture:previewCapture,settings:settings,layout:layout,seed:seed,maxPixelWidth:maxPixelWidth)
+        let result=await captureStableLayout(imageSize:imageSize,forCalibration:forCalibration,previewCapture:previewCapture,settings:settings,layout:layout,seed:seed,maxPixelWidth:maxPixelWidth,axHints:axHints)
         if !result.geometryChanged || Task.isCancelled { return result }
         await ScreenGeometryCache.shared.reset()
         if attempt<2 { try? await Task.sleep(nanoseconds:250_000_000) }
@@ -66,7 +66,7 @@ func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
     return ScreenProbeResult(candidate:nil,summary:"Lightroom is still moving or resizing. Wait for the transition to finish, then invoke again. Calibration was not changed.",geometryChanged:true)
 }
 @available(macOS 14.0, *)
-func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,seed:CGRect? = nil,maxPixelWidth:CGFloat? = nil) async -> ScreenProbeResult {
+func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,seed:CGRect? = nil,maxPixelWidth:CGFloat? = nil,axHints:AXScreenHints? = nil) async -> ScreenProbeResult {
     guard CGPreflightScreenCaptureAccess() else { return ScreenProbeResult(candidate:nil,summary:"Screen Recording permission is required. Use Inspect screen layout again to open permission settings.") }
     let probeStarted=ProcessInfo.processInfo.systemUptime
     let ticket=await ScreenGeometryCache.shared.ticket()
@@ -143,7 +143,10 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         let detectionStarted=ProcessInfo.processInfo.systemUptime
         let detection:ViewportDetection
         let reused:Bool
-        if layout == .full {
+        if let hints=axHints, sameWindowGeometry(hints.host,originFrame) {
+            detection=detectAXAssistedViewport(in:raster,hints:hints,layout:layout,settings:settings)
+            reused=false
+        } else if layout == .full {
             guard let result=await ScreenGeometryCache.shared.inspect(raster,key:"crop:\(captureKey):\(window.windowID):\(window.frame):\(filter.pointPixelScale):\(CGDisplayBounds(CGMainDisplayID()))",ticket:ticket,singlePhoto:true,sideSearchPercent:settings.sideSearchPercent) else {
                 return ScreenProbeResult(candidate:nil,summary:"Window/display geometry was invalidated during capture.",geometryChanged:true)
             }

@@ -158,7 +158,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     let imageCache=SelectionImageCache()
-    var axPlacementEnabled:Bool { CameraPreferences.shared.bool(forKey:"experimentalAXPlacement") }
+    var automaticPlacementMode:AutomaticPlacementMode {
+        AutomaticPlacementMode.resolve(saved:CameraPreferences.shared.string(forKey:"automaticPlacementMode"),
+            legacy:CameraPreferences.shared.object(forKey:"experimentalAXPlacement") as? Bool)
+    }
+    var axPlacementEnabled:Bool { automaticPlacementMode == .accessibility }
+    var assistedPlacementEnabled:Bool { automaticPlacementMode == .assisted }
+    var assistedSignature:String?
+    var assistedChecks=0,assistedAXChanges=0,assistedAXFailures=0,assistedPixelChanges=0,assistedPixelFailures=0
+    var assistedCheckSeconds:Double=0,assistedAXSeconds:Double=0
+    var assistedEvidence="No assisted comparison yet."
+    static func screenHints(module:String?)->AXScreenHints? {
+        let toolbar=accessibilityToolbarReading(module:module)
+        var hints:AXScreenHints?
+        _=accessibilityMappingReport { host,windows in
+            hints=AXScreenHints(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),
+                toolbar:toolbar.shown.map { $0 ? "shown":"hidden" } ?? "unknown")
+        }
+        return hints
+    }
     var automaticViewEnabled:Bool { CameraPreferences.shared.bool(forKey:"experimentalAutomaticView") }
     var detectedLayout:OverlayLayout?
     var detectedLayoutModule:String?
@@ -252,13 +270,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let settings=detectionSettings.current
         let started=ProcessInfo.processInfo.systemUptime
         let seed=overlayLayout == .full ? nil:region
+        let assisted=assistedPlacementEnabled,module=currentModule()
         panelCheckTask=Task.detached(priority:.utility) { [weak self] in
-            let result=await inspectScreenLayout(imageSize:imageSize,settings:settings,layout:memory.layout,seed:seed,maxPixelWidth:1280)
+            let hints=assisted ? Self.screenHints(module:module):nil
+            let axElapsed=ProcessInfo.processInfo.systemUptime-started
+            let result=await inspectScreenLayout(imageSize:imageSize,settings:settings,layout:memory.layout,seed:seed,maxPixelWidth:1280,axHints:hints)
             guard !Task.isCancelled else { return }
-            await self?.finishPanelCheck(result,id:id,memory:memory,elapsed:ProcessInfo.processInfo.systemUptime-started)
+            await self?.finishPanelCheck(result,id:id,memory:memory,elapsed:ProcessInfo.processInfo.systemUptime-started,assisted:assisted,hints:hints,axElapsed:axElapsed)
         }
     }
-    @MainActor func finishPanelCheck(_ result:ScreenProbeResult,id:UUID,memory:PlacementMemory,elapsed:TimeInterval) {
+    @MainActor func finishPanelCheck(_ result:ScreenProbeResult,id:UUID,memory:PlacementMemory,elapsed:TimeInterval,assisted:Bool=false,hints:AXScreenHints?=nil,axElapsed:TimeInterval=0) {
         guard panelCheckID==id else { return };panelCheckID=nil;panelCheckTask=nil
         guard !workspaceOverview,!overlaySuspended,isLightroom(),pending==nil,screenTask==nil,calibration==nil,
               placementMemory?.epoch==memory.epoch,selectionEpoch()==memory.epoch,
@@ -269,7 +290,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             panelCheckStatus="Background check paused: Lightroom is off-screen or spans displays.";return
         }
         let expected=memory.translated(window:window,windowID:memory.windowID,epoch:memory.epoch,settingsKey:memory.settingsKey,layout:memory.layout)
-        if panelBoundsChanged(previous:expected,current:result.uiFrame,tolerance:4) {
+        var axChanged=false
+        if assisted {
+            assistedChecks += 1;assistedCheckSeconds += elapsed;assistedAXSeconds += axElapsed
+            if let hints,sameWindowGeometry(hints.host,current) {
+                axChanged=assistedSignature != nil && assistedSignature != hints.signature
+                if axChanged { assistedAXChanges += 1 }
+                if result.uiFrame == nil { assistedPixelFailures += 1 }
+                else if assistedSignature == hints.signature && panelBoundsChanged(previous:expected,current:result.uiFrame,tolerance:4) { assistedPixelChanges += 1 }
+                assistedSignature=hints.signature
+            } else { assistedAXFailures += 1 }
+            assistedEvidence="Last comparison: AX changed=\(axChanged); prior=\(String(describing:expected)); screenshot=\(String(describing:result.uiFrame))."
+        }
+        if axChanged || panelBoundsChanged(previous:expected,current:result.uiFrame,tolerance:4) {
             let reason=result.uiFrame == nil ? "UI boundaries could not be validated":"UI boundaries changed"
             panelCheckStatus="Background check invalidated cached placement (visible overlay retained): \(reason).\nPrevious UI: \(String(describing:expected)); checked UI: \(String(describing:result.uiFrame)).\n"+result.summary
             invalidateAutomaticGeometry()
@@ -506,8 +539,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         experimentalItem.submenu=experimental;developer.addItem(experimentalItem)
         let view=add("Automatically detect Lightroom view",#selector(toggleAutomaticView),to:experimental)
         view.state=automaticViewEnabled ? .on:.off
-        let axMode=add("Use AX data only for placement",#selector(toggleAXPlacement),to:experimental)
-        axMode.state=axPlacementEnabled ? .on:.off
+        let placementMenu=NSMenu()
+        let placementItem=NSMenuItem(title:"Automatic placement method",action:nil,keyEquivalent:"")
+        placementItem.submenu=placementMenu;experimental.addItem(placementItem)
+        for mode in AutomaticPlacementMode.allCases {
+            let item=add(mode.title,#selector(selectPlacementMethod),to:placementMenu)
+            item.representedObject=mode.rawValue;item.state=automaticPlacementMode==mode ? .on:.off
+        }
         let trial=add("Show AX placement preview",#selector(toggleAXTrial),to:experimental)
         trial.state=axTrialEnabled ? .on:.off
         let actions=NSMenu();let actionsItem=NSMenuItem(title:"Capture / bridge actions",action:nil,keyEquivalent:"")
@@ -1056,13 +1094,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     var diagnosticSaveStatus="Automatic report saving has not run."
     var diagnosticSaveURL:URL { folder.deletingLastPathComponent().appendingPathComponent("Diagnostics/latest.txt") }
-    @objc func toggleAXPlacement(_ item:NSMenuItem) {
-        if !axPlacementEnabled && !FeaturePermission.accessibility.ensure() { return }
+    @objc func selectPlacementMethod(_ item:NSMenuItem) {
+        guard let raw=item.representedObject as? String,let mode=AutomaticPlacementMode(rawValue:raw) else { return }
+        if mode != .screenshot && !FeaturePermission.accessibility.ensure() { return }
         cancelScreenInspection();cancelPanelCheck();cancelRequest()
-        CameraPreferences.shared.set(!axPlacementEnabled,forKey:"experimentalAXPlacement")
-        item.state=axPlacementEnabled ? .on:.off
+        CameraPreferences.shared.set(mode.rawValue,forKey:"automaticPlacementMode")
+        for sibling in item.menu?.items ?? [] { sibling.state=(sibling === item) ? .on:.off }
+        assistedSignature=nil
         invalidateAutomaticGeometry()
-        report(axPlacementEnabled ? "AX-only automatic placement enabled. Automatic placement skips screenshots; manual placement still takes precedence.":"Screenshot automatic placement enabled.")
+        report("Automatic placement: \(mode.title). Manual placement takes precedence; automatic view detection is separate.")
     }
     @objc func toggleAXTrial(_ item:NSMenuItem) {
         if !axTrialEnabled && !FeaturePermission.accessibility.ensure() { return }
@@ -1436,11 +1476,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.lastLayout=result.summary;self.report(result.summary); callback?(result)
         }
         RunLoop.main.add(screenTimeout!,forMode:.common)
+        let assisted=assistedPlacementEnabled && !previewCapture
+        let module=currentModule()
         screenTask=Task.detached(priority:.userInitiated) { [weak self] in
-            let result=await inspectScreenLayout(imageSize:imageSize,previewCapture:previewCapture,settings:settings,layout:mode,seed:seed)
+            let hints=assisted ? Self.screenHints(module:module):nil
+            let result=await inspectScreenLayout(imageSize:imageSize,previewCapture:previewCapture,settings:settings,layout:mode,seed:seed,axHints:hints)
+            if assisted { await self?.recordAssistedInvocation(hints,id:inspectionID) }
             guard !Task.isCancelled else { return }
             await self?.finishScreenInspection(result,id:inspectionID,elapsed:ProcessInfo.processInfo.systemUptime-inspectionStarted)
         }
+    }
+    @MainActor func recordAssistedInvocation(_ hints:AXScreenHints?,id:UUID) {
+        guard screenInspectionID==id else { return }
+        assistedSignature=hints?.signature
+        assistedEvidence=hints == nil ? "AX read unavailable; original screenshot path used.":"Fresh raw AX hints; no calibrated AX offsets used."
     }
     func cancelScreenInspection() {
         let wasRunning=screenInspectionID != nil
@@ -1480,6 +1529,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             DiagnosticSection(title:"Accessibility & display map",body:lastAXMapping),
             DiagnosticSection(title:"Saved diagnostics",body:diagnosticSaveStatus),
             DiagnosticSection(title:"Automatic view experiment",body:lastViewDetection),
+            DiagnosticSection(title:"Placement method & assisted evidence",body:"Method: \(automaticPlacementMode.title). View detection: \(automaticViewEnabled ? "automatic AX":"menu selection").\nRetained screenshot checks: \(assistedChecks); AX time: \(Int(assistedAXSeconds*1000)) ms; retained capture/check time: \(Int((assistedCheckSeconds-assistedAXSeconds)*1000)) ms.\nAX changes: \(assistedAXChanges); AX unavailable/stale: \(assistedAXFailures).\nPixel boundary changes after unchanged AX: \(assistedPixelChanges); pixel validation failures: \(assistedPixelFailures).\n\(assistedEvidence)\nAll periodic screenshot checks retained for this measurement trial; counters are session-only."),
             DiagnosticSection(title:"AX placement trial",body:lastAXTrial),
             DiagnosticSection(title:"AX toolbar visibility",body:lastAXToolbar),
             DiagnosticSection(title:"Last result",body:lastResult),

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.29 — AX-assisted screenshot candidate
+
+- Separate AX / assisted / pure screenshot placement selector; independent view detection.
+- Raw AX search bands with pixel validation and original-search fallback.
+- Session diagnostics measure retained background checks and changes missed by AX.
+
+
 ## 1.0.21 — Live AX view and complete diagnostics (candidate)
 
 - Poll inferred AX view while Lightroom is active; update pane menus on changes only.

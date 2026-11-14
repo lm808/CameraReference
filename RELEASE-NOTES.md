@@ -1,5 +1,7 @@
-# Camera Reference 1.0.28
+# Camera Reference 1.0.29 — candidate
 
-Fixes AX side-panel recognition in small Lightroom windows. Tall, visible rectangles attached to exactly one window side are retained regardless of their percentage width; full-width rectangles remain excluded. No offset changes or screenshot detector changes.
+Adds a three-way automatic-placement selector: AX only, AX-assisted screenshot and Pure screenshot. View detection remains separate. Fresh settings default to AX, while existing choices are preserved.
 
-Regression checks cover the reported 1047 × 702 and 900 × 702 Library windows. Native confirmation remains in TESTING.md; other deferred placement issues remain open. No DMG packaged.
+The assisted mode uses raw panel edges to guide pixel searches, with no calibrated AX offsets. Pixel validation and margin divider scanning determine placement; inconclusive hints fall back to the original search. Background screenshot checks remain enabled and measured during the trial.
+
+Native acceptance is pending. Main's accepted 1.0.28 app is unchanged. No DMG packaged.

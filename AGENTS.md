@@ -75,3 +75,7 @@ Do not commit build/release/dist artifacts, personal config, bridge runtime file
 ## Standalone AX exploration
 
 `tools/AXExplorer/` is a separate interactive read-only executable, built by `bash scripts/build-ax-explorer.sh` into `build/AXExplorer/`. It never rebuilds the app or changes its version/settings. Exploratory commands, branch skips and budgets are runtime options. Reports are saved explicitly under the worktree’s ignored investigations/ax-reports folder (never in Application Support). Leave all live use and permission prompts to the user; `--self-test` performs no live AX calls. Review tool findings separately before integrating production selectors.
+
+## Assisted screenshot candidate
+
+`Sources/AXAssisted.swift` contains raw structural hints, a separately maintained guided pixel search and placement-mode preference resolution. Do not modify ViewportDetector or the original split scanner to tune this experiment. The optional ScreenProbe hook must leave nil-hint behaviour unchanged. AX view inference remains separate from placement-method selection. Background screenshot checks are retained until measured evidence supports reducing them.

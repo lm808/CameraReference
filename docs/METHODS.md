@@ -195,3 +195,11 @@ AX-only selection disables background placement pixel checks. Explicit screen in
 ### Small-window AX panels (1.0.28)
 
 The former width < 30% rule rejected visible 324 pt panels in 1047 pt and 900 pt windows. AX panel classification now retains tall visible rectangles attached to exactly one side of the host, excluding full-width rectangles. Existing visibility, host containment and height checks remain; screenshot detection and geometry offsets are unchanged.
+
+## AX-assisted screenshot trial (1.0.29)
+
+AXAssisted.swift is an isolated experimental search. Its rectangle evidence checks are a frozen copy of the accepted Full checks; ViewportDetector.swift and the original split scanner are untouched. ScreenProbe adds only an optional raw-hint dispatch, gated by exact captured host geometry. Nil/stale hints use the existing path. The original cache is not populated with guided results.
+
+Visible side/upper/filmstrip rectangles give raw global-point edges. Missing sides start at the host edge. Search uncertainty is ±64 pt horizontally and ±128 pt vertically, clipped to raster bounds. These are search widths, not calibrated placement shifts. Pixels still choose and validate all four borders. An inconclusive guided search uses the original search. Splits use the unchanged bottom/left margin scanner and the selected layout, never calibrated AX pane geometry.
+
+The assisted background check compares translation-independent panel/toolbar signatures and retains every scheduled 1280px pixel check. AX change or pixel mismatch invalidates the next placement, retaining the visible overlay. Reports distinguish unchanged-AX pixel changes, AX failure and pixel validation failure. This first trial deliberately does not reduce check frequency; measurements precede that decision. Config interval zero still disables checks. View inference is independently controlled.

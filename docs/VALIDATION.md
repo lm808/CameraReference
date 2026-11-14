@@ -697,3 +697,9 @@ Reports from 2026-11-14 22:49:37 and 22:51:21 UTC show Library hosts 1047 × 702
 Core regression executable passed, including both reported host positions/sizes, expected corrected bounds, each hidden side, full-width tall distractors and short edge controls. Existing large-window and split AX checks also passed. Screenshot detector/capture and offsets are unchanged; personal config untouched. Native acceptance remains pending.
 
 Main build and staged signature/plist verified: 1.0.28, org.local.CameraReference. No app launch, permission changes, packaging or push.
+
+## 1.0.29 candidate
+
+User accepted 1.0.28 at minimum window size before this work. Synthetic assisted fixtures compare pixel geometry against pure screenshot for Full and four panes, hidden panels, wrong-hint fallback, toolbar/translation signatures, config-offset independence and preference migration. Native assisted acceptance remains pending; no Lightroom interaction performed by agent.
+
+Automated results: core/Lua, photo detection, viewport (including assisted fixtures), reset, preview, capture, split and config-editor suites passed. Config-editor temporary file coordination required running that executable outside the sandbox. Candidate build, plist and ad-hoc signature verified. Byte comparison confirms ViewportDetector/PhotoDetector and ScreenProbe split scanner/capture helpers unchanged from main; only the optional assisted dispatch was added to capture orchestration.

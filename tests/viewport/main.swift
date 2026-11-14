@@ -303,3 +303,30 @@ for mode:OverlayLayout in [.left,.upper] {
 let emptyInset=scanInsetDivider(in:fixture(bg:[0,0,0],split:1),viewport:CGRect(x:120,y:60,width:660,height:520),layout:.left,insetPixels:.zero)
 expect(emptyInset.position==nil,"Zero inset must offer calibration")
 print("PASS: short divider endpoint gaps tolerated; top/right labels ignored; zero inset rejected")
+
+// AX-assisted search: raw panels guide intervals, pixels remain authoritative.
+let hintHost=CGRect(x:0,y:0,width:900,height:650)
+let rawPanels=[CGRect(x:0,y:60,width:137,height:520),CGRect(x:763,y:60,width:137,height:520),CGRect(x:0,y:20,width:900,height:51),CGRect(x:0,y:620,width:900,height:30)]
+let hints=AXScreenHints(host:hintHost,visibleFrames:rawPanels,toolbar:"shown")!
+for hidden in [false,true] {
+    let h=hidden ? AXScreenHints(host:hintHost,visibleFrames:[],toolbar:"unknown")!:hints
+    for mode:OverlayLayout in [.full,.left,.right,.upper,.lower] {
+        let raster=fixture(bg:[0,0,0],hidden:hidden,split:mode.group)
+        let assisted=detectAXAssistedViewport(in:raster,hints:h,layout:mode,settings:DetectionConfig())
+        let original=mode == .full ? detectViewport(in:raster,singlePhoto:true):detectSplitViewport(in:raster,layout:mode)
+        expect(assisted.bounds==original.bounds,"Guided/pure mismatch \(mode): \(assisted.summary)")
+        expect(!assisted.summary.contains("fallback"),"Expected guided success: \(assisted.summary)")
+    }
+}
+let wrongHints=AXScreenHints(host:hintHost,visibleFrames:[CGRect(x:0,y:60,width:330,height:520),CGRect(x:570,y:60,width:330,height:520)],toolbar:"shown")!
+let fallback=detectAXAssistedViewport(in:fixture(bg:[0,0,0]),hints:wrongHints,layout:.full,settings:DetectionConfig())
+expect(fallback.summary.contains("fallback") && fallback.bounds==detectViewport(in:fixture(bg:[0,0,0]),singlePhoto:true).bounds,"Contradictory hints must fall back")
+var altered=DetectionConfig();altered.axShownLeftOffsetPoints=90;altered.axToolbarHeightPoints=150;altered.axLibraryBottomOffsetPoints=100
+expect(detectAXAssistedViewport(in:fixture(bg:[0,0,0]),hints:hints,layout:.full,settings:altered).bounds==detectAXAssistedViewport(in:fixture(bg:[0,0,0]),hints:hints,layout:.full,settings:DetectionConfig()).bounds,"Calibrated AX offsets leaked into assisted detection")
+let translatedHints=AXScreenHints(host:hintHost.offsetBy(dx:300,dy:50),visibleFrames:rawPanels.map{$0.offsetBy(dx:300,dy:50)},toolbar:"shown")!
+expect(translatedHints.signature==hints.signature,"Translation should not change structural signature")
+expect(AXScreenHints(host:hintHost,visibleFrames:rawPanels,toolbar:"hidden")!.signature != hints.signature,"Toolbar state must invalidate signature")
+expect(AutomaticPlacementMode.resolve(saved:nil,legacy:nil) == .accessibility,"Fresh default should be AX")
+expect(AutomaticPlacementMode.resolve(saved:nil,legacy:false) == .screenshot,"Preserve explicit screenshot preference")
+expect(AutomaticPlacementMode.resolve(saved:"assisted",legacy:true) == .assisted,"New choice takes precedence")
+print("PASS: AX-assisted pixel bounds/splits, hidden panels, fallback, offset independence, signatures and preference migration")
