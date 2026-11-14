@@ -62,3 +62,12 @@ Visibility is supported by these pairs; height remains unreported and configurab
 ## Investigation ownership
 
 App diagnostics keep host/display maps, panel rectangles, AX visibility and supplementary CG opacity, label candidates, view inference, preview corrections/bounds, toolbar command/state/timestamp and failure reasons. Exhaustive child/parent/section dumps were removed from the app in 1.0.23. Standalone source and launcher are in tools/AXExplorer; the executable/launcher are built in build/AXExplorer only. Raw probes are preserved in ignored investigations/ax-reports. Historical build/check evidence stays in VALIDATION.md, not README or the current checklist.
+
+
+## Calibration against screenshot bounds — 14 November 2026
+
+User designated screenshot-calculated UI bounds as reference. Window (0,30,2560,1349), point coordinates; compare UI bounds, not the extra one-point panel border. Library single-view fresh reports 19:44:49–19:49:33 established per-edge shown/hidden corrections. Develop side-by-side reports 20:10:30, 20:12:29 and stacked 20:13:29, 20:14:23 supported the same edge corrections. Corrected outer-area midpoints differ from pixel divider detection by 0.5 pt; no separate divider correction introduced.
+
+V2 signed offsets use right/up positive: shown L/R/T = -17/+17/+11; hidden L/R/T = -1/+1/+1, relative to raw fallback insets 18/18/50 pt. Bottom = filmstrip shown -11 or hidden +17, plus toolbar shown +43 (hidden 0), plus Library allowance. Base hidden-bottom inset is zero. Filmstrip shown/toolbar hidden is inferred; other bottom combinations measured. Library split screenshot detection failed, so its apparent extra bottom allowance and divider differences are excluded from calibration. Library allowance defaults to zero until reliable measurement. Resizing/other display-scale acceptance remains pending.
+
+1.0.24 introduces an opt-in AX placement backend, not a replacement detector. Manual placement wins; with automatic placement on, the experimental switch chooses AX or the existing screenshot path. AX errors never fall back to capture. Preview remains independently available. Prior exploratory v1 offsets remain stored/parseable, but v2 names alone control AX geometry so positive-down legacy values cannot be silently reused with reversed semantics.

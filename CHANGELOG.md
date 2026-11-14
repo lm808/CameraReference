@@ -138,3 +138,9 @@ Detailed findings and accepted results are in docs/VALIDATION.md, not this user-
 - Use AX View-menu toolbar visibility for experimental geometry only; assume shown on failed reads.
 - Retain useful consolidated AX diagnostics; move deep exploration entirely into the build-only explorer.
 - Preserve existing screenshot detection and personal geometry settings.
+
+## 1.0.24 (candidate)
+
+- Add independent experimental AX-only automatic placement, with no screenshot fallback or background captures.
+- Add calibrated, configurable shown/hidden offsets using right/up-positive signs and cumulative bottom corrections; keep a separate Library allowance.
+- Preserve screenshot detection, manual precedence, JPEG caching and the independent AX preview.

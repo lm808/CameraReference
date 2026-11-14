@@ -96,3 +96,6 @@ Experimental AX tools are grouped under **Developer tools → Experimental featu
 For investigation, enable **Save diagnostics after invocation** to maintain one text report at `~/Library/Application Support/CameraReference/Diagnostics/latest.txt`. **Diagnostics → Refresh AX** refreshes window mapping and toolbar-menu evidence and refreshes this file when saving is enabled. Manual **Copy all** remains available. No screenshots are saved automatically.
 
 In the investigation build, automatic AX view detection polls while Lightroom is active. Saving diagnostics also gathers fresh window and toolbar-menu data after invocation; manual Refresh AX is optional.
+
+
+The investigation candidate also offers **Developer tools → Experimental features → Use AX data only for placement**. With Automatic viewing area enabled, it selects AX instead of screenshot placement; manual calibration still takes precedence. AX automatic placement and its background checks take no screenshots. Explicit capture previews and calibration snapping remain available. It requires Accessibility access and uses fresh geometry on invocation. Keep **Show AX placement preview** independently enabled to compare. Turn AX-only off to restore the existing screenshot path. This remains experimental; calibrated offsets and Library allowance are described in docs/CONFIGURATION.md.

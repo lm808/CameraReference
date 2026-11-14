@@ -50,4 +50,24 @@ GUI settings intentionally remain in the conventional macOS Preferences domain d
 
 JPEG bytes, decoded images, captured pixels and automatic placement caches are held in RAM. No disk image cache is created. An independent floating display owns its displayed image until closed/reloaded.
 
-Experimental AX preview reads toolbar visibility automatically. The legacy `axToolbarState` entry remains accepted for compatibility but is ignored by the app preview; no personal file is rewritten. A failed/ambiguous reading assumes shown and uses `axToolbarShownBottomOffsetPoints`. Confirmed hidden uses `axToolbarHiddenBottomOffsetPoints`. Both offsets still default to zero and affect only preview geometry, never screenshot placement.
+
+## Experimental AX geometry (v2)
+
+Use the `# AX:` entries in config.conf; the prefix keeps stable versions compatible. New keys are appended when the candidate loads the config. Explicit v2 values are preserved; legacy v1 entries remain but no longer control AX geometry. Screenshot settings and their cache key are unaffected.
+
+All signed offsets start at raw AX boundaries: **right/up positive; left/down negative**. The code subtracts vertical offsets from top-left Y coordinates. Base hidden insets are distances inward from the window, applied before signed corrections.
+
+| Setting | Default (pt) |
+|---|---:|
+| axShownLeftOffsetPoints / axHiddenLeftOffsetPoints | -17 / -1 |
+| axShownRightOffsetPoints / axHiddenRightOffsetPoints | +17 / +1 |
+| axShownTopOffsetPoints / axHiddenTopOffsetPoints | +11 / +1 |
+| axFilmstripShownOffsetPoints / axFilmstripHiddenOffsetPoints | -11 / +17 |
+| axToolbarHeightPoints | 43 |
+| axLibraryBottomOffsetPoints | 0 |
+| axBaseHiddenLeftInsetPoints / axBaseHiddenRightInsetPoints | 18 / 18 |
+| axBaseHiddenTopInsetPoints / axBaseHiddenBottomInsetPoints | 50 / 0 |
+
+Bottom correction is cumulative: filmstrip correction + toolbar height when shown/unknown + Library correction in Library. The Library allowance is deliberately zero until calibrated; positive moves the bottom upwards. Toolbar-unavailable diagnostics say assumed shown. Filmstrip shown/toolbar hidden's -11 pt remains inferred. Correct the combined area, then split at its midpoint constrained between labels.
+
+These defaults ship in the parser and example for fresh installations. They apply to AX preview and experimental AX-only placement, never the screenshot detector. Geometry is read anew per AX invocation; no placement cache. JPEG RAM caching remains enabled.

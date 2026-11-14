@@ -157,6 +157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     let imageCache=SelectionImageCache()
+    var axPlacementEnabled:Bool { CameraPreferences.shared.bool(forKey:"experimentalAXPlacement") }
     var automaticViewEnabled:Bool { CameraPreferences.shared.bool(forKey:"experimentalAutomaticView") }
     var detectedLayout:OverlayLayout?
     var detectedLayoutModule:String?
@@ -231,6 +232,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var panelCheckStatus="Panel boundaries not yet checked in background."
     func cancelPanelCheck() { panelCheckTask?.cancel();panelCheckTask=nil;panelCheckID=nil }
     func checkPanelBoundariesIfDue() {
+        guard !axPlacementEnabled else { cancelPanelCheck();panelCheckStatus="AX-only mode: background screenshot checks disabled; fresh AX geometry on invocation.";return }
         guard #available(macOS 14.0,*),ProcessInfo.processInfo.systemUptime>=nextPanelCheck,
               panelCheckTask==nil,screenTask==nil,pending==nil,calibration==nil,!recording,!regionResetting,
               !workspaceOverview,!overlaySuspended,isLightroom(),supportedLightroomModule(currentModule()),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
@@ -423,6 +425,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             }
             askForCalibration();return
         }
+        if placementBackend(automatic:true,axOnly:axPlacementEnabled) == .accessibility {
+            startAXPlacement(epoch:epoch,full:true) { [weak self] ui in
+                guard let self else { return }
+                if let ui { show(ui) } else { self.askForCalibration(reason:"AX placement unavailable. No screenshot fallback was used.") }
+            };return
+        }
         if let ui=cachedUI(epoch:epoch,settings:settings,layout:.full) { show(ui);return }
         guard supportedLightroomModule(currentModule()),#available(macOS 14.0,*),FeaturePermission.screenCapture.ensure() else { report("Calibrate a UI working area, or open Library or Develop to size the floating photo.");return }
         startPhotoDetection(imageSize:imageSize,layout:.full) { [weak self] probe in
@@ -497,6 +505,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         experimentalItem.submenu=experimental;developer.addItem(experimentalItem)
         let view=add("Automatically detect Lightroom view",#selector(toggleAutomaticView),to:experimental)
         view.state=automaticViewEnabled ? .on:.off
+        let axMode=add("Use AX data only for placement",#selector(toggleAXPlacement),to:experimental)
+        axMode.state=axPlacementEnabled ? .on:.off
         let trial=add("Show AX placement preview",#selector(toggleAXTrial),to:experimental)
         trial.state=axTrialEnabled ? .on:.off
         let actions=NSMenu();let actionsItem=NSMenuItem(title:"Capture / bridge actions",action:nil,keyEquivalent:"")
@@ -958,7 +968,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let enabled = !CameraPreferences.shared.bool(forKey: regionKey("automaticBounds"))
         CameraPreferences.shared.set(enabled, forKey: regionKey("automaticBounds")); autoItem.state = enabled ? .on : .off
         cancelScreenInspection();cancelRequest();hide();invalidateAutomaticGeometry()
-        if enabled { _ = FeaturePermission.screenCapture.ensure() }
+        if enabled { _ = axPlacementEnabled ? FeaturePermission.accessibility.ensure():FeaturePermission.screenCapture.ensure() }
         report(enabled ? "Automatic detection enabled. Manual calibration is the fallback." : "Using manual calibration.")
     }
     @objc func inspectViewState() {
@@ -1045,6 +1055,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     var diagnosticSaveStatus="Automatic report saving has not run."
     var diagnosticSaveURL:URL { folder.deletingLastPathComponent().appendingPathComponent("Diagnostics/latest.txt") }
+    @objc func toggleAXPlacement(_ item:NSMenuItem) {
+        if !axPlacementEnabled && !FeaturePermission.accessibility.ensure() { return }
+        cancelScreenInspection();cancelPanelCheck();cancelRequest()
+        CameraPreferences.shared.set(!axPlacementEnabled,forKey:"experimentalAXPlacement")
+        item.state=axPlacementEnabled ? .on:.off
+        invalidateAutomaticGeometry()
+        report(axPlacementEnabled ? "AX-only automatic placement enabled. Automatic placement skips screenshots; manual placement still takes precedence.":"Screenshot automatic placement enabled.")
+    }
     @objc func toggleAXTrial(_ item:NSMenuItem) {
         if !axTrialEnabled && !FeaturePermission.accessibility.ensure() { return }
         CameraPreferences.shared.set(!axTrialEnabled,forKey:"developerAXTrial")
@@ -1074,14 +1092,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func runAXTrial(after actual:NSPanel) {
         clearAXTrialBorders()
         guard axTrialEnabled || autoDiagnostics else { lastAXTrial="AX preview disabled.";return }
-        let drawPreview=axTrialEnabled,settings=reloadDetectionConfig()
+        let drawPreview=axTrialEnabled,settings=reloadDetectionConfig(),module=currentModule()
         let generation=axTrialGeneration, displays=displayMappingReport(), started=ProcessInfo.processInfo.systemUptime
         lastAXTrial="AX preview collecting…"
         DispatchQueue.global(qos:.utility).async {
             var proposal:AXTrialProposal?
             let toolbar=accessibilityToolbarReading()
             var previewSettings=settings;previewSettings.axToolbarState=toolbar.effectiveState
-            let mapping=accessibilityMappingReport { host,windows in proposal=axTrialProposal(host:host,windows:windows,settings:previewSettings) }
+            let mapping=accessibilityMappingReport { host,windows in proposal=axTrialProposal(host:host,windows:windows,settings:previewSettings,module:module) }
             DispatchQueue.main.async {
                 guard self.axTrialGeneration==generation,self.panel === actual else { return }
                 self.lastAXToolbar=toolbar.report
@@ -1306,6 +1324,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             if let area=region { displayManual(image,in:area,snapshot:snapshot) }
             else { askForCalibration() }; return
         }
+        if placementBackend(automatic:true,axOnly:axPlacementEnabled) == .accessibility {
+            startAXPlacement(epoch:expectedEpoch,full:false) { [weak self] ui in
+                guard let self else { return }
+                guard let ui else { self.askForCalibration(reason:"AX placement unavailable. No screenshot fallback was used.");return }
+                self.showUI(image,ui:ui,snapshot:snapshot,settings:settings)
+            };return
+        }
         if let ui=cachedUI(epoch:expectedEpoch,settings:settings,layout:overlayLayout) {
             showUI(image,ui:ui,snapshot:snapshot,settings:settings)
             return
@@ -1334,6 +1359,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if alert.runModal() == .alertFirstButtonReturn {
             beginCalibration(useManualOnAccept:true)
         } else { report("Overlay cancelled; calibration was not changed.") }
+    }
+    func startAXPlacement(epoch:String?,full:Bool,completion:@escaping(CGRect?)->Void) {
+        guard axPlacementEnabled, supportedLightroomModule(currentModule()),FeaturePermission.accessibility.ensure() else { completion(nil);return }
+        cancelScreenInspection();cancelPanelCheck()
+        let id=UUID(),module=currentModule(),settings=reloadDetectionConfig(),mode=overlayLayout
+        let autoView=automaticViewEnabled,height=CGDisplayBounds(CGMainDisplayID()).height
+        let started=ProcessInfo.processInfo.systemUptime
+        screenInspectionID=id;screenModule=module;detectionCompletion={ _ in };updateToggleTitle()
+        screenTask=Task.detached(priority:.userInitiated) { [weak self] in
+            let toolbar=accessibilityToolbarReading()
+            var adjusted=settings;adjusted.axToolbarState=toolbar.effectiveState
+            var proposal:AXTrialProposal?
+            let mapping=accessibilityMappingReport { host,windows in proposal=axTrialProposal(host:host,windows:windows,settings:adjusted,module:module) }
+            guard !Task.isCancelled,let owner=self else { return }
+            let resultProposal=proposal
+            await MainActor.run {
+                let proposal=resultProposal
+                guard owner.screenInspectionID==id else { return }
+                owner.screenInspectionID=nil;owner.screenTask=nil;owner.detectionCompletion=nil;owner.updateToggleTitle()
+                guard owner.axPlacementEnabled,owner.currentModule()==module,owner.isLightroom(),
+                      CameraPreferences.shared.bool(forKey:owner.regionKey("automaticBounds")),epoch==owner.selectionEpoch() else {
+                    owner.report("AX placement cancelled: selection, module or mode changed.");return
+                }
+                owner.lastAXMapping=displayMappingReport()+"\n\n"+mapping;owner.lastAXToolbar=toolbar.report
+                owner.lastAXTrial=proposal?.summary ?? "AX geometry unavailable."
+                owner.lastLayout="AX-only placement; no screen capture; no placement cache.\n"+owner.lastAXTrial+"\n"+toolbar.report
+                owner.lastTiming += String(format:"; AX placement %.0f ms; capture skipped",(ProcessInfo.processInfo.systemUptime-started)*1000)
+                guard let proposal,let current=lightroomWindowFrame(),axTrialHostMatches(proposedTopLeft:proposal.host,actualAppKit:current,primaryHeight:height) else {
+                    owner.lastLayout += "\nHost unavailable or changed during AX read.";completion(nil);return
+                }
+                var selected=mode
+                if autoView && !full {
+                    let group=proposal.layout == "Side-by-side" ? 1:proposal.layout == "Above-and-below" ? 2:0
+                    let preference=CameraPreferences.shared.string(forKey:"axPreferredPane.\(module ?? "develop").\(group)").flatMap(OverlayLayout.init(rawValue:))
+                    selected=group==0 ? .full:(preference?.group==group ? preference!:(group==1 ? .left:.upper))
+                    if owner.detectedLayout != selected || owner.detectedLayoutModule != module {
+                        owner.detectedLayout=selected;owner.detectedLayoutModule=module;owner.updateLayoutMenu()
+                    }
+                }
+                guard let area=axSelectedArea(proposal,layout:full ? .full:selected) else {
+                    owner.lastLayout += "\nSelected layout does not match AX labels.";completion(nil);return
+                }
+                owner.lastLayout += "\nSelected AX UI (top-left): \(area)."
+                completion(appKitRect(area,primaryHeight:height))
+            }
+        }
     }
     func startPhotoDetection(imageSize:CGSize,previewCapture:Bool=false,layout requestedLayout:OverlayLayout? = nil,completion:((ScreenProbeResult)->Void)? = nil) {
         guard #available(macOS 14.0, *), supportedLightroomModule(currentModule()) else { report("Detection cancelled: Library or Develop is no longer active."); return }

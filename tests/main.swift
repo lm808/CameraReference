@@ -545,7 +545,7 @@ let trialHost=CGRect(x:0,y:30,width:2560,height:1349)
 func tw(_ x:Double,_ y:Double,_ w:Double,_ h:Double,_ visible:Bool=true)->AXTrialWindow { AXTrialWindow(frame:CGRect(x:x,y:y,width:w,height:h),visible:visible) }
 let trialPanels=[tw(0,62,2560,70),tw(0,1228,2560,151),tw(0,122,324,1116),tw(2225,122,335,1116)]
 let trialSingle=axTrialProposal(host:trialHost,windows:trialPanels)!
-assert(trialSingle.layout=="Single view" && trialSingle.panes==[CGRect(x:324,y:132,width:1901,height:1096)])
+assert(trialSingle.layout=="Single view" && trialSingle.panes==[CGRect(x:307,y:121,width:1935,height:1075)])
 let trialSide=axTrialProposal(host:trialHost,windows:trialPanels+[tw(1190,122,83,25),tw(1276,122,113,25)])!
 assert(trialSide.layout=="Side-by-side" && trialSide.panes.count==2)
 assert(trialSide.panes[0].maxX==1274.5 && trialSide.panes[1].minX==1274.5)
@@ -553,7 +553,7 @@ let trialStack=axTrialProposal(host:trialHost,windows:trialPanels+[tw(2128,632,1
 assert(trialStack.layout=="Above-and-below" && (657...660).contains(trialStack.panes[0].maxY))
 assert(axTrialProposal(host:trialHost,windows:trialPanels+[tw(1190,122,83,25,false),tw(1276,122,113,25,false)])!.layout=="Single view")
 let hiddenLeft=axTrialProposal(host:trialHost,windows:Array(trialPanels.prefix(2))+[tw(0,122,324,1116,false),trialPanels[3]])!
-assert(hiddenLeft.panes[0].minX==0)
+assert(hiddenLeft.panes[0].minX==17)
 let trialMovedHost=CGRect(x:587,y:47,width:1950,height:1253)
 let trialMoved=axTrialProposal(host:trialMovedHost,windows:[tw(587,79,1950,70),tw(587,1149,1950,151),tw(587,139,324,1020),tw(2202,139,335,1020),tw(1472,139,83,25),tw(1558,139,113,25)])!
 assert(trialMoved.layout=="Side-by-side" && trialMoved.panes[0].maxX==1556.5)
@@ -570,10 +570,10 @@ assert(axDefaults.axLeftOffsetPoints==0 && axDefaults.axToolbarShownBottomOffset
 let axFine=try DetectionConfig.parse("# AX: axLeftOffsetPoints = -18 # observed\n# AX: axRightOffsetPoints = 18\n# AX: axTopOffsetPoints = -12\n# AX: axToolbarState = shown\n# AX: axToolbarShownBottomOffsetPoints = -31")
 assert(axFine.key==DetectionConfig().key) // Production placement/cache untouched.
 let fineProposal=axTrialProposal(host:trialHost,windows:trialPanels,settings:axFine)!
-assert(fineProposal.panes[0].minX==306 && fineProposal.panes[0].minY==120)
-assert(fineProposal.panes[0].maxY==1197 && fineProposal.panes[0].maxX==2243)
+assert(fineProposal.panes[0].minX==307 && fineProposal.panes[0].minY==121) // Legacy offsets not reinterpreted.
+assert(fineProposal.panes[0].maxY==1196 && fineProposal.panes[0].maxX==2242)
 let axHidden=try DetectionConfig.parse("# AX: axToolbarState=hidden\n# AX: axToolbarHiddenBottomOffsetPoints=13")
-assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:axHidden)!.panes[0].maxY==1241)
+assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:axHidden)!.panes[0].maxY==1239)
 assert(axTrialProposal(host:trialHost,windows:trialPanels+[tw(1190,122,83,25),tw(1276,122,113,25)],settings:axFine)!.layout=="Side-by-side")
 assert((try? DetectionConfig.parse("# AX: axLeftOffsetPoints=nan")) == nil)
 assert((try? DetectionConfig.parse("# AX: axToolbarState=maybe")) == nil)
@@ -602,3 +602,34 @@ assert(axToolbarTitleState("Show Toolbar") == false)
 assert(axToolbarTitleState("Toolbar") == nil)
 assert(AXToolbarReading(shown:nil,report:"failed").effectiveState == "shown")
 assert(AXToolbarReading(shown:false,report:"fresh").effectiveState == "hidden")
+
+// Calibrated state-dependent AX edges; signs right/up positive; all values in points.
+let v2=try DetectionConfig.parse(DetectionConfig.template)
+assert(v2.axShownLeftOffsetPoints == -17 && v2.axToolbarHeightPoints == 43)
+let noSides=axTrialProposal(host:trialHost,windows:Array(trialPanels.prefix(2)),settings:v2)!
+assert(noSides.panes[0]==CGRect(x:17,y:121,width:2526,height:1075))
+let noTop=axTrialProposal(host:trialHost,windows:Array(trialPanels.dropFirst()),settings:v2)!
+assert(noTop.panes[0].minY==79)
+let noBottom=axTrialProposal(host:trialHost,windows:[trialPanels[0],trialPanels[2],trialPanels[3]],settings:v2)!
+assert(noBottom.panes[0].maxY==1319)
+var hiddenToolbar=v2;hiddenToolbar.axToolbarState="hidden"
+let allHidden=axTrialProposal(host:trialHost,windows:[],settings:hiddenToolbar)!
+assert(allHidden.panes[0]==CGRect(x:17,y:79,width:2526,height:1283))
+var lib=v2;lib.axLibraryBottomOffsetPoints=25
+assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:lib,module:"library")!.panes[0].maxY==1171)
+assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:lib,module:"develop")!.panes[0].maxY==1196)
+let custom=try DetectionConfig.parse("# AX: axShownTopOffsetPoints=20\n# AX: axShownLeftOffsetPoints=-10")
+assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:custom)!.panes[0].minY==112)
+assert(axTrialProposal(host:trialHost,windows:trialPanels,settings:custom)!.panes[0].minX==314)
+assert(custom.key==v2.key) // Screenshot placement/cache settings unaffected.
+assert(placementBackend(automatic:false,axOnly:true) == .manual)
+assert(placementBackend(automatic:false,axOnly:false) == .manual)
+assert(placementBackend(automatic:true,axOnly:false) == .screenshot)
+assert(placementBackend(automatic:true,axOnly:true) == .accessibility)
+assert(axSelectedArea(trialSide,layout:.left)==trialSide.panes[0])
+assert(axSelectedArea(trialSide,layout:.right)==trialSide.panes[1])
+assert(axSelectedArea(trialSide,layout:.full)==trialSingle.panes[0])
+assert(axSelectedArea(trialSide,layout:.upper)==nil)
+assert(axSelectedArea(trialStack,layout:.lower)==trialStack.panes[1])
+assert(axSelectedArea(trialSingle,layout:.right)==nil)
+print("PASS: AX signed shown/hidden offsets, cumulative bottom, Library allowance, backend precedence and pane selection")

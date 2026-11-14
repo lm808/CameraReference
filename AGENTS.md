@@ -19,7 +19,7 @@ The user runs only staged apps: stable `release/CameraReference.app` or candidat
 - `bash scripts/package.sh`: package the existing release/ payload as a DMG/checksum under ignored dist/. Uses hdiutil; may require sandbox approval. Does not install the app or publish anything. Existing DMG is not overwritten.
 - Verify signature/plist and `git diff --check` before committing. Run checks appropriate to the change; avoid repeating unchanged suites without reason.
 
-Use plain three-component versions in CFBundleShortVersionString (candidate `1.0.23`; stable main `1.0.15`); the menu and package script read that value. Stable keeps org.local.CameraReference. User authorised testing identity org.local.CameraReference.testing with a purple icon; candidate builds use bash build.sh --testing or bash scripts/stage.sh --testing. Both use the existing org.local.CameraReference preference domain and shared support/bridge folder; run only one app at a time. Do not rebuild main’s accepted staged app while working on candidates.
+Use plain three-component versions in CFBundleShortVersionString (candidate `1.0.24`; stable main `1.0.15`); the menu and package script read that value. Stable keeps org.local.CameraReference. User authorised testing identity org.local.CameraReference.testing with a purple icon; candidate builds use bash build.sh --testing or bash scripts/stage.sh --testing. Both use the existing org.local.CameraReference preference domain and shared support/bridge folder; run only one app at a time. Do not rebuild main’s accepted staged app while working on candidates.
 
 ## Source map and flow
 
@@ -69,7 +69,7 @@ Do not commit build/release/dist artifacts, personal config, bridge runtime file
 
 ## AX investigation candidate
 
-`Sources/AXTrial.swift` owns diagnostic geometry and the opt-in view classifier. Preview corrections never enter capture geometry or its cache key. Experimental `# AX:` config directives keep the shared file compatible with older stable parsers. Classification supplies only layout to the unchanged detector; no clear pair means single, read failure does not. Diagnostics retain the full window map and bounded toolbar menu reading; exhaustive child/AXSections probes belong only in AX Explorer. Toolbar failures assume shown for preview geometry and are labelled explicitly. Opt-in saved reports overwrite `CameraReference/Diagnostics/latest.txt`; do not commit these reports. Keep diagnostic timestamps when comparing cases.
+`Sources/AXTrial.swift` owns diagnostic geometry and the opt-in view classifier. AX corrections never enter capture geometry or its cache key. Manual wins; experimental AX-only branches before screenshot/cache/permission paths and must never fall back to pixel capture. Explicit capture previews, screen inspection and calibration snapping remain available in either backend. Experimental `# AX:` config directives keep the shared file compatible with older stable parsers. Classification supplies only layout to the unchanged detector; no clear pair means single, read failure does not. Diagnostics retain the full window map and bounded toolbar menu reading; exhaustive child/AXSections probes belong only in AX Explorer. Toolbar failures assume shown for AX geometry and are labelled explicitly. Opt-in saved reports overwrite `CameraReference/Diagnostics/latest.txt`; do not commit these reports. Keep diagnostic timestamps when comparing cases.
 
 ## Standalone AX exploration
 

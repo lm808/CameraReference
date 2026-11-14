@@ -3,29 +3,47 @@ import CoreGraphics
 
 struct DetectionConfig: Equatable {
     enum Bound:String { case ui,photo }
-    // Preview-only geometry; deliberately excluded from the production cache key.
+    // Legacy v1 fields: accepted for compatibility, ignored by v2 AX geometry.
     var axLeftOffsetPoints:CGFloat=0,axRightOffsetPoints:CGFloat=0,axTopOffsetPoints:CGFloat=0,axBottomOffsetPoints:CGFloat=0
     var axHiddenLeftInsetPoints:CGFloat=0,axHiddenRightInsetPoints:CGFloat=0,axHiddenTopInsetPoints:CGFloat=0,axHiddenBottomInsetPoints:CGFloat=0
     var axToolbarShownBottomOffsetPoints:CGFloat=0,axToolbarHiddenBottomOffsetPoints:CGFloat=0
     var axToolbarState="unknown"
+    // Signed corrections: right/up positive. Legacy fields above remain parseable only.
+    var axShownLeftOffsetPoints:CGFloat = -17
+    var axHiddenLeftOffsetPoints:CGFloat = -1
+    var axShownRightOffsetPoints:CGFloat=17
+    var axHiddenRightOffsetPoints:CGFloat=1
+    var axShownTopOffsetPoints:CGFloat=11
+    var axHiddenTopOffsetPoints:CGFloat=1
+    var axFilmstripShownOffsetPoints:CGFloat = -11
+    var axFilmstripHiddenOffsetPoints:CGFloat=17
+    var axToolbarHeightPoints:CGFloat=43
+    var axLibraryBottomOffsetPoints:CGFloat=0
+    var axBaseHiddenLeftInsetPoints:CGFloat=18
+    var axBaseHiddenRightInsetPoints:CGFloat=18
+    var axBaseHiddenTopInsetPoints:CGFloat=50
+    var axBaseHiddenBottomInsetPoints:CGFloat=0
     static let axGeometryTemplate="""
-    # AX geometry investigation — preview only; macOS points, NOT pixels.
-    # Keep the # AX: prefix; edit the value after =. Older apps ignore these lines.
-    # Offsets: positive moves an edge right/down; negative moves left/up.
-    # Observations below are suggestions, not enabled defaults or universal constants.
-    # AX: axLeftOffsetPoints = 0 # observed -18 with left panel visible
-    # AX: axRightOffsetPoints = 0 # observed +18 in Library; +16 in Develop
-    # AX: axTopOffsetPoints = 0 # observed -12 with top panel visible
-    # AX: axBottomOffsetPoints = 0 # observed: use the toolbar-specific offsets below
-    # Insets when a panel is hidden: positive moves inward from the host edge.
-    # AX: axHiddenLeftInsetPoints = 0 # earlier indicator started 18 pt from host left
-    # AX: axHiddenRightInsetPoints = 0 # earlier indicator ended 18 pt from host right
-    # AX: axHiddenTopInsetPoints = 0 # observed indicator at host top +50; backdrop not verified
-    # AX: axHiddenBottomInsetPoints = 0 # not established; keep zero during investigation
-    # Explicit trial annotation, NOT automatic toolbar detection: unknown/shown/hidden.
-    # AX: axToolbarState = unknown # legacy annotation; app preview now uses menu state, assumes shown on failure
-    # AX: axToolbarShownBottomOffsetPoints = 0 # observed -31 from filmstrip top
-    # AX: axToolbarHiddenBottomOffsetPoints = 0 # inferred +13 from filmstrip top (-31 +44)
+    # AX geometry v2 — preview and experimental AX placement; points, not pixels.
+    # Keep # AX: for compatibility with stable versions.
+    # Signed OFFSETS: right/up positive; left/down negative.
+    # Old axLeftOffsetPoints/axTopOffsetPoints etc. are retained but ignored.
+    # Corrections start at raw panel edges, or the base hidden insets below.
+    # AX: axShownLeftOffsetPoints = -17
+    # AX: axHiddenLeftOffsetPoints = -1
+    # AX: axShownRightOffsetPoints = 17
+    # AX: axHiddenRightOffsetPoints = 1
+    # AX: axShownTopOffsetPoints = 11
+    # AX: axHiddenTopOffsetPoints = 1
+    # AX: axFilmstripShownOffsetPoints = -11 # inferred for filmstrip shown / toolbar hidden
+    # AX: axFilmstripHiddenOffsetPoints = 17
+    # AX: axToolbarHeightPoints = 43
+    # AX: axLibraryBottomOffsetPoints = 0 # uncalibrated; extra upward allowance for Library
+    # Base hidden insets measure inward from the window; offsets apply afterwards.
+    # AX: axBaseHiddenLeftInsetPoints = 18
+    # AX: axBaseHiddenRightInsetPoints = 18
+    # AX: axBaseHiddenTopInsetPoints = 50
+    # AX: axBaseHiddenBottomInsetPoints = 0
     """
     var left=Bound.ui,right=Bound.ui,top=Bound.ui,bottom=Bound.ui
     var panelCheckIntervalSeconds:Double=3
@@ -87,6 +105,20 @@ struct DetectionConfig: Equatable {
             }
             guard let n=Double(v),n.isFinite else { throw invalid(index+1) }
             switch k {
+            case "axShownLeftOffsetPoints" where (-200...200).contains(n):c.axShownLeftOffsetPoints=n
+            case "axHiddenLeftOffsetPoints" where (-200...200).contains(n):c.axHiddenLeftOffsetPoints=n
+            case "axShownRightOffsetPoints" where (-200...200).contains(n):c.axShownRightOffsetPoints=n
+            case "axHiddenRightOffsetPoints" where (-200...200).contains(n):c.axHiddenRightOffsetPoints=n
+            case "axShownTopOffsetPoints" where (-200...200).contains(n):c.axShownTopOffsetPoints=n
+            case "axHiddenTopOffsetPoints" where (-200...200).contains(n):c.axHiddenTopOffsetPoints=n
+            case "axFilmstripShownOffsetPoints" where (-200...200).contains(n):c.axFilmstripShownOffsetPoints=n
+            case "axFilmstripHiddenOffsetPoints" where (-200...200).contains(n):c.axFilmstripHiddenOffsetPoints=n
+            case "axToolbarHeightPoints" where (0...200).contains(n):c.axToolbarHeightPoints=n
+            case "axLibraryBottomOffsetPoints" where (-200...200).contains(n):c.axLibraryBottomOffsetPoints=n
+            case "axBaseHiddenLeftInsetPoints" where (0...200).contains(n):c.axBaseHiddenLeftInsetPoints=n
+            case "axBaseHiddenRightInsetPoints" where (0...200).contains(n):c.axBaseHiddenRightInsetPoints=n
+            case "axBaseHiddenTopInsetPoints" where (0...200).contains(n):c.axBaseHiddenTopInsetPoints=n
+            case "axBaseHiddenBottomInsetPoints" where (0...200).contains(n):c.axBaseHiddenBottomInsetPoints=n
             case "axLeftOffsetPoints" where (-200...200).contains(n):c.axLeftOffsetPoints=n
             case "axRightOffsetPoints" where (-200...200).contains(n):c.axRightOffsetPoints=n
             case "axTopOffsetPoints" where (-200...200).contains(n):c.axTopOffsetPoints=n
@@ -160,7 +192,7 @@ final class DetectionConfigStore {
             return !key.isEmpty && !keys.contains(key)
         }
         if !missing.isEmpty {
-            let addition=keys.contains("axLeftOffsetPoints") ? missing.joined(separator:"\n"):DetectionConfig.axGeometryTemplate.components(separatedBy:.newlines).filter { line in
+            let addition=DetectionConfig.axGeometryTemplate.components(separatedBy:.newlines).filter { line in
                 let key=DetectionConfig.settingText(line).components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces)
                 return key.isEmpty || !keys.contains(key)
             }.joined(separator:"\n")
