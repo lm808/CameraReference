@@ -707,3 +707,56 @@ Automated results: core/Lua, photo detection, viewport (including assisted fixtu
 1.0.29 follow-up: AX-only always enables view inference. Screenshot mode exposes independent assistance/view checkboxes and remembers them across mode switches. Screen Recording is checked without requesting access; absent access skips calibration capture/background checks, and explicit preview/inspection report unavailability before hiding existing windows. User requested no version increment.
 
 Follow-up checks: testing app build and viewport/assisted/option-state regressions passed. Source audit found no CGRequestScreenCaptureAccess calls or screenCapture.ensure callers; the shared permission helper also returns immediately when Screen Recording is absent. Native menu/denied-permission acceptance remains pending.
+
+## User annotations for 1.0.29 (preserved verbatim)
+
+```text
+# Camera Reference 1.0.29
+
+Run release/CameraReference Testing.app in worktrees/ax-assisted-screenshot-detection. Main remains 1.0.28. Automated checks and user acceptance are separate. Prior test annotations are preserved verbatim in docs/VALIDATION.md.
+
+## This update
+
+- [x ] Toggle Use screenshot detection in Developer tools → Experimental features. Its two indented options are independent; AX-only always detects the view. Switching method does not dismiss the visible overlay. Manual placement still takes precedence, and AX view detection remains independent in screenshot mode.
+- [Mostly working, except those discussed. ] AX-assisted: Full, both split orientations and each pane; show/hide each panel and toolbar; resize to minimum. Compare against Pure screenshot. Collect diagnostics for disagreement.
+- [? ] Repeat overlay/float invocation on the same image. Check cache reuse and the assisted evidence counters after internal layout changes. Leave retained screenshot checks enabled for this trial.
+- [Mostly, but hard to test as not all edge cases are caught before. ] Pure screenshot and AX-only still behave as before; AX-only reports background capture disabled. AX preview remains independently selectable.
+
+- [When try to capture preview:
+
+Screen inspection failed.
+Enumerating Lightroom windows.
+com.apple.ScreenCaptureKit.SCStreamErrorDomain (-3801): The user declined TCCs for application, window, display capture
+No capture was saved.
+
+capture and detection 21 ms
+
+This needs to be more graceful and indicate that permission is missing. Calibration asks for permission which it shouldn't.
+
+] Without Screen Recording permission, calibration opens without snapping or permission prompts. Preview/inspection explain unavailability without closing an existing overlay; background capture pauses. AX-only continues to work with Accessibility.
+
+## Carried forward
+
+- [x ] Search Advanced settings by name and comment (case-insensitive). Edit a filtered row, clear/change search and verify the edit remains on the correct row. Save/Cancel and external-edit protection still work.
+- [x. You check obsolete entries. ] Plain name = value config retains your active values; no obsolete v1 entries or # AX: prefixes remain. Open config file still works from the editor.
+- [x ] File-driven rows: close the editor, add a supported setting that is currently absent to config.conf, reopen; its row appears without modifying editor code. Do not add duplicate keys.
+- [ ] toolbarUnknownFallback accepts shown, hidden and lastKnown. When AX cannot read toolbar state, diagnostics show the chosen fallback; lastKnown uses prior state for the same module/process, or shown without history.
+- [x ] Library's additional +25 pt applies only to split views. Confirm usual overlay/float and screenshot/manual paths remain usable after promotion.
+
+## Deferred to-dos — do not remove until resolved
+
+User confirmed minimum-window AX placement works on 1.0.28.
+
+- [Only via prolonged use, deferred ] Extend small-window testing with each side hidden, then return to a large window.
+- [ Works with AX and screenshot AX assist, doesn't work in pure screenshot. Suspect it is the searchwidth setting.] Investigate screenshot detection failure in Develop side-by-side with the right panel hidden; regression status unknown.
+- [Only via prolonged use, deferred   ] Broader AX edge-case testing during normal use: panel combinations, both split orientations/panes, window sizes and displays. Record diagnostics for failures.
+
+```
+
+## 1.0.30 candidate automated validation
+
+- Full Swift/Lua suite passed through split tests, including original detector fixtures, AX geometry, two assisted bottom labels, raw top-panel rejection, validated-only midpoint fallback, and capture permission denial reporting.
+- The config editor temporary-file save failed under restricted execution (Cocoa 512); its unchanged test executable passed with temporary-file access, including round-trip, external-edit conflicts, atomic saves and filtered-row edits.
+- Testing app built successfully. AXTrial.swift, ViewportDetector.swift and PhotoDetector.swift are byte-unchanged from 1.0.29; ScreenProbe changes only permission-error reporting. AX-only geometry/offsets and pure screenshot algorithms remain unchanged.
+- Read-only check of personal config: no # AX: prefixed entries; accepted sideSearchPercent 40 and Library split allowance 25 retained. No personal config changes made.
+- Native acceptance pending, especially actual Library status labels, menu disabled states and calibration wrapping. Synthetic fixtures do not prove the native failure cause.

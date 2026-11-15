@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.30 — Settings and assisted placement candidate
+
+- Group placement controls in Settings, with consistent view names and clear disabled states.
+- Wrap calibration instructions and explain optional snapping without requesting Screen Recording.
+- Retain a labelled failure snapshot before offering calibration; explain persistent off-screen failures.
+- AX-assisted screenshots reject header borders, tolerate limited bottom status labels, and use a validated-area midpoint when the divider is unavailable.
+- AX-only geometry and pure screenshot detection remain unchanged. Native testing pending.
+
 ## 1.0.29 — AX-assisted screenshot candidate
 
 - Use screenshot detection toggle with independent AX assistance and AX view options; AX-only always detects the view.

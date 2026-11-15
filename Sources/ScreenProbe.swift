@@ -342,8 +342,17 @@ private final class WindowCaptureFrame:NSObject,SCStreamOutput,SCStreamDelegate,
 
 // Preserve the cause across the outer capture boundary; never replace a geometry
 // or stream error with an unsupported permission diagnosis. No userInfo dump.
+func capturePermissionDenied(_ error:Error)->Bool {
+    var current:NSError?=error as NSError
+    for _ in 0..<3 {
+        guard let item=current else { break }
+        if item.domain=="com.apple.ScreenCaptureKit.SCStreamErrorDomain" && item.code == -3801 { return true }
+        current=item.userInfo[NSUnderlyingErrorKey] as? NSError
+    }
+    return false
+}
 func captureFailureSummary(_ error:Error,context:String)->String {
-    var lines=["Screen inspection failed.",context]
+    var lines=[capturePermissionDenied(error) ? "Screen Recording permission unavailable. No capture could be taken. Manual calibration remains available without snapping. Enable Screen Recording in macOS System Settings to use capture features.":"Screen inspection failed.",context]
     var current: NSError? = error as NSError
     for _ in 0..<3 {
         guard let item=current else { break }

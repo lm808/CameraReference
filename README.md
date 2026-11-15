@@ -21,11 +21,11 @@ For candidate testing, run **release/CameraReference Testing.app** after `bash s
 3. Use **Show overlay**, or **Control–Option–Command–J**, to toggle the camera reference.
 4. Use **Show floating display**, or **Control–Option–Command–F**, for an independent reference. Change either shortcut in **Settings → Keyboard shortcuts**.
 
-The layout section appears only when **Automatic viewing area** is enabled. Select **Full**, **Side-by-side → Left/Right**, or **Above-and-below → Upper/Lower** to match Lightroom. This selection guides detection; it does not change Lightroom’s view. Library and Develop remember their own layout and pane.
+The layout section appears only when **Auto-detect viewing area** is enabled. Accessibility mode always infers the view; screenshot mode can optionally use **AX view detection**. Otherwise select **Loupe View**, **Reference View (Left/Right)**, or **Reference View (Top/Bottom)** to match Lightroom. Choose the desired pane for split views. These choices do not change Lightroom’s view. Library and Develop remember their own layout and pane.
 
-If automatic placement is unavailable, choose **Set image region** and select the entire photo backdrop between panels (or the chosen split pane), including its margins. Hold **Option** to snap to edges. Successful calibration switches to manual mode; cancelling preserves your previous settings.
+If automatic placement is unavailable, choose **Set overlay region…** and select the entire photo backdrop between panels (or the chosen split pane), including its margins. Hold **Option** to snap to edges when Screen Recording permission is available. Successful calibration switches to manual mode; cancelling preserves your previous settings.
 
-**Clear region setting** discards the current saved/cached region without changing auto/manual mode. The next invocation either detects again or asks for manual calibration.
+**Clear overlay region setting** discards the current saved/cached region without changing auto/manual mode. The next invocation either detects again or asks for manual calibration.
 
 ## Floating display and navigation
 
@@ -91,16 +91,16 @@ For Accessibility-to-screenshot mapping, run **Developer tools → Inspect Acces
 
 
 
-Experimental AX tools are grouped under **Developer tools → Experimental features** . Optional automatic view detection chooses the layout independently of the placement method. AX preview and AX placement use the accepted configurable geometry offsets in `config.conf`. All entries use ordinary name = value syntax.
+AX preview is under **Developer tools → Experimental features**. Detection choices are under **Settings**. Optional AX view detection in screenshot mode chooses the layout independently of placement assistance. AX preview and AX placement use the accepted configurable geometry offsets in `config.conf`. All entries use ordinary name = value syntax.
 
 For investigation, enable **Save diagnostics after invocation** to maintain one text report at `~/Library/Application Support/CameraReference/Diagnostics/latest.txt`. **Diagnostics → Refresh AX** refreshes window mapping and toolbar-menu evidence and refreshes this file when saving is enabled. Manual **Copy all** remains available. No screenshots are saved automatically.
 
 In the investigation build, automatic AX view detection polls while Lightroom is active. Saving diagnostics also gathers fresh window and toolbar-menu data after invocation; manual Refresh AX is optional.
 
 
-**Developer tools → Experimental features → Use screenshot detection** switches between AX-only and screenshot placement. AX-only is the default for new settings and always uses AX view detection. Existing placement preferences are preserved.
+**Settings → Detection method** switches between Accessibility and Screenshot placement. AX-only is the default for new settings and always uses AX view detection. Existing placement preferences are preserved.
 
-When screenshot detection is enabled, two independent options appear underneath: **AX-assisted placement** and **AX view detection**. With both off, the original screenshot detector uses your menu layout selection. Assisted placement uses raw AX panel edges to narrow pixel searches without calibrated AX offsets; inconclusive guidance falls back to the original search. **Show AX placement preview** remains independent. Manual calibration takes precedence over all placement methods.
+Two independent options remain underneath: **AX view detection** and **AX-assisted placement**. They are disabled in Accessibility mode; the whole detection section is disabled when Auto-detect viewing area is off. With both off, the original screenshot detector uses your menu layout selection. Assisted placement uses raw AX panel edges to narrow pixel searches without calibrated AX offsets; inconclusive guidance falls back to the original outer search with a raw-panel header check. A missing divider permits a 50/50 split only after the outer area passes validation. **Show AX placement preview** remains independent. Manual calibration takes precedence over all placement methods.
 
 Screen Recording is optional and the app never requests it. Without permission, manual calibration works without snapping; capture previews/inspection explain that capture is unavailable, and background screenshot checks pause. To use screenshot features, grant permission yourself in macOS settings. AX-only placement needs Accessibility, but no automatic screenshots. Explicit capture previews and calibration snapping can still use existing Screen Recording permission in AX-only mode.
 

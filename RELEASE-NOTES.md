@@ -1,9 +1,11 @@
-# Camera Reference 1.0.29 — candidate
+# Camera Reference 1.0.30 — candidate
 
-Adds Use screenshot detection with independent AX-assisted placement and AX view detection options. AX-only always detects the view. Fresh settings default to AX, while existing choices are preserved.
+Detection controls now live in Settings. Choose Accessibility or Screenshot; screenshot mode has independent AX view detection and AX-assisted placement options. Manual placement takes precedence. View menus use Loupe View and Reference View names.
 
-The assisted mode uses raw panel edges to guide pixel searches, with no calibrated AX offsets. Pixel validation and margin divider scanning determine placement; inconclusive hints fall back to the original search. Background screenshot checks remain enabled and measured during the trial.
+Calibration instructions wrap and explain optional Screen Recording for snapping. Capture permission errors are clearer. With automatic diagnostic saving enabled, placement failures are saved before the calibration dialog and retained separately from later successes.
 
-Screen Recording is never requested. Missing permission disables capture/snapping gracefully; manual calibration remains available.
+AX-assisted screenshot placement adds a raw-panel top boundary check, limited tolerance for bottom status labels, and a 50/50 split only inside a validated outer area when divider detection fails. These candidate fixes need native testing.
 
-Native acceptance is pending. Main's accepted 1.0.28 app is unchanged. No DMG packaged.
+AX-only placement geometry and the original screenshot detector are unchanged. Pure screenshot failures associated with Library status text remain under investigation. Off-screen capture instability is not claimed fixed.
+
+Main's accepted 1.0.28 app is unchanged. No DMG packaged.

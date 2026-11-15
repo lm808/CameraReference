@@ -337,3 +337,22 @@ for mode:AutomaticPlacementMode in [.assisted,.screenshot] {
     expect(mode.usesAXViewDetection(screenshotOption:true),"Screenshot view detection option must be honoured")
 }
 print("PASS: mandatory AX-only view detection and independent screenshot view detection")
+
+// A status label in each bottom corner must not erase the complete outer area.
+let cleanAssistedRaster=fixture(bg:[0,0,0],split:1)
+var labelledPixels=cleanAssistedRaster.rgba
+for y in 565..<579 { for x in Array(345..<415)+Array(695..<765) {
+    for c in 0..<3 { labelledPixels[(y*900+x)*4+c]=210 }
+} }
+let labelledRaster=EdgeRaster(width:900,height:650,rgba:labelledPixels)
+let labelledResult=detectAXAssistedViewport(in:labelledRaster,hints:hints,layout:.left,settings:DetectionConfig())
+expect(labelledResult.bounds==detectAXAssistedViewport(in:cleanAssistedRaster,hints:hints,layout:.left,settings:DetectionConfig()).bounds,"Bottom status labels changed assisted bounds: \(labelledResult.summary)")
+let noDivider=detectAXAssistedViewport(in:fixture(bg:[0,0,0]),hints:hints,layout:.left,settings:DetectionConfig())
+expect(noDivider.bounds != nil && noDivider.summary.contains("50/50"),"Validated area should permit midpoint fallback")
+let empty=EdgeRaster(width:900,height:650,rgba:[UInt8](repeating:0,count:900*650*4))
+let invalid=detectAXAssistedViewport(in:empty,hints:hints,layout:.left,settings:DetectionConfig())
+expect(invalid.bounds == nil && !invalid.summary.contains("using 50/50"),"No midpoint without validated outer bounds")
+let headerHints=AXScreenHints(host:hintHost,visibleFrames:[CGRect(x:0,y:150,width:137,height:430),CGRect(x:763,y:150,width:137,height:430)],toolbar:"shown")!
+let rejectedHeader=detectAXAssistedViewport(in:fixture(bg:[0,0,0]),hints:headerHints,layout:.left,settings:DetectionConfig())
+expect(rejectedHeader.bounds == nil && rejectedHeader.summary.contains("header"),"Fallback cannot accept a top boundary above structural evidence")
+print("PASS: status-label tolerance, structural top rejection and validated-only midpoint fallback")

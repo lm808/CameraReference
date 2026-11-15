@@ -85,10 +85,13 @@ private final class CalibrationView: NSView {
         }
         let label=hint as NSString
         let attributes: [NSAttributedString.Key:Any] = [.font:NSFont.systemFont(ofSize:14),.foregroundColor:NSColor.white]
-        let size=label.size(withAttributes:attributes)
-        let box=CGRect(x:bounds.midX-size.width/2-12,y:bounds.maxY-65,width:size.width+24,height:34)
+        let maxWidth=max(80,min(760,bounds.width-48))
+        let measured=label.boundingRect(with:CGSize(width:maxWidth,height:1000),options:[.usesLineFragmentOrigin,.usesFontLeading],attributes:attributes)
+        let size=CGSize(width:min(maxWidth,ceil(measured.width)),height:ceil(measured.height))
+        let box=CGRect(x:bounds.midX-size.width/2-12,y:bounds.maxY-40-size.height-18,width:size.width+24,height:size.height+18)
         NSColor.black.withAlphaComponent(0.85).setFill(); NSBezierPath(roundedRect:box,xRadius:8,yRadius:8).fill()
-        label.draw(at:CGPoint(x:box.minX+12,y:box.minY+9),withAttributes:attributes)
+        label.draw(with:box.insetBy(dx:12,dy:9),options:[.usesLineFragmentOrigin,.usesFontLeading],attributes:attributes)
+
     }
 }
 final class CalibrationController {
@@ -97,7 +100,7 @@ final class CalibrationController {
     var completed: ((CGRect?) -> Void)?
     var instruction:String?
     var snapRadius:CGFloat=8
-    func start(proposal: CGRect? = nil,edges:[SnapEdge]=[],snapAvailable:Bool=true) {
+    func start(proposal: CGRect? = nil,edges:[SnapEdge]=[],snapAvailable:Bool=true,permissionUnavailable:Bool=false) {
         for screen in NSScreen.screens {
             let p=CalibrationPanel(contentRect:screen.frame,styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
             p.level = .screenSaver; p.isOpaque=false; p.backgroundColor = .clear
@@ -116,6 +119,9 @@ final class CalibrationController {
                 v.hint=snapAvailable ? "Proposed UI working area — Return accepts; drag to adjust the full backdrop. Hold ⌥ Option to snap. Esc cancels." : "Proposed UI working area — Return accepts; drag to adjust the full backdrop. Snapping unavailable. Esc cancels."
             }
             if let instruction { v.hint=instruction + (snapAvailable ? "":" Snapping unavailable.") }
+            if !snapAvailable && permissionUnavailable {
+                v.hint += "\nFor edge snapping, enable Screen Recording in macOS System Settings."
+            }
             v.finish = { [weak self, weak p] rect in
                 guard let self, let p else { return }; self.finish(p.convertToScreen(rect))
             }

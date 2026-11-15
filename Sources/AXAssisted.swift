@@ -6,6 +6,7 @@ import CoreGraphics
 struct AXScreenHints {
     let host:CGRect
     let edges:[CGFloat] // L/R/T/B, global top-left points; no calibrated offsets.
+    let minimumTop:CGFloat? // raw side-panel tops exclude the header interior
     let signature:String
     init?(host:CGRect,visibleFrames:[CGRect],toolbar:String) {
         guard host.width>200,host.height>200 else { return nil }
@@ -21,6 +22,7 @@ struct AXScreenHints {
                strips.filter { $0.midY>host.minY+host.height*0.75 }.map(\.minY).min() ?? host.maxY]
         guard edges[1]>edges[0],edges[3]>edges[2] else { return nil }
         self.host=host
+        minimumTop=sides.map(\.minY).min()
         // Host position deliberately excluded: translation does not change layout.
         let panels=(sides+strips).map { NSStringFromRect($0.offsetBy(dx:-host.minX,dy:-host.minY)) }.sorted()
         signature="\(host.size):\(panels):toolbar=\(toolbar)"
@@ -34,28 +36,40 @@ struct AXScreenHints {
             // includes unreported toolbar and Library space; hidden top includes title/header.
             let radius:CGFloat=(vertical ? 64:128)*scale
             let limit=(vertical ? width:height)-3
-            let low=max(2,min(limit,Int(centre-radius)))
+            let structuralFloor=index==2 ? minimumTop.map { ($0-host.minY-4)*sy } ?? 2:2
+            let low=max(2,min(limit,Int(max(centre-radius,structuralFloor))))
             return low...max(low,min(limit,Int(centre+radius)))
         }
     }
 }
 
 func detectAXAssistedViewport(in raster:EdgeRaster,hints:AXScreenHints,layout:OverlayLayout,settings:DetectionConfig)->ViewportDetection {
-    let full=guidedViewport(in:raster,ranges:hints.ranges(width:raster.width,height:raster.height))
-    guard let viewport=full.bounds else {
-        let fallback=layout == .full ? detectViewport(in:raster,singlePhoto:true,sideSearchPercent:settings.sideSearchPercent):detectSplitViewport(in:raster,layout:layout,sideSearchPercent:settings.sideSearchPercent,insetPixels:CGSize(width:settings.fitInsetPoints*CGFloat(raster.width)/hints.host.width,height:settings.fitInsetPoints*CGFloat(raster.height)/hints.host.height))
-        return ViewportDetection(bounds:fallback.bounds,verticalDivider:fallback.verticalDivider,horizontalDivider:fallback.horizontalDivider,background:fallback.background,summary:"AX-assisted guided search inconclusive; original screenshot fallback.\n"+full.summary+"\n"+fallback.summary,workingAreaTooNarrow:fallback.workingAreaTooNarrow)
+    var full=guidedViewport(in:raster,ranges:hints.ranges(width:raster.width,height:raster.height))
+    var provenance="AX-assisted raw panel search; pixel-validated borders."
+    if full.bounds == nil {
+        let guidedSummary=full.summary
+        full=detectViewport(in:raster,singlePhoto:true,sideSearchPercent:settings.sideSearchPercent)
+        provenance="AX-assisted guided search inconclusive; original screenshot fallback.\n"+guidedSummary
     }
+    guard let viewport=full.bounds else {
+        return ViewportDetection(bounds:nil,verticalDivider:nil,horizontalDivider:nil,background:full.background,summary:provenance+"\n"+full.summary,workingAreaTooNarrow:full.workingAreaTooNarrow)
+    }
+    if let floor=hints.minimumTop,viewport.minY < (floor-hints.host.minY-4)*CGFloat(raster.height)/hints.host.height {
+        return ViewportDetection(bounds:nil,verticalDivider:nil,horizontalDivider:nil,background:full.background,summary:provenance+"\nRejected outer area: top boundary enters the AX-reported header above the side panels. No 50/50 fallback applied.\n"+full.summary)
+    }
+    let summary=provenance+"\nSearch bands L/R/T/B (raster): \(hints.ranges(width:raster.width,height:raster.height)).\n"+full.summary
     if layout == .full {
-        return ViewportDetection(bounds:viewport,verticalDivider:nil,horizontalDivider:nil,background:full.background,summary:"AX-assisted raw panel search; pixel-validated borders.\nSearch bands L/R/T/B (raster): \(hints.ranges(width:raster.width,height:raster.height)).\n"+full.summary)
+        return ViewportDetection(bounds:viewport,verticalDivider:nil,horizontalDivider:nil,background:full.background,summary:summary)
     }
     let scan=scanInsetDivider(in:raster,viewport:viewport,layout:layout,insetPixels:CGSize(width:settings.fitInsetPoints*CGFloat(raster.width)/hints.host.width,height:settings.fitInsetPoints*CGFloat(raster.height)/hints.host.height))
-    let pane=layout.pane(in:viewport,vertical:layout.group==1 ? scan.position:nil,horizontal:layout.group==2 ? scan.position:nil)
-    return ViewportDetection(bounds:pane,verticalDivider:nil,horizontalDivider:nil,background:full.background,summary:"AX-assisted raw panel search; pixel-validated borders and divider.\n"+full.summary+"\n"+scan.summary)
+    let midpoint=layout.group==1 ? viewport.midX:viewport.midY
+    let divider=scan.position ?? midpoint
+    let pane=layout.pane(in:viewport,vertical:layout.group==1 ? divider:nil,horizontal:layout.group==2 ? divider:nil)
+    return ViewportDetection(bounds:pane,verticalDivider:nil,horizontalDivider:nil,background:full.background,summary:summary+"\n"+scan.summary+(scan.position == nil ? "\nDivider not identified; using 50/50 within the validated outer area.":"\nPixel divider used.")+"\nSelected pane: \(String(describing:pane)).")
 }
 
-// Frozen evidence checks from the accepted Full detector. Keep this experimental
-// search independent: do not change the original detector when tuning assistance.
+// Independent assisted evidence checks. Limited bottom-margin occlusion is
+// allowed for status labels; the original detector remains untouched.
 private func guidedViewport(in raster: EdgeRaster, ranges:[ClosedRange<Int>]) -> ViewportDetection {
     let w=raster.width, h=raster.height
     let knownBounds:CGRect?=nil
@@ -98,7 +112,7 @@ private func guidedViewport(in raster: EdgeRaster, ranges:[ClosedRange<Int>]) ->
     func rectangleScore(_ r:CGRect)->Double? {
         guard r.width>12,r.height>12 else { return nil }
         let corners=[rgb(Int(r.minX)+4,Int(r.minY)+4),rgb(Int(r.maxX)-5,Int(r.minY)+4),rgb(Int(r.minX)+4,Int(r.maxY)-5),rgb(Int(r.maxX)-5,Int(r.maxY)-5)]
-        guard corners.allSatisfy({distance($0,corners[0])<=8}) else { return nil }
+        guard distance(corners[0],corners[1])<=8 else { return nil }
         var sides=[[[Double]]]()
         for side in 0..<4 {
             var samples=[[Double]]()
@@ -116,7 +130,18 @@ private func guidedViewport(in raster: EdgeRaster, ranges:[ClosedRange<Int>]) ->
         }
         let (background,_)=representative(sides.flatMap{$0})
         let support=sides.map { Double($0.filter { distance($0,background)<=8 }.count)/40 }
-        guard support.min()!>=0.90 else { return nil }
+        guard support.prefix(3).min()!>=0.90,support[3]>=0.75,
+              distance(corners[0],background)<=8 else { return nil }
+        // A bounded label can interrupt the bottom surround, but a broad or
+        // scattered mismatch must still fail. Four border transitions remain mandatory.
+        let bottom=sides[3]
+        let missing=bottom.indices.filter { distance(bottom[$0],background)>8 }
+        var runs=[Int]()
+        for (index,sample) in missing.enumerated() {
+            if index==0 || sample>missing[index-1]+1 { runs.append(1) }
+            else { runs[runs.count-1]+=1 }
+        }
+        guard runs.count<=2,runs.allSatisfy({$0<=6}) else { return nil }
         // All four lines must have distributed transition evidence over their actual span.
         var strengths=[Double]()
         for side in 0..<4 {

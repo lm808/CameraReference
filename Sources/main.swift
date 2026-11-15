@@ -174,6 +174,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var axPlacementEnabled:Bool { !screenshotDetectionEnabled }
     var assistedPlacementEnabled:Bool { screenshotDetectionEnabled && screenshotAssistanceEnabled }
     var screenshotToggleItem:NSMenuItem?,assistedToggleItem:NSMenuItem?,viewToggleItem:NSMenuItem?
+    var detectionMethodItems=[NSMenuItem]()
     var assistedSignature:String?
     var assistedChecks=0,assistedAXChanges=0,assistedAXFailures=0,assistedPixelChanges=0,assistedPixelFailures=0
     var assistedCheckSeconds:Double=0,assistedAXSeconds:Double=0
@@ -379,9 +380,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     func buildLayoutMenu(_ menu:NSMenu) {
         layoutSeparator=NSMenuItem.separator();menu.addItem(layoutSeparator!)
-        let full=add("▣  Full",#selector(selectLayout(_:)),to:menu)
+        let full=add("▣  Loupe View",#selector(selectLayout(_:)),to:menu)
         full.representedObject=OverlayLayout.full.rawValue;full.image=layoutMenuIcon(.full);layoutItems[.full]=full
-        for (title,modes) in [("◧  Side-by-side",[OverlayLayout.left,.right]),("⬒  Above-and-below",[OverlayLayout.upper,.lower])] {
+        for (title,modes) in [("◧  Reference View (Left/Right)",[OverlayLayout.left,.right]),("⬒  Reference View (Top/Bottom)",[OverlayLayout.upper,.lower])] {
             let parent=NSMenuItem(title:title,action:nil,keyEquivalent:"")
             parent.image=layoutMenuIcon(modes[0]);let child=NSMenu(title:title);parent.submenu=child;menu.addItem(parent)
             layoutGroups[modes[0].group]=parent
@@ -400,11 +401,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let inferred=detectedLayoutModule == currentModule() ? detectedLayout:nil
         layoutItems[.full]?.action = automaticViewEnabled ? nil:#selector(selectLayout(_:))
         if automaticViewEnabled && !hidden {
-            layoutItems[.full]?.title = inferred == nil ? "View detected on next invocation":"▣  Single view (AX)"
+            layoutItems[.full]?.title = inferred == nil ? "View detected on next invocation":"▣  Loupe View"
             layoutItems[.full]?.isEnabled=false
             layoutItems[.full]?.isHidden = inferred != nil && overlayLayout.group != 0
             for (group,item) in layoutGroups { item.isHidden = inferred == nil || group != overlayLayout.group }
-        } else { layoutItems[.full]?.title="▣  Full";layoutItems[.full]?.isEnabled=true }
+        } else { layoutItems[.full]?.title="▣  Loupe View";layoutItems[.full]?.isEnabled=true }
         for (mode,item) in layoutItems { item.state=mode==overlayLayout ? .on:.off }
         for (group,item) in layoutGroups { item.state=group==overlayLayout.group ? .on:.off }
     }
@@ -528,17 +529,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         buildLayoutMenu(menu)
         menu.addItem(.separator())
         let settings = submenu("Settings")
+        shortcutItem = add("Keyboard shortcuts…", #selector(changeShortcut), to: settings)
+        settings.addItem(.separator())
         preferItem = add("Prefer RAW-embedded JPEG", #selector(changePreference), to: settings)
         preferItem.state = CameraPreferences.shared.bool(forKey: "preferEmbedded") ? .on : .off
-        autoItem = add("Automatic viewing area", #selector(changeAutomatic), to: settings)
-        autoItem.state = CameraPreferences.shared.bool(forKey: regionKey("automaticBounds")) ? .on : .off
-        add("Set image region…", #selector(calibrate), to: settings)
-        settings.addItem(.separator())
-        shortcutItem = add("Keyboard shortcuts…", #selector(changeShortcut), to: settings)
-
-        settings.addItem(.separator())
         add("Choose ExifTool…", #selector(chooseExifTool), to: settings)
-        add("Clear region setting", #selector(clearAllRegionData), to: settings)
+        settings.addItem(.separator())
+        autoItem = add("Auto-detect viewing area", #selector(changeAutomatic), to: settings)
+        autoItem.state = CameraPreferences.shared.bool(forKey: regionKey("automaticBounds")) ? .on : .off
+        add("Set overlay region…", #selector(calibrate), to: settings)
+        add("Clear overlay region setting", #selector(clearAllRegionData), to: settings)
+        settings.addItem(.separator())
+        let method=NSMenuItem(title:"Detection method",action:nil,keyEquivalent:"")
+        let methods=NSMenu();method.submenu=methods;settings.addItem(method);screenshotToggleItem=method
+        for (title,value) in [("Screenshot",true),("Accessibility",false)] {
+            let item=add(title,#selector(selectDetectionMethod(_:)),to:methods)
+            item.representedObject=value;detectionMethodItems.append(item)
+        }
+        viewToggleItem=add("AX view detection",#selector(toggleAutomaticView),to:settings)
+        assistedToggleItem=add("AX-assisted placement",#selector(toggleScreenshotAssistance),to:settings)
+        assistedToggleItem?.indentationLevel=1;viewToggleItem?.indentationLevel=1
+        updateDetectionMenu()
+        settings.addItem(.separator())
         add("Advanced settings…", #selector(editAdvancedSettings), to: settings)
         let developer = submenu("Developer tools")
         developer.addItem(detail); developer.addItem(.separator())
@@ -548,11 +560,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         developer.addItem(.separator())
         let experimental=NSMenu();let experimentalItem=NSMenuItem(title:"Experimental features",action:nil,keyEquivalent:"")
         experimentalItem.submenu=experimental;developer.addItem(experimentalItem)
-        screenshotToggleItem=add("Use screenshot detection",#selector(toggleScreenshotDetection),to:experimental)
-        assistedToggleItem=add("AX-assisted placement",#selector(toggleScreenshotAssistance),to:experimental)
-        viewToggleItem=add("AX view detection",#selector(toggleAutomaticView),to:experimental)
-        assistedToggleItem?.indentationLevel=1;viewToggleItem?.indentationLevel=1
-        updateDetectionMenu()
         let trial=add("Show AX placement preview",#selector(toggleAXTrial),to:experimental)
         trial.state=axTrialEnabled ? .on:.off
         let actions=NSMenu();let actionsItem=NSMenuItem(title:"Capture / bridge actions",action:nil,keyEquivalent:"")
@@ -643,6 +650,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     var lastResult = "No check yet."
     var lastTiming="No timing sample yet."
+    var lastPlacementFailure="No placement failure recorded this session."
     var invocationStart:TimeInterval?
     func report(_ text: String) {
         lastResult = text; detail.title = String(text.prefix(100)); status.button?.toolTip = text
@@ -965,7 +973,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard panel != nil, supportedLightroomModule(currentModule()) else { return }
         hide(); request(.overlay)
     }
-    func validateMenuItem(_ item:NSMenuItem) -> Bool { true }
+    func validateMenuItem(_ item:NSMenuItem) -> Bool {
+        if item === assistedToggleItem || item === viewToggleItem {
+            return screenshotDetectionEnabled && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
+        }
+        if detectionMethodItems.contains(where:{$0 === item}) { return CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) }
+        return true
+    }
     func saveExtracted(_ snapshot:ExportSnapshot, from view:ReferenceView) {
         guard !saving else { return }
         let url=snapshot.destination
@@ -1103,11 +1117,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var diagnosticSaveStatus="Automatic report saving has not run."
     var diagnosticSaveURL:URL { folder.deletingLastPathComponent().appendingPathComponent("Diagnostics/latest.txt") }
     func updateDetectionMenu() {
-        screenshotToggleItem?.state=screenshotDetectionEnabled ? .on:.off
-        assistedToggleItem?.state=screenshotAssistanceEnabled ? .on:.off
+        let automatic=CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
+        screenshotToggleItem?.title="Detection method: " + (screenshotDetectionEnabled ? "Screenshot":"Accessibility")
+        screenshotToggleItem?.isEnabled=automatic
+        for item in detectionMethodItems {
+            item.state=(item.representedObject as? Bool)==screenshotDetectionEnabled ? .on:.off
+            item.isEnabled=automatic
+        }
+        assistedToggleItem?.state=assistedPlacementEnabled ? .on:.off
         viewToggleItem?.state=automaticViewEnabled ? .on:.off
-        assistedToggleItem?.isHidden = !screenshotDetectionEnabled
-        viewToggleItem?.isHidden = !screenshotDetectionEnabled
+        assistedToggleItem?.isEnabled=automatic && screenshotDetectionEnabled
+        viewToggleItem?.isEnabled=automatic && screenshotDetectionEnabled
     }
     func placementOptionsChanged() {
         cancelScreenInspection();cancelPanelCheck();cancelRequest()
@@ -1116,9 +1136,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         invalidateAutomaticGeometry();updateDetectionMenu();updateLayoutMenu()
         report("Placement: \(automaticPlacementMode.title). AX view detection \(automaticViewEnabled ? "on":"off"). Manual calibration takes precedence.")
     }
-    @objc func toggleScreenshotDetection() {
-        if screenshotDetectionEnabled && !FeaturePermission.accessibility.ensure() { return }
-        CameraPreferences.shared.set(!screenshotDetectionEnabled,forKey:"useScreenshotDetection")
+    @objc func selectDetectionMethod(_ item:NSMenuItem) {
+        guard CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
+              let screenshot=item.representedObject as? Bool,screenshot != screenshotDetectionEnabled else { return }
+        if !screenshot && !FeaturePermission.accessibility.ensure() { return }
+        CameraPreferences.shared.set(screenshot,forKey:"useScreenshotDetection")
         placementOptionsChanged()
     }
     @objc func toggleScreenshotAssistance() {
@@ -1287,7 +1309,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             else { self.report("Calibration cancelled. Previous region retained.") }
         }
         guard #available(macOS 14.0,*),FeaturePermission.screenCapture.granted else {
-            if calibration === controller { controller.start(proposal:proposal,snapAvailable:false) }; return
+            if calibration === controller { controller.start(proposal:proposal,snapAvailable:false,permissionUnavailable:!FeaturePermission.screenCapture.granted) }; return
         }
         guard calibration === controller else { return }
         report("Preparing calibration edges…")
@@ -1308,7 +1330,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard calibration === controller,calibrationTimer != nil else { return }
         calibrationTimer?.invalidate();calibrationTimer=nil;calibrationTask=nil
         lastLayout=result.summary
-        controller.start(proposal:proposal,edges:result.snapEdges,snapAvailable:!result.snapEdges.isEmpty)
+        controller.start(proposal:proposal,edges:result.snapEdges,snapAvailable:!result.snapEdges.isEmpty,permissionUnavailable:result.summary.hasPrefix("Screen Recording permission unavailable"))
     }
     @objc func clearAllRegionData() {
         guard !regionResetting else { return };regionResetting=true
@@ -1430,6 +1452,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         alert.messageText="Cannot reliably identify viewing area."
         let automatic=CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
         alert.informativeText=(reason.map { $0 + "\n\n" } ?? "") + (workingAreaTooNarrow ? "Working area too narrow—enlarge it or calibrate manually.\n\n":"") + calibrationInstructions(layout:overlayLayout,automatic:automatic)
+        if automatic { alert.informativeText += "\n\nIf detection keeps failing with Lightroom partly off-screen, try restarting Lightroom Classic." }
+        lastPlacementFailure="Recorded: \(Date()). Module: \(currentModule() ?? "unknown"); view: \(overlayLayout.viewName); pane: \(overlayLayout.label); method: \(automaticPlacementMode.title); automatic: \(automatic).\n" + alert.informativeText + "\n\nCalculation at failure:\n" + (automatic ? lastLayout:"Manual region missing or no longer valid; automatic detection was not attempted.") + "\n\nTiming at failure: " + lastTiming
+        lastResult="Placement unavailable; manual calibration offered."
+        // Save synchronously before entering the modal loop. Keep this failure
+        // snapshot separate from subsequent successful placements and AX refreshes.
+        saveInvocationDiagnostics()
         alert.addButton(withTitle:"Calibrate manually…"); alert.addButton(withTitle:"Cancel")
         NSApp.activate(ignoringOtherApps:true)
         if alert.runModal() == .alertFirstButtonReturn {
@@ -1494,6 +1522,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         detectionCompletion=completion
         let inspectionID=UUID(); screenInspectionID=inspectionID;screenModule=currentModule()
         let inspectionStarted=ProcessInfo.processInfo.systemUptime
+        lastLayout="Current inspection started \(Date()); awaiting capture result."
         updateToggleTitle()
         screenTimeout=Timer(timeInterval:12,repeats:false) { [weak self] _ in
             guard let self,self.screenInspectionID==inspectionID else { return }
@@ -1560,10 +1589,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             DiagnosticSection(title:"AX placement trial",body:lastAXTrial),
             DiagnosticSection(title:"AX toolbar visibility",body:lastAXToolbar),
             DiagnosticSection(title:"Last result",body:lastResult),
+            DiagnosticSection(title:"Last placement failure (retained snapshot)",body:lastPlacementFailure),
             DiagnosticSection(title:"Lightroom bridge",body:"Heartbeat: \(age)\nPlugin status: \(state.trimmingCharacters(in:.whitespacesAndNewlines))"),
             DiagnosticSection(title:"Overlay visibility & minimisation",body:"\(overlayVisibilityStatus)\nGeometry source: \(overlayGeometrySource)\n\(overlayLifecycleStatus)\nMoves: \(overlayMoveCount); ordering changes: \(overlayOrderCount); level changes: \(overlayLevelChangeCount).\n\nEvent history (uptime seconds):\n" + lifecycleTrace.joined(separator:"\n")),
             DiagnosticSection(title:"Placement & capture",body:lastLayout),
-            DiagnosticSection(title:"Cache & background checks",body:panelCheckStatus),
+            DiagnosticSection(title:"Cache & background checks",body:"Last completed background check (may precede the current invocation):\n"+panelCheckStatus),
             DiagnosticSection(title:"Performance",body:lastTiming)
         ]
     }

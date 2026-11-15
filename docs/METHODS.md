@@ -198,10 +198,18 @@ The former width < 30% rule rejected visible 324 pt panels in 1047 pt and 900 pt
 
 ## AX-assisted screenshot trial (1.0.29)
 
-AXAssisted.swift is an isolated experimental search. Its rectangle evidence checks are a frozen copy of the accepted Full checks; ViewportDetector.swift and the original split scanner are untouched. ScreenProbe adds only an optional raw-hint dispatch, gated by exact captured host geometry. Nil/stale hints use the existing path. The original cache is not populated with guided results.
+AXAssisted.swift is an isolated experimental search. Its initial rectangle evidence checks were copied from the accepted Full checks; ViewportDetector.swift and the original split scanner are untouched. ScreenProbe adds only an optional raw-hint dispatch, gated by exact captured host geometry. Nil/stale hints use the existing path. The original cache is not populated with guided results.
 
 Visible side/upper/filmstrip rectangles give raw global-point edges. Missing sides start at the host edge. Search uncertainty is ±64 pt horizontally and ±128 pt vertically, clipped to raster bounds. These are search widths, not calibrated placement shifts. Pixels still choose and validate all four borders. An inconclusive guided search uses the original search. Splits use the unchanged bottom/left margin scanner and the selected layout, never calibrated AX pane geometry.
 
 The assisted background check compares translation-independent panel/toolbar signatures and retains every scheduled 1280px pixel check. AX change or pixel mismatch invalidates the next placement, retaining the visible overlay. Reports distinguish unchanged-AX pixel changes, AX failure and pixel validation failure. This first trial deliberately does not reduce check frequency; measurements precede that decision. Config interval zero still disables checks. View inference is independently controlled.
 
 1.0.29 follow-up: AX-only always enables view inference. Screenshot mode exposes independent assistance/view checkboxes and remembers them across mode switches. Screen Recording is checked without requesting access; absent access skips calibration capture/background checks, and explicit preview/inspection report unavailability before hiding existing windows. User requested no version increment.
+
+## Assisted-only candidate refinements (1.0.30)
+
+Raw side-panel tops constrain the upper search band and reject any fallback rectangle extending above that structural boundary (4 pt sampling tolerance). This is not a calibrated AX placement offset. Pixel validation still determines all four edges. The independent assisted validator allows up to two compact bottom-surround interruptions, each at most six of forty samples, with at least 75% bottom support. Left/right/top support remains 90%, and every border still needs distributed transition evidence. This models two Library status labels; it is a synthetic-tested hypothesis pending native confirmation.
+
+After validating the combined outer area, the unchanged inset divider scanner runs. Only its failure permits a midpoint split in assisted mode. Failure to validate the outer rectangle never permits midpoint placement. ViewportDetector.swift, PhotoDetector.swift, the original split scanner and AX-only geometry remain unchanged.
+
+Settings exposes the method submenu and the independent screenshot options. Calibration hints wrap to available screen width. Runtime ScreenCaptureKit denial is distinguished from rejected geometry. Diagnostic failures are snapshotted and saved before opening the calibration modal when saving is enabled; background results are explicitly labelled as potentially older. No personal settings are reset.

@@ -50,4 +50,10 @@ Completed functionality belongs in README; implementation rationale in METHODS; 
 - Small-window AX width-filter fix is implemented in 1.0.28; native confirmation remains in TESTING.md.
 - Screenshot detection fails in Develop side-by-side with right panel hidden; regression status unknown.
 - Broader AX edge-case validation remains deferred to normal use (TESTING.md).
-- Implement AX-assisted screenshot placement as a separate experimental opt-in; retain the old detector path and measure the unique contribution/cost of periodic screenshot checks before considering their removal. See AX-ASSISTANCE.md.
+- AX-assisted screenshot placement is implemented as a separate candidate path; retain the old detector path and measure the unique contribution/cost of periodic screenshot checks before considering their removal. See AX-ASSISTANCE.md.
+
+## Screenshot follow-up from 1.0.29 testing
+
+- Pure screenshot Library split detection can fail with Embedded Preview text; changing to a photo without it succeeded. Confirm the exact failed stage before a separately authorised fix. Preserve the pure detector in 1.0.30.
+- Validate assisted-only header rejection, two bottom-label tolerance and validated-area midpoint fallback in native Lightroom. No claim that these fix oversized off-screen captures.
+- Intermittent padded/oversized off-screen capture remains unresolved; restarting Lightroom has cleared it. Retain raw preview and diagnostic evidence.

@@ -27,7 +27,8 @@ func splitReferencePlacement(viewport:CGRect,kind:SplitLayoutKind,divider:CGFloa
 enum OverlayLayout:String,CaseIterable {
     case full,left,right,upper,lower
     var group:Int { self == .full ? 0 : ([.left,.right].contains(self) ? 1:2) }
-    var label:String { switch self { case .full:return "Full";case .left:return "Left";case .right:return "Right";case .upper:return "Upper";case .lower:return "Lower" } }
+    var label:String { switch self { case .full:return "Loupe View";case .left:return "Left";case .right:return "Right";case .upper:return "Top";case .lower:return "Bottom" } }
+    var viewName:String { group==0 ? "Loupe View":group==1 ? "Reference View (Left/Right)":"Reference View (Top/Bottom)" }
     func pane(in ui:CGRect,vertical:CGFloat?,horizontal:CGFloat?)->CGRect? {
         switch self {
         case .full:return ui
@@ -76,11 +77,11 @@ func overlayNeedsOrdering(order:[Int],overlay:Int,lightroom:Int,lightroomWindows
 func calibrationInstructions(layout:OverlayLayout,automatic:Bool)->String {
     let expected:String
     switch layout {
-    case .full:expected="a Full view ▣"
-    case .left:expected="side-by-side, overlay on left ◧"
-    case .right:expected="side-by-side, overlay on right ◨"
-    case .upper:expected="above-and-below, overlay on upper pane ⬒"
-    case .lower:expected="above-and-below, overlay on lower pane ⬓"
+    case .full:expected="Loupe View ▣"
+    case .left:expected="Reference View (Left/Right), overlay on left ◧"
+    case .right:expected="Reference View (Left/Right), overlay on right ◨"
+    case .upper:expected="Reference View (Top/Bottom), overlay on top pane ⬒"
+    case .lower:expected="Reference View (Top/Bottom), overlay on bottom pane ⬓"
     }
     let mode=automatic ? "auto-detection":"manual mode"
     let guidance=automatic ? "• Auto-detection expects \(expected).\n• If different, change the layout in the menu.\n\n":""
