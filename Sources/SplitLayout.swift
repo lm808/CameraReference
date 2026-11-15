@@ -96,8 +96,9 @@ func savedOverlayLayout(_ defaults:UserDefaults,module:String?)->OverlayLayout {
     OverlayLayout(rawValue:defaults.string(forKey:overlayLayoutPreferenceKey(module:module)) ?? "full") ?? .full
 }
 
-// View and pane selections both count as view changes for dismissal.
-func shouldDismissForViewChange(enabled:Bool,displayed:OverlayLayout?,selected:OverlayLayout)->Bool {
-    guard enabled,let displayed else { return false }
-    return displayed != selected
+// Screenshot backup modes never participate in AX live overlay policy.
+enum AXOverlayChangeAction { case retain, adjust, dismiss }
+func axOverlayChangeAction(accessibility:Bool,automatic:Bool,displayed:OverlayLayout?,selected:OverlayLayout,panelsChanged:Bool,live:Bool)->AXOverlayChangeAction {
+    guard accessibility,automatic,let displayed,displayed != selected || panelsChanged else { return .retain }
+    return live ? .adjust:.dismiss
 }

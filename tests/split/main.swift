@@ -115,9 +115,12 @@ let manualInstructions=calibrationInstructions(layout:.left,automatic:false)
 assert(!manualInstructions.contains("Auto-detection expects") && manualInstructions.contains("Cancelling keeps manual mode and the saved region."))
 print("PASS: calibration guidance reflects selected layout/pane and preserves mode wording")
 
-for from in OverlayLayout.allCases { for to in OverlayLayout.allCases {
-    assert(!shouldDismissForViewChange(enabled:false,displayed:from,selected:to))
-    assert(shouldDismissForViewChange(enabled:true,displayed:from,selected:to) == (from != to))
-} }
-assert(!shouldDismissForViewChange(enabled:true,displayed:nil,selected:.left))
-print("PASS: dismissal preference covers both view and pane changes, never unchanged selection or an absent overlay")
+for ax in [false,true] { for auto in [false,true] { for live in [false,true] {
+    for panels in [false,true] { for from in OverlayLayout.allCases { for to in OverlayLayout.allCases {
+        let result=axOverlayChangeAction(accessibility:ax,automatic:auto,displayed:from,selected:to,panelsChanged:panels,live:live)
+        let changed=ax && auto && (from != to || panels)
+        assert(result == (changed ? (live ? .adjust:.dismiss):.retain))
+    } } }
+    assert(axOverlayChangeAction(accessibility:ax,automatic:auto,displayed:nil,selected:.left,panelsChanged:true,live:live) == .retain)
+} } }
+print("PASS: AX-only live policy covers view, pane and panels; screenshot/manual/off overlays remain untouched")

@@ -2,34 +2,19 @@
 
 Run `release/CameraReference Testing.app` in `worktrees/ax-assisted-screenshot-detection`. Main remains 1.0.28. Previous user annotations are retained in docs/VALIDATION.md (trailing whitespace normalised). Automated checks do not replace native acceptance.
 
-## Grid and dismissal option
+## AX-only Live update
 
-- [ ] Settings → Dismiss overlay when view changes is in its own section after Choose ExifTool, initially off, and persists after restart. Turning it on does not dismiss the current overlay immediately.
-- [ ] With it off, existing live/manual view following still works. With it on, changes between Loupe, Left/Right and Top/Bottom dismiss an open overlay. Test AX mode, screenshot + AX view detection, and manual screenshot view selection. Left/Right and Top/Bottom pane changes also dismiss with the option on; they move it with the option off.
-- [ ] In Library, show an overlay then switch to Grid: AX mode and screenshot + AX view detection dismiss within the normal poll interval. Returning to Loupe does not reopen it. Invocation in Grid is blocked when auto placement and AX view detection are enabled.
-- [ ] Screenshot without AX view detection does not monitor Grid. Module switches still dismiss in all modes. No view/pane action opens an off overlay.
-- [ ] Diagnostics → Grid view & view-change policy reports the menu mark. If Lightroom exposes an incomplete View menu after losing/regaining focus, the result is unknown and does not falsely dismiss the overlay. Native confirmation of the selected mark is required.
-
-## Live panel adjustment — same-version follow-up
-
-- [ ] Adjust overlay live with LrC panels appears beside the dismissal option, initially off and persistent after restart. Off preserves the previous open-overlay behaviour.
-- [ ] With it on, show/hide/resize side panels, top panel, filmstrip and toolbar in AX mode, screenshot + AX view detection (assistance on/off), and pure screenshot. The open overlay updates through the selected method. AX uses its two-second poll; screenshot-only uses the configured background interval.
-- [ ] Dismiss-on-view-change can be on while panels adjust live: panel changes reposition, while view/pane changes dismiss. An off overlay stays off; manual calibration remains unchanged.
-- [ ] Zoom/pan/edit the Lightroom photo and repeatedly click controls: no unnecessary movement/flicker. Change selected photo without closing the overlay, then hide a panel: the displayed JPEG is retained while placement updates.
-- [ ] Disable live adjustment during recalculation or dismiss the overlay: no late update reopens it. Failed capture/AX reads or missing permission retain existing geometry. Restore access and retry a panel change.
-- [ ] With background interval zero, pure screenshot does not adjust live. Existing off-screen background-check limitations remain. AX-only performs no screenshots for these checks.
-
-## Live view/pane checks carried forward
-
-- [ ] With an overlay on, Accessibility mode follows Loupe ↔ left/right ↔ top/bottom view changes within the same module, after the existing two-second check. Preferred pane is respected.
-- [ ] Screenshot + AX view detection does the same, with AX assistance both on and off. Without AX view detection, changing the menu view updates the overlay.
-- [ ] In every placement method, selecting the other pane moves the open overlay. Repeated rapid choices leave it on the last selection. Image and zoom are retained; panning remains constrained to the new area.
-- [ ] With the overlay off, changing views or menu panes never opens it. Manual calibration remains unchanged. Switching Lightroom module turns an open overlay off.
-- [ ] Dismiss during calculation, change photo/module, or temporarily lose capture access: no stale result reopens/replaces the overlay. A failed placement keeps the existing overlay without a calibration prompt. Detected-view updates can retry on the next poll.
+- [ ] Accessibility shows only the indented Live update option beneath Detection method, default on. Screenshot shows only AX view detection and AX-assisted placement. Switching methods remembers preferences; manual placement disables detection controls.
+- [ ] AX Live update on: an open overlay follows Loupe/split view, chosen pane, and surrounding panel/toolbar visibility or size changes. Same photo and zoom remain; an off overlay stays off.
+- [ ] AX Live update off: those same view, pane and panel changes dismiss. Toggling the setting alone does not dismiss. Test toolbar and filmstrip independently.
+- [ ] AX Library Grid always dismisses and blocks invocation, regardless of Live update. Returning to Loupe stays off. Incomplete menu evidence does not falsely dismiss. Module changes dismiss in all modes.
+- [ ] Screenshot backup modes: detected views update the menu but leave an open overlay alone; panel checks invalidate cache only. Explicit menu view/pane selection dismisses as before. No AX live update/Grid policy applies.
+- [ ] Repeated photo edits/clicks cause no unnecessary movement. Move Lightroom without changing panels: translation follows without dismissal. Failed AX placement retains the overlay; rapid changes, selection/module changes and explicit dismissal reject stale results.
+- [ ] Manual calibration and floating display remain unchanged. Test AX on/off panel updates after selecting another photo while the original overlay remains visible.
 
 ## 1.0.30 checks still awaiting native acceptance
 
-- [ ] Settings follows the agreed groups, with Advanced settings last. Detection method shows its current choice; manual mode disables that section. Accessibility disables the two indented screenshot options; switching back remembers their preferences. AX preview remains independent in Developer tools.
+- [ ] Settings follows the agreed groups, with Advanced settings last. Detection method shows its current choice; manual mode disables that section. Accessibility hides the two indented screenshot options; switching back remembers their preferences. AX preview remains independent in Developer tools.
 - [ ] View menus and calibration instructions use Loupe View, Reference View (Left/Right), and Reference View (Top/Bottom), without an AX suffix.
 - [ ] Without Screen Recording permission: calibration allows free dragging, explains optional snapping, and does not request permission. Instructions wrap and fit the screen. Capture preview reports missing permission gracefully; an existing overlay stays open.
 - [ ] AX-assisted screenshot: Library side-by-side with Embedded Preview labels in both panes; verify the outer top/bottom and both pane choices. Repeat without labels and with toolbar hidden. Diagnostics identify a detected divider or a 50/50 fallback; fallback requires a validated outer area.

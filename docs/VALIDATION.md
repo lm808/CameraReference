@@ -778,3 +778,9 @@ AXTrial.swift, AXAssisted.swift, ScreenProbe.swift, ViewportDetector.swift and P
 Rebuilt the candidate without changing its version/build number, as requested. Recompiled split regressions pass the corrected all-layout dismissal matrix (pane changes included). Existing viewport regressions passed again, including panel/background invalidation, missing boundaries, raw AX signature translation and unchanged assisted/pure paths. Placement-engine files are unchanged; the new behaviour routes panel-change evidence to fresh placement rather than applying low-resolution bounds.
 
 Native checks for panel visibility/resize, zoom/pan flicker, stale completions, selected-photo changes and interval-zero behaviour are in TESTING.md and remain unverified. Defaults are off in the shared GUI preference domain. Personal config and main staging are untouched.
+
+## 1.0.32 AX-only policy correction
+
+Replaced the two WIP preferences with default-on axLiveUpdate; no version/build bump. Screenshot background-check functions match commit 922df2c verbatim. AXTrial.swift, AXAssisted.swift, ScreenProbe.swift, ViewportDetector.swift and DetectionConfig.swift match the prior candidate byte-for-byte; no placement calculations/defaults changed. Initial AX placement now records its raw structural signature for later comparison.
+
+Testing build and Swift/Lua suites passed, including the full AX/screenshot × automatic/manual × live on/off × view/pane/panel-change policy matrix and absent overlay. The config-editor test encountered the existing restricted temporary-save Cocoa 512 failure; rerunning that executable with temporary-file access passed. Candidate staging signature and plist verified (1.0.32 / org.local.CameraReference.testing); git diff --check passed. Main and personal settings are untouched. Native acceptance remains in TESTING.md, including menu visibility, first-poll stability, Grid and toolbar changes. No app was launched or Lightroom interaction performed.
