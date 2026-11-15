@@ -612,3 +612,42 @@ func accessibilityToolbarReading(fallback:String="shown",module:String?=nil)->AX
     guard candidates.count==1,let shown=axToolbarTitleState(candidates[0]) else { return result(nil,"No unambiguous Show/Hide Toolbar command.") }
     return result(shown,"Visibility inferred from menu command; toolbar height is not exposed.")
 }
+
+// Grid selection is menu state, not placement geometry. Missing/unreadable
+// state is unknown: command availability alone must never dismiss an overlay.
+func axGridMenuSelection(_ entries:[(String,String?)])->Bool? {
+    let matches=entries.filter { ["grid","grid view"].contains($0.0.trimmingCharacters(in:.whitespacesAndNewlines).lowercased()) }
+    guard matches.count==1,let mark=matches[0].1 else { return nil }
+    return !mark.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty
+}
+func accessibilityGridReading(module:String?)->(selected:Bool?,report:String) {
+    guard module=="library" else { return (nil,"Grid check: not in Library.") }
+    guard AXIsProcessTrusted(),let app=NSWorkspace.shared.frontmostApplication,isLightroomApp(app) else { return (nil,"Grid check: Lightroom not frontmost or Accessibility unavailable.") }
+    let deadline=ProcessInfo.processInfo.systemUptime+0.5
+    func read(_ element:AXUIElement,_ key:String)->CFTypeRef? {
+        guard ProcessInfo.processInfo.systemUptime<deadline else { return nil }
+        AXUIElementSetMessagingTimeout(element,0.025)
+        var value:CFTypeRef?
+        return AXUIElementCopyAttributeValue(element,key as CFString,&value) == .success ? value:nil
+    }
+    let application=AXUIElementCreateApplication(app.processIdentifier)
+    guard let raw=read(application,kAXMenuBarAttribute),CFGetTypeID(raw)==AXUIElementGetTypeID() else { return (nil,"Grid check: menu bar unavailable.") }
+    let bar=unsafeBitCast(raw,to:AXUIElement.self)
+    let menus=(read(bar,kAXChildrenAttribute) as? [AXUIElement] ?? []).filter { (read($0,kAXTitleAttribute) as? String)?.lowercased()=="view" }
+    guard menus.count==1 else { return (nil,"Grid check: no unique View menu (incomplete menu or unsupported language).") }
+    var queue=[(menus[0],0)],index=0,entries=[(String,String?)](),complete=true
+    while index<queue.count,index<250,ProcessInfo.processInfo.systemUptime<deadline {
+        let (node,depth)=queue[index];index += 1
+        if read(node,kAXRoleAttribute) as? String == kAXMenuItemRole,
+           let title=read(node,kAXTitleAttribute) as? String,["grid","grid view"].contains(title.trimmingCharacters(in:.whitespacesAndNewlines).lowercased()) {
+            entries.append((title,read(node,"AXMenuItemMarkChar") as? String))
+        }
+        if let children=read(node,kAXChildrenAttribute) as? [AXUIElement] {
+            if depth<6 { queue += children.map{($0,depth+1)} } else if !children.isEmpty { complete=false }
+        }
+    }
+    guard complete,index==queue.count,ProcessInfo.processInfo.systemUptime<deadline,
+          NSWorkspace.shared.frontmostApplication?.processIdentifier==app.processIdentifier else { return (nil,"Grid check: incomplete read or focus changed.") }
+    let selected=axGridMenuSelection(entries)
+    return (selected,"Grid menu check: \(selected.map{$0 ? "selected":"not selected"} ?? "unknown"); candidates: \(entries.map { "\($0.0): mark=\(String(describing:$0.1))" }); collected \(Date()).")
+}

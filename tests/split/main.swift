@@ -114,3 +114,10 @@ for (layout,expected) in [(OverlayLayout.full,"Loupe View ▣"),(.left,"left ◧
 let manualInstructions=calibrationInstructions(layout:.left,automatic:false)
 assert(!manualInstructions.contains("Auto-detection expects") && manualInstructions.contains("Cancelling keeps manual mode and the saved region."))
 print("PASS: calibration guidance reflects selected layout/pane and preserves mode wording")
+
+for from in OverlayLayout.allCases { for to in OverlayLayout.allCases {
+    assert(!shouldDismissForViewChange(enabled:false,displayed:from,selected:to))
+    assert(shouldDismissForViewChange(enabled:true,displayed:from,selected:to) == (from.group != to.group))
+} }
+assert(!shouldDismissForViewChange(enabled:true,displayed:nil,selected:.left))
+print("PASS: dismissal preference affects view changes only, never pane-only changes or an absent overlay")

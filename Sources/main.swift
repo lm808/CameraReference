@@ -201,6 +201,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var diagnosticPending=false
     var diagnosticRunningGeneration = -1
     var lastViewDetection="Automatic view detection disabled."
+    var lastGridStatus="Grid menu not sampled."
+    var dismissOnViewChange:Bool { CameraPreferences.shared.bool(forKey:"dismissOverlayOnViewChange") }
+    @objc func toggleDismissOnViewChange(_ item:NSMenuItem) {
+        CameraPreferences.shared.set(!dismissOnViewChange,forKey:"dismissOverlayOnViewChange")
+        item.state=dismissOnViewChange ? .on:.off
+    }
+    func dismissForGrid() {
+        cancelScreenInspection();cancelRequest();hide()
+        lastViewDetection="Grid View selected; overlay off. Returning to Loupe does not reopen it."
+        report(lastViewDetection);saveInvocationDiagnostics()
+    }
     var manualOverlayLayout:OverlayLayout { savedOverlayLayout(CameraPreferences.shared,module:currentModule() ?? observedModule) }
     var overlayLayout:OverlayLayout {
         get {
@@ -538,6 +549,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         preferItem.state = CameraPreferences.shared.bool(forKey: "preferEmbedded") ? .on : .off
         add("Choose ExifTool…", #selector(chooseExifTool), to: settings)
         settings.addItem(.separator())
+        let dismissView=add("Dismiss overlay when view changes",#selector(toggleDismissOnViewChange(_:)),to:settings)
+        dismissView.state=dismissOnViewChange ? .on:.off
+        settings.addItem(.separator())
         autoItem = add("Auto-detect viewing area", #selector(changeAutomatic), to: settings)
         autoItem.state = CameraPreferences.shared.bool(forKey: regionKey("automaticBounds")) ? .on : .off
         add("Set overlay region…", #selector(calibrate), to: settings)
@@ -754,7 +768,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         diagnosticGeneration += 1
         savingInvocation = target == .overlay || target == .window
         guard !regionResetting,requireSupportedModule() else { return }
-        if target == .overlay && automaticViewEnabled && !viewChecked && (detectedLayout == nil || detectedLayoutModule != currentModule()) && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) {
+        if target == .overlay && automaticViewEnabled && !viewChecked && (currentModule()=="library" || detectedLayout == nil || detectedLayoutModule != currentModule()) && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) {
             detectInvocationView();return
         }
         cancelPanelCheck();nextPanelCheck=ProcessInfo.processInfo.systemUptime+reloadDetectionConfig().panelCheckIntervalSeconds
@@ -1061,12 +1075,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         nextLiveViewCheck=now+2;liveViewBusy=true
         let generation=liveViewGeneration,module=currentModule()
         DispatchQueue.global(qos:.utility).async {
+            let grid=accessibilityGridReading(module:module)
             var proposal:AXTrialProposal?
             _=accessibilityMappingReport { host,windows in proposal=axTrialProposal(host:host,windows:windows) }
             DispatchQueue.main.async {
                 self.liveViewBusy=false
                 guard self.automaticViewEnabled,self.liveViewGeneration==generation,module==self.currentModule(),
                       self.isLightroom(),self.pending == nil,self.viewProbeID == nil,self.screenInspectionID == nil,self.calibration == nil else { return }
+                self.lastGridStatus=grid.report
+                if grid.selected == true {
+                    if self.panel != nil { self.dismissForGrid() }
+                    return
+                }
                 guard let proposal else { self.lastViewDetection="Live AX read unavailable; retaining previous inferred view.";return }
                 let group=proposal.layout == "Side-by-side" ? 1:proposal.layout == "Above-and-below" ? 2:0
                 let preferred=CameraPreferences.shared.string(forKey:"axPreferredPane.\(module ?? "develop").\(group)").flatMap(OverlayLayout.init(rawValue:))
@@ -1085,7 +1105,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func followLiveOverlayView(_ mode:OverlayLayout,module:String?,requiresViewDetection:Bool=true) {
         guard (!requiresViewDetection || automaticViewEnabled),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
               let module,module==displayedOverlayModule,displayedOverlayLayout != mode,
-              let existing=panel,existing.isVisible,!overlaySuspended,
+              let existing=panel else { return }
+        if shouldDismissForViewChange(enabled:dismissOnViewChange,displayed:displayedOverlayLayout,selected:mode) {
+            cancelScreenInspection();cancelRequest();hide()
+            report("View changed; overlay dismissed.");return
+        }
+        guard existing.isVisible,!overlaySuspended,
               let view=existing.contentView as? ReferenceView,let image=view.image,
               let host=overlayHost else { return }
         let backend=automaticPlacementMode,epoch=selectionEpoch(),generation=liveViewGeneration
@@ -1135,6 +1160,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         viewProbeID=id;updateToggleTitle()
         report("Reading Lightroom view through Accessibility…")
         DispatchQueue.global(qos:.userInitiated).async {
+            let grid=accessibilityGridReading(module:module)
             var proposal:AXTrialProposal?
             let mapping=accessibilityMappingReport { host,windows in
                 // No fine adjustments: only classify the raw visible panel/label evidence.
@@ -1144,6 +1170,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 guard self.viewProbeID==id else { return }
                 self.viewProbeID=nil;self.updateToggleTitle()
                 self.lastAXMapping=mapping
+                self.lastGridStatus=grid.report
+                if module==self.currentModule(),grid.selected == true { self.dismissForGrid();return }
                 guard module==self.currentModule(),let proposal else {
                     self.lastViewDetection="AX view unavailable or module changed; no overlay requested. Disable automatic view detection to use the saved menu selection."
                     self.report(self.lastViewDetection);self.saveInvocationDiagnostics();return
@@ -1642,6 +1670,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             DiagnosticSection(title:"Placement method & assisted evidence",body:"Method: \(automaticPlacementMode.title). View detection: \(automaticViewEnabled ? "automatic AX":"menu selection").\nRetained screenshot checks: \(assistedChecks); AX time: \(Int(assistedAXSeconds*1000)) ms; retained capture/check time: \(Int((assistedCheckSeconds-assistedAXSeconds)*1000)) ms.\nAX changes: \(assistedAXChanges); AX unavailable/stale: \(assistedAXFailures).\nPixel boundary changes after unchanged AX: \(assistedPixelChanges); pixel validation failures: \(assistedPixelFailures).\n\(assistedEvidence)\nAll periodic screenshot checks retained for this measurement trial; counters are session-only."),
             DiagnosticSection(title:"AX placement trial",body:lastAXTrial),
             DiagnosticSection(title:"AX toolbar visibility",body:lastAXToolbar),
+            DiagnosticSection(title:"Grid view & view-change policy",body:lastGridStatus+"\nDismiss on view change: \(dismissOnViewChange). Pane-only changes retain the overlay."),
             DiagnosticSection(title:"Last result",body:lastResult),
             DiagnosticSection(title:"Last placement failure (retained snapshot)",body:lastPlacementFailure),
             DiagnosticSection(title:"Lightroom bridge",body:"Heartbeat: \(age)\nPlugin status: \(state.trimmingCharacters(in:.whitespacesAndNewlines))"),

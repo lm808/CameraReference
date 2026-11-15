@@ -1,8 +1,16 @@
-# Camera Reference 1.0.31 — candidate
+# Camera Reference 1.0.32 — candidate
 
 Run `release/CameraReference Testing.app` in `worktrees/ax-assisted-screenshot-detection`. Main remains 1.0.28. Previous user annotations are retained in docs/VALIDATION.md (trailing whitespace normalised). Automated checks do not replace native acceptance.
 
-## Live view/pane update
+## Grid and dismissal option
+
+- [ ] Settings → Dismiss overlay when view changes is in its own section after Choose ExifTool, initially off, and persists after restart. Turning it on does not dismiss the current overlay immediately.
+- [ ] With it off, existing live/manual view following still works. With it on, changes between Loupe, Left/Right and Top/Bottom dismiss an open overlay. Test AX mode, screenshot + AX view detection, and manual screenshot view selection. Pane-only changes still move the overlay.
+- [ ] In Library, show an overlay then switch to Grid: AX mode and screenshot + AX view detection dismiss within the normal poll interval. Returning to Loupe does not reopen it. Invocation in Grid is blocked when auto placement and AX view detection are enabled.
+- [ ] Screenshot without AX view detection does not monitor Grid. Module switches still dismiss in all modes. No view/pane action opens an off overlay.
+- [ ] Diagnostics → Grid view & view-change policy reports the menu mark. If Lightroom exposes an incomplete View menu after losing/regaining focus, the result is unknown and does not falsely dismiss the overlay. Native confirmation of the selected mark is required.
+
+## Live view/pane checks carried forward
 
 - [ ] With an overlay on, Accessibility mode follows Loupe ↔ left/right ↔ top/bottom view changes within the same module, after the existing two-second check. Preferred pane is respected.
 - [ ] Screenshot + AX view detection does the same, with AX assistance both on and off. Without AX view detection, changing the menu view updates the overlay.

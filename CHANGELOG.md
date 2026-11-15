@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.32 — Grid detection and view-change dismissal
+
+- Read the selected View → Grid menu state in AX mode and screenshot mode with AX view detection; dismiss an open overlay in Grid.
+- Add default-off Dismiss overlay when view changes in Settings. Pane-only changes continue to reposition.
+- Unknown menu state does not trigger dismissal. Placement algorithms are unchanged; native menu-state acceptance pending.
+
 ## 1.0.31 — Follow view and pane changes
 
 - An open overlay follows menu view/pane selections, or detected view changes when AX view detection is enabled, using the chosen placement backend.

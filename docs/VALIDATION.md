@@ -766,3 +766,9 @@ User confirmed minimum-window AX placement works on 1.0.28.
 The candidate app compiles successfully with the live view/pane update route. Existing core, preview, viewport, split and Lua bridge regressions passed again using their unchanged-source test binaries. The placement engines (AXTrial, AXAssisted, ScreenProbe, ViewportDetector, PhotoDetector and SplitLayout) are unchanged from 1.0.30. App routing was reviewed for panel identity, module, epoch, mode, generation and host checks; the existing confirmed-module-change dismissal is unchanged.
 
 Live view transitions and menu actions require native acceptance in TESTING.md. No app was launched and no Lightroom interaction was automated. This update does not claim native verification.
+
+## 1.0.32 Grid and view-change dismissal
+
+Testing app built successfully. Swift/Lua regressions passed, including explicit/empty/missing/ambiguous Grid marks and the full view/pane dismissal matrix with preference on/off and no overlay. The config editor test needed temporary-file access after the restricted run failed with Cocoa 512; its unchanged executable then passed.
+
+AXTrial.swift, AXAssisted.swift, ScreenProbe.swift, ViewportDetector.swift and PhotoDetector.swift are unchanged. SplitLayout.swift only adds a dismissal-policy helper; its geometry is unchanged. Native Lightroom Grid marks, incomplete menu behaviour and settings placement remain pending in TESTING.md. No live app interaction was performed, and no personal settings were changed.
