@@ -772,3 +772,9 @@ Live view transitions and menu actions require native acceptance in TESTING.md. 
 Testing app built successfully. Swift/Lua regressions passed, including explicit/empty/missing/ambiguous Grid marks and the full view/pane dismissal matrix with preference on/off and no overlay. The config editor test needed temporary-file access after the restricted run failed with Cocoa 512; its unchanged executable then passed.
 
 AXTrial.swift, AXAssisted.swift, ScreenProbe.swift, ViewportDetector.swift and PhotoDetector.swift are unchanged. SplitLayout.swift only adds a dismissal-policy helper; its geometry is unchanged. Native Lightroom Grid marks, incomplete menu behaviour and settings placement remain pending in TESTING.md. No live app interaction was performed, and no personal settings were changed.
+
+## 1.0.32 same-version live-panel follow-up
+
+Rebuilt the candidate without changing its version/build number, as requested. Recompiled split regressions pass the corrected all-layout dismissal matrix (pane changes included). Existing viewport regressions passed again, including panel/background invalidation, missing boundaries, raw AX signature translation and unchanged assisted/pure paths. Placement-engine files are unchanged; the new behaviour routes panel-change evidence to fresh placement rather than applying low-resolution bounds.
+
+Native checks for panel visibility/resize, zoom/pan flicker, stale completions, selected-photo changes and interval-zero behaviour are in TESTING.md and remain unverified. Defaults are off in the shared GUI preference domain. Personal config and main staging are untouched.

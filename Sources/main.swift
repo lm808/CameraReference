@@ -202,6 +202,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var diagnosticRunningGeneration = -1
     var lastViewDetection="Automatic view detection disabled."
     var lastGridStatus="Grid menu not sampled."
+    var livePanelAdjustment:Bool { CameraPreferences.shared.bool(forKey:"adjustOverlayLiveWithPanels") }
+    var livePanelSignature:String?
+    var livePanelRefreshNeeded=false
+    @objc func toggleLivePanels(_ item:NSMenuItem) {
+        CameraPreferences.shared.set(!livePanelAdjustment,forKey:"adjustOverlayLiveWithPanels")
+        item.state=livePanelAdjustment ? .on:.off
+        livePanelSignature=nil;livePanelRefreshNeeded=livePanelAdjustment && screenshotDetectionEnabled && panel != nil;nextLiveViewCheck=0
+    }
     var dismissOnViewChange:Bool { CameraPreferences.shared.bool(forKey:"dismissOverlayOnViewChange") }
     @objc func toggleDismissOnViewChange(_ item:NSMenuItem) {
         CameraPreferences.shared.set(!dismissOnViewChange,forKey:"dismissOverlayOnViewChange")
@@ -277,11 +285,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func checkPanelBoundariesIfDue() {
         guard !axPlacementEnabled else { cancelPanelCheck();panelCheckStatus="AX-only mode: background screenshot checks disabled; fresh AX geometry on invocation.";return }
         guard FeaturePermission.screenCapture.granted else { cancelPanelCheck();panelCheckStatus="Background capture paused: Screen Recording permission unavailable.";return }
+        if livePanelAdjustment,livePanelRefreshNeeded,CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),ProcessInfo.processInfo.systemUptime>=nextPanelCheck,
+           screenTask==nil,pending==nil,viewProbeID==nil,calibration==nil,!recording,!regionResetting,
+           !workspaceOverview,!overlaySuspended,isLightroom() {
+            let interval=reloadDetectionConfig().panelCheckIntervalSeconds
+            if interval>0 {
+                nextPanelCheck=ProcessInfo.processInfo.systemUptime+interval
+                followLiveOverlayView(overlayLayout,module:currentModule(),requiresViewDetection:false,panelChange:true)
+            }
+            return
+        }
         guard #available(macOS 14.0,*),ProcessInfo.processInfo.systemUptime>=nextPanelCheck,
               panelCheckTask==nil,screenTask==nil,pending==nil,calibration==nil,!recording,!regionResetting,
               !workspaceOverview,!overlaySuspended,isLightroom(),supportedLightroomModule(currentModule()),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
               let memory=placementMemory,memory.layout==overlayLayout,let imageSize=lastImageSize,
-              selectionEpoch()==memory.epoch else { return }
+              (selectionEpoch()==memory.epoch || (livePanelAdjustment && panel != nil && displayedOverlayLayout==memory.layout)) else { return }
         guard let host=hostWindowSnapshot(memory.windowID),host.onScreen,
               NSScreen.screens.contains(where:{$0.frame.contains(host.frame)}) else {
             cancelPanelCheck();panelCheckStatus="Background check paused: Lightroom is off-screen or spans displays.";return
@@ -307,7 +325,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     @MainActor func finishPanelCheck(_ result:ScreenProbeResult,id:UUID,memory:PlacementMemory,elapsed:TimeInterval,assisted:Bool=false,hints:AXScreenHints?=nil,axElapsed:TimeInterval=0) {
         guard panelCheckID==id else { return };panelCheckID=nil;panelCheckTask=nil
         guard !workspaceOverview,!overlaySuspended,isLightroom(),pending==nil,screenTask==nil,calibration==nil,
-              placementMemory?.epoch==memory.epoch,selectionEpoch()==memory.epoch,
+              placementMemory?.epoch==memory.epoch,
+              (selectionEpoch()==memory.epoch || (livePanelAdjustment && panel != nil && displayedOverlayLayout==memory.layout)),
               overlayLayout==memory.layout,detectionSettings.current.key==memory.settingsKey,
               let current=currentCaptureWindowFrame(memory.windowID),sameWindowGeometry(current,result.windowFrame) else { return }
         let window=appKitRect(current,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
@@ -331,6 +350,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let reason=result.uiFrame == nil ? "UI boundaries could not be validated":"UI boundaries changed"
             panelCheckStatus="Background check invalidated cached placement (visible overlay retained): \(reason).\nPrevious UI: \(String(describing:expected)); checked UI: \(String(describing:result.uiFrame)).\n"+result.summary
             invalidateAutomaticGeometry()
+            if livePanelAdjustment,panel != nil {
+                livePanelRefreshNeeded=true
+                followLiveOverlayView(overlayLayout,module:currentModule(),requiresViewDetection:false,panelChange:true)
+            }
             if panel != nil { overlayVisibilityStatus="Overlay retained; cached placement invalidated: \(reason.lowercased())." }
         } else { panelCheckStatus="Background check: UI boundaries unchanged. Repeated toggle can skip capture." }
         panelCheckStatus += String(format:" 1280px check: %.0f ms elapsed.",elapsed*1000)
@@ -551,6 +574,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         settings.addItem(.separator())
         let dismissView=add("Dismiss overlay when view changes",#selector(toggleDismissOnViewChange(_:)),to:settings)
         dismissView.state=dismissOnViewChange ? .on:.off
+        let livePanels=add("Adjust overlay live with LrC panels",#selector(toggleLivePanels(_:)),to:settings)
+        livePanels.state=livePanelAdjustment ? .on:.off
         settings.addItem(.separator())
         autoItem = add("Auto-detect viewing area", #selector(changeAutomatic), to: settings)
         autoItem.state = CameraPreferences.shared.bool(forKey: regionKey("automaticBounds")) ? .on : .off
@@ -618,7 +643,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let epoch=self.selectionEpoch()
             self.imageCache.observe(epoch)
             let module=self.currentModule()
-            if let memory=self.placementMemory,memory.epoch != epoch || !supportedLightroomModule(module) { self.placementMemory=nil }
+            if let memory=self.placementMemory {
+                // Retain old-epoch geometry only to monitor the still-open photo.
+                // cachedUI continues to require the new invocation's exact epoch.
+                let monitoring=self.livePanelAdjustment && self.panel != nil && self.displayedOverlayModule==module && self.displayedOverlayLayout==memory.layout
+                if (memory.epoch != epoch && !monitoring) || !supportedLightroomModule(module) { self.placementMemory=nil }
+            }
             if confirmedModuleChange(previous:self.observedModule,current:module) {
                 self.hide();self.cancelRequest();self.cancelScreenInspection()
                 self.calibration?.finish(nil);self.calibrationTask?.cancel()
@@ -696,7 +726,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         clearAXTrialBorders()
         if destination == .overlay { cancelRequest() }
         (panel?.contentView as? ReferenceView)?.releaseContent()
-        panel?.orderOut(nil); panel = nil;displayedOverlayLayout=nil;displayedOverlayModule=nil;overlayHost=nil;overlayGeometrySettler.reset();overlayAccessibility=nil;overlayBaselineWindows=[];overlayDialogVisible=false;overlayEpoch=nil;overlaySuspended=false;updateIcon()
+        panel?.orderOut(nil); panel = nil;livePanelSignature=nil;livePanelRefreshNeeded=false;displayedOverlayLayout=nil;displayedOverlayModule=nil;overlayHost=nil;overlayGeometrySettler.reset();overlayAccessibility=nil;overlayBaselineWindows=[];overlayDialogVisible=false;overlayEpoch=nil;overlaySuspended=false;updateIcon()
     }
     func currentModule() -> String? {
         let url = folder.appendingPathComponent("heartbeat.txt")
@@ -718,6 +748,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     func invalidateAutomaticGeometry() {
         cancelPanelCheck()
+        if livePanelAdjustment,panel != nil { livePanelRefreshNeeded=true }
         lastProbe=nil;placementMemory=nil
         Task { await ScreenGeometryCache.shared.reset() }
     }
@@ -897,7 +928,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         configureImageView(view)
         view.refresh = { [weak self] in self?.reloadOverlay() }
         view.image = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
-        p.contentView = view; panel = p;displayedOverlayLayout=overlayLayout;displayedOverlayModule=currentModule();overlayMoveCount=0;overlayOrderCount=0;overlayLevelChangeCount=0;
+        p.contentView = view; panel = p;livePanelSignature=nil;livePanelRefreshNeeded=false;displayedOverlayLayout=overlayLayout;displayedOverlayModule=currentModule();overlayMoveCount=0;overlayOrderCount=0;overlayLevelChangeCount=0;
         overlayGeometrySettler.reset()
         lifecycleTrace=[];lastLifecycleEvent="";recordLifecycle("overlay created")
         guard orderOverlayAboveLightroom(initial:true) else { hide();report("Lightroom window unavailable; invoke again when it is visible.");return nil }
@@ -1073,11 +1104,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
               isLightroom(),supportedLightroomModule(currentModule()),AXIsProcessTrusted(),
               pending == nil,viewProbeID == nil,screenInspectionID == nil,calibration == nil else { return }
         nextLiveViewCheck=now+2;liveViewBusy=true
-        let generation=liveViewGeneration,module=currentModule()
+        let generation=liveViewGeneration,module=currentModule(),checkPanels=livePanelAdjustment && panel != nil
         DispatchQueue.global(qos:.utility).async {
             let grid=accessibilityGridReading(module:module)
-            var proposal:AXTrialProposal?
-            _=accessibilityMappingReport { host,windows in proposal=axTrialProposal(host:host,windows:windows) }
+            let toolbar=checkPanels ? accessibilityToolbarReading(module:module).shown:nil
+            var proposal:AXTrialProposal?,hints:AXScreenHints?
+            _=accessibilityMappingReport { host,windows in
+                proposal=axTrialProposal(host:host,windows:windows)
+                if checkPanels { hints=AXScreenHints(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),toolbar:toolbar.map { $0 ? "shown":"hidden" } ?? "unknown") }
+            }
             DispatchQueue.main.async {
                 self.liveViewBusy=false
                 guard self.automaticViewEnabled,self.liveViewGeneration==generation,module==self.currentModule(),
@@ -1098,13 +1133,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 }
                 // Compare with displayed geometry as well as the menu. A failed or
                 // suspended update can retry on the next poll without rebuilding menus.
-                self.followLiveOverlayView(mode,module:module)
+                let signature=hints?.signature
+                let panelsChanged=self.livePanelAdjustment && signature != nil && self.livePanelSignature != signature
+                self.followLiveOverlayView(mode,module:module,panelChange:panelsChanged,panelSignature:signature)
             }
         }
     }
-    func followLiveOverlayView(_ mode:OverlayLayout,module:String?,requiresViewDetection:Bool=true) {
+    func followLiveOverlayView(_ mode:OverlayLayout,module:String?,requiresViewDetection:Bool=true,panelChange:Bool=false,panelSignature:String?=nil) {
         guard (!requiresViewDetection || automaticViewEnabled),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
-              let module,module==displayedOverlayModule,displayedOverlayLayout != mode,
+              let module,module==displayedOverlayModule,(displayedOverlayLayout != mode || (panelChange && livePanelAdjustment)),
               let existing=panel else { return }
         if shouldDismissForViewChange(enabled:dismissOnViewChange,displayed:displayedOverlayLayout,selected:mode) {
             cancelScreenInspection();cancelRequest();hide()
@@ -1121,17 +1158,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             CameraPreferences.shared.bool(forKey:self.regionKey("automaticBounds")) &&
             self.currentModule()==module && self.displayedOverlayModule==module &&
             self.overlayLayout==mode && self.liveViewGeneration==generation &&
-            self.selectionEpoch()==epoch && self.overlayHost?.id==host.id && self.isLightroom()
+            self.selectionEpoch()==epoch && self.overlayHost?.id==host.id && self.isLightroom() &&
+            (!panelChange || self.livePanelAdjustment)
         }
         func apply(_ area:CGRect,_ photo:CGRect,_ background:NSColor?) {
             guard stillCurrent(),NSScreen.screens.contains(where:{$0.frame.intersects(area)}) else { return }
             // Keep the same panel, image and export snapshot. No hide/order/reload.
-            existing.setFrame(area.insetBy(dx:-1,dy:-1),display:false)
+            let frame=area.insetBy(dx:-1,dy:-1)
+            if existing.frame != frame { existing.setFrame(frame,display:false) }
             view.imageViewport=view.convert(existing.convertFromScreen(photo),from:nil)
             if let background { view.backgroundColour=background }
             view.needsDisplay=true
-            self.displayedOverlayLayout=mode
-            self.lastLayout += "\nVisible overlay followed view change: \(mode.viewName), \(mode.label). Same image and zoom retained."
+            self.displayedOverlayLayout=mode;self.lastImageSize=image.size
+            if panelChange { self.livePanelSignature=panelSignature;self.livePanelRefreshNeeded=false }
+            self.lastLayout += "\nVisible overlay updated (panel change: \(panelChange)): \(mode.viewName), \(mode.label). Same image and zoom retained."
             self.recordLifecycle("view changed: \(mode.viewName), \(mode.label)")
             self.clearAXTrialBorders();self.runAXTrial(after:existing)
             self.saveInvocationDiagnostics()
@@ -1670,7 +1710,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             DiagnosticSection(title:"Placement method & assisted evidence",body:"Method: \(automaticPlacementMode.title). View detection: \(automaticViewEnabled ? "automatic AX":"menu selection").\nRetained screenshot checks: \(assistedChecks); AX time: \(Int(assistedAXSeconds*1000)) ms; retained capture/check time: \(Int((assistedCheckSeconds-assistedAXSeconds)*1000)) ms.\nAX changes: \(assistedAXChanges); AX unavailable/stale: \(assistedAXFailures).\nPixel boundary changes after unchanged AX: \(assistedPixelChanges); pixel validation failures: \(assistedPixelFailures).\n\(assistedEvidence)\nAll periodic screenshot checks retained for this measurement trial; counters are session-only."),
             DiagnosticSection(title:"AX placement trial",body:lastAXTrial),
             DiagnosticSection(title:"AX toolbar visibility",body:lastAXToolbar),
-            DiagnosticSection(title:"Grid view & view-change policy",body:lastGridStatus+"\nDismiss on view change: \(dismissOnViewChange). Pane-only changes retain the overlay."),
+            DiagnosticSection(title:"Grid view & view-change policy",body:lastGridStatus+"\nDismiss on view change: \(dismissOnViewChange). Pane changes count as view changes. Live panel adjustment: \(livePanelAdjustment)."),
             DiagnosticSection(title:"Last result",body:lastResult),
             DiagnosticSection(title:"Last placement failure (retained snapshot)",body:lastPlacementFailure),
             DiagnosticSection(title:"Lightroom bridge",body:"Heartbeat: \(age)\nPlugin status: \(state.trimmingCharacters(in:.whitespacesAndNewlines))"),

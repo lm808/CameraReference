@@ -117,7 +117,7 @@ print("PASS: calibration guidance reflects selected layout/pane and preserves mo
 
 for from in OverlayLayout.allCases { for to in OverlayLayout.allCases {
     assert(!shouldDismissForViewChange(enabled:false,displayed:from,selected:to))
-    assert(shouldDismissForViewChange(enabled:true,displayed:from,selected:to) == (from.group != to.group))
+    assert(shouldDismissForViewChange(enabled:true,displayed:from,selected:to) == (from != to))
 } }
 assert(!shouldDismissForViewChange(enabled:true,displayed:nil,selected:.left))
-print("PASS: dismissal preference affects view changes only, never pane-only changes or an absent overlay")
+print("PASS: dismissal preference covers both view and pane changes, never unchanged selection or an absent overlay")

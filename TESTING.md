@@ -5,10 +5,19 @@ Run `release/CameraReference Testing.app` in `worktrees/ax-assisted-screenshot-d
 ## Grid and dismissal option
 
 - [ ] Settings → Dismiss overlay when view changes is in its own section after Choose ExifTool, initially off, and persists after restart. Turning it on does not dismiss the current overlay immediately.
-- [ ] With it off, existing live/manual view following still works. With it on, changes between Loupe, Left/Right and Top/Bottom dismiss an open overlay. Test AX mode, screenshot + AX view detection, and manual screenshot view selection. Pane-only changes still move the overlay.
+- [ ] With it off, existing live/manual view following still works. With it on, changes between Loupe, Left/Right and Top/Bottom dismiss an open overlay. Test AX mode, screenshot + AX view detection, and manual screenshot view selection. Left/Right and Top/Bottom pane changes also dismiss with the option on; they move it with the option off.
 - [ ] In Library, show an overlay then switch to Grid: AX mode and screenshot + AX view detection dismiss within the normal poll interval. Returning to Loupe does not reopen it. Invocation in Grid is blocked when auto placement and AX view detection are enabled.
 - [ ] Screenshot without AX view detection does not monitor Grid. Module switches still dismiss in all modes. No view/pane action opens an off overlay.
 - [ ] Diagnostics → Grid view & view-change policy reports the menu mark. If Lightroom exposes an incomplete View menu after losing/regaining focus, the result is unknown and does not falsely dismiss the overlay. Native confirmation of the selected mark is required.
+
+## Live panel adjustment — same-version follow-up
+
+- [ ] Adjust overlay live with LrC panels appears beside the dismissal option, initially off and persistent after restart. Off preserves the previous open-overlay behaviour.
+- [ ] With it on, show/hide/resize side panels, top panel, filmstrip and toolbar in AX mode, screenshot + AX view detection (assistance on/off), and pure screenshot. The open overlay updates through the selected method. AX uses its two-second poll; screenshot-only uses the configured background interval.
+- [ ] Dismiss-on-view-change can be on while panels adjust live: panel changes reposition, while view/pane changes dismiss. An off overlay stays off; manual calibration remains unchanged.
+- [ ] Zoom/pan/edit the Lightroom photo and repeatedly click controls: no unnecessary movement/flicker. Change selected photo without closing the overlay, then hide a panel: the displayed JPEG is retained while placement updates.
+- [ ] Disable live adjustment during recalculation or dismiss the overlay: no late update reopens it. Failed capture/AX reads or missing permission retain existing geometry. Restore access and retry a panel change.
+- [ ] With background interval zero, pure screenshot does not adjust live. Existing off-screen background-check limitations remain. AX-only performs no screenshots for these checks.
 
 ## Live view/pane checks carried forward
 

@@ -96,8 +96,8 @@ func savedOverlayLayout(_ defaults:UserDefaults,module:String?)->OverlayLayout {
     OverlayLayout(rawValue:defaults.string(forKey:overlayLayoutPreferenceKey(module:module)) ?? "full") ?? .full
 }
 
-// Pane changes within one view remain repositioning, regardless of this preference.
+// View and pane selections both count as view changes for dismissal.
 func shouldDismissForViewChange(enabled:Bool,displayed:OverlayLayout?,selected:OverlayLayout)->Bool {
     guard enabled,let displayed else { return false }
-    return displayed.group != selected.group
+    return displayed != selected
 }

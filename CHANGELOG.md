@@ -2,8 +2,10 @@
 
 ## 1.0.32 — Grid detection and view-change dismissal
 
+- Same-version follow-up: default-off Adjust overlay live with LrC panels refreshes an open automatic overlay after structural panel changes. Placement algorithms remain unchanged.
+
 - Read the selected View → Grid menu state in AX mode and screenshot mode with AX view detection; dismiss an open overlay in Grid.
-- Add default-off Dismiss overlay when view changes in Settings. Pane-only changes continue to reposition.
+- Add default-off Dismiss overlay when view changes in Settings. View and pane changes both dismiss when enabled.
 - Unknown menu state does not trigger dismissal. Placement algorithms are unchanged; native menu-state acceptance pending.
 
 ## 1.0.31 — Follow view and pane changes
