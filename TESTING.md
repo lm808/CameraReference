@@ -1,8 +1,16 @@
-# Camera Reference 1.0.30 — candidate
+# Camera Reference 1.0.31 — candidate
 
 Run `release/CameraReference Testing.app` in `worktrees/ax-assisted-screenshot-detection`. Main remains 1.0.28. Previous user annotations are retained in docs/VALIDATION.md (trailing whitespace normalised). Automated checks do not replace native acceptance.
 
-## This update
+## Live view/pane update
+
+- [ ] With an overlay on, Accessibility mode follows Loupe ↔ left/right ↔ top/bottom view changes within the same module, after the existing two-second check. Preferred pane is respected.
+- [ ] Screenshot + AX view detection does the same, with AX assistance both on and off. Without AX view detection, changing the menu view updates the overlay.
+- [ ] In every placement method, selecting the other pane moves the open overlay. Repeated rapid choices leave it on the last selection. Image and zoom are retained; panning remains constrained to the new area.
+- [ ] With the overlay off, changing views or menu panes never opens it. Manual calibration remains unchanged. Switching Lightroom module turns an open overlay off.
+- [ ] Dismiss during calculation, change photo/module, or temporarily lose capture access: no stale result reopens/replaces the overlay. A failed placement keeps the existing overlay without a calibration prompt. Detected-view updates can retry on the next poll.
+
+## 1.0.30 checks still awaiting native acceptance
 
 - [ ] Settings follows the agreed groups, with Advanced settings last. Detection method shows its current choice; manual mode disables that section. Accessibility disables the two indented screenshot options; switching back remembers their preferences. AX preview remains independent in Developer tools.
 - [ ] View menus and calibration instructions use Loupe View, Reference View (Left/Right), and Reference View (Top/Bottom), without an AX suffix.

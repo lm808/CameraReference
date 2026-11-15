@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.31 — Follow view and pane changes
+
+- An open overlay follows menu view/pane selections, or detected view changes when AX view detection is enabled, using the chosen placement backend.
+- Keep the same image/window and zoom; failed calculations retain the overlay. An off overlay stays off. Module changes still dismiss it.
+- Placement algorithms and manual calibration are unchanged. Native acceptance pending.
+
 ## 1.0.30 — Settings and assisted placement candidate
 
 - Group placement controls in Settings, with consistent view names and clear disabled states.

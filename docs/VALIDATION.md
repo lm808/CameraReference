@@ -760,3 +760,9 @@ User confirmed minimum-window AX placement works on 1.0.28.
 - Testing app built successfully. AXTrial.swift, ViewportDetector.swift and PhotoDetector.swift are byte-unchanged from 1.0.29; ScreenProbe changes only permission-error reporting. AX-only geometry/offsets and pure screenshot algorithms remain unchanged.
 - Read-only check of personal config: no # AX: prefixed entries; accepted sideSearchPercent 40 and Library split allowance 25 retained. No personal config changes made.
 - Native acceptance pending, especially actual Library status labels, menu disabled states and calibration wrapping. Synthetic fixtures do not prove the native failure cause.
+
+## 1.0.31 live overlay update
+
+The candidate app compiles successfully with the live view/pane update route. Existing core, preview, viewport, split and Lua bridge regressions passed again using their unchanged-source test binaries. The placement engines (AXTrial, AXAssisted, ScreenProbe, ViewportDetector, PhotoDetector and SplitLayout) are unchanged from 1.0.30. App routing was reviewed for panel identity, module, epoch, mode, generation and host checks; the existing confirmed-module-change dismissal is unchanged.
+
+Live view transitions and menu actions require native acceptance in TESTING.md. No app was launched and no Lightroom interaction was automated. This update does not claim native verification.

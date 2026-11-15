@@ -65,6 +65,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var shortcutItem: NSMenuItem!
     var panel: OverlayPanel?
     var overlayHost:HostWindowSnapshot?
+    var displayedOverlayLayout:OverlayLayout?
+    var displayedOverlayModule:String?
     var overlayGeometrySettler=OverlayGeometrySettler()
     var overlayGeometrySource="not sampled"
     var overlayAccessibility:LightroomHostAccessibility?
@@ -412,7 +414,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     @objc func selectLayout(_ sender:NSMenuItem) {
         guard let raw=sender.representedObject as? String,let mode=OverlayLayout(rawValue:raw),mode != overlayLayout else { return }
         if automaticViewEnabled && (mode.group==0 || mode.group != overlayLayout.group) { return }
-        cancelScreenInspection();cancelRequest();hide();calibration?.finish(nil)
+        cancelScreenInspection();cancelRequest();calibration?.finish(nil)
         if automaticViewEnabled {
             CameraPreferences.shared.set(mode.rawValue,forKey:"axPreferredPane.\(currentModule() ?? "develop").\(mode.group)")
             detectedLayout=mode
@@ -420,7 +422,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         CameraPreferences.shared.set(true,forKey:regionKey("automaticBounds"))
         invalidateAutomaticGeometry();updateLayoutMenu()
         autoItem.state=CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) ? .on:.off
-        report(mode == .full ? "Full layout selected.":"\(mode.label) pane selected. Calibrate its entire UI backdrop, including photo margins.")
+        report(mode == .full ? "Loupe View selected.":"\(mode.label) pane selected.")
+        followLiveOverlayView(mode,module:currentModule(),requiresViewDetection:false)
     }
     func calibratedUI(_ mode:OverlayLayout)->CGRect? {
         guard let text=CameraPreferences.shared.string(forKey:regionKey("region",layout:mode)) else { return nil }
@@ -679,7 +682,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         clearAXTrialBorders()
         if destination == .overlay { cancelRequest() }
         (panel?.contentView as? ReferenceView)?.releaseContent()
-        panel?.orderOut(nil); panel = nil;overlayHost=nil;overlayGeometrySettler.reset();overlayAccessibility=nil;overlayBaselineWindows=[];overlayDialogVisible=false;overlayEpoch=nil;overlaySuspended=false;updateIcon()
+        panel?.orderOut(nil); panel = nil;displayedOverlayLayout=nil;displayedOverlayModule=nil;overlayHost=nil;overlayGeometrySettler.reset();overlayAccessibility=nil;overlayBaselineWindows=[];overlayDialogVisible=false;overlayEpoch=nil;overlaySuspended=false;updateIcon()
     }
     func currentModule() -> String? {
         let url = folder.appendingPathComponent("heartbeat.txt")
@@ -880,7 +883,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         configureImageView(view)
         view.refresh = { [weak self] in self?.reloadOverlay() }
         view.image = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
-        p.contentView = view; panel = p;overlayMoveCount=0;overlayOrderCount=0;overlayLevelChangeCount=0;
+        p.contentView = view; panel = p;displayedOverlayLayout=overlayLayout;displayedOverlayModule=currentModule();overlayMoveCount=0;overlayOrderCount=0;overlayLevelChangeCount=0;
         overlayGeometrySettler.reset()
         lifecycleTrace=[];lastLifecycleEvent="";recordLifecycle("overlay created")
         guard orderOverlayAboveLightroom(initial:true) else { hide();report("Lightroom window unavailable; invoke again when it is visible.");return nil }
@@ -1068,10 +1071,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 let group=proposal.layout == "Side-by-side" ? 1:proposal.layout == "Above-and-below" ? 2:0
                 let preferred=CameraPreferences.shared.string(forKey:"axPreferredPane.\(module ?? "develop").\(group)").flatMap(OverlayLayout.init(rawValue:))
                 let mode:OverlayLayout=group==0 ? .full:(preferred?.group==group ? preferred!:(group==1 ? .left:.upper))
-                guard self.detectedLayout != mode || self.detectedLayoutModule != module else { return }
-                self.detectedLayout=mode;self.detectedLayoutModule=module
-                self.lastViewDetection="Live AX: \(proposal.layout); pane: \(mode.label). Updated \(Date()). Poll interval 2 seconds."
-                self.updateLayoutMenu()
+                if self.detectedLayout != mode || self.detectedLayoutModule != module {
+                    self.detectedLayout=mode;self.detectedLayoutModule=module
+                    self.lastViewDetection="Live AX: \(proposal.layout); pane: \(mode.label). Updated \(Date()). Poll interval 2 seconds."
+                    self.updateLayoutMenu()
+                }
+                // Compare with displayed geometry as well as the menu. A failed or
+                // suspended update can retry on the next poll without rebuilding menus.
+                self.followLiveOverlayView(mode,module:module)
+            }
+        }
+    }
+    func followLiveOverlayView(_ mode:OverlayLayout,module:String?,requiresViewDetection:Bool=true) {
+        guard (!requiresViewDetection || automaticViewEnabled),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
+              let module,module==displayedOverlayModule,displayedOverlayLayout != mode,
+              let existing=panel,existing.isVisible,!overlaySuspended,
+              let view=existing.contentView as? ReferenceView,let image=view.image,
+              let host=overlayHost else { return }
+        let backend=automaticPlacementMode,epoch=selectionEpoch(),generation=liveViewGeneration
+        let settings=reloadDetectionConfig(),height=CGDisplayBounds(CGMainDisplayID()).height
+        func stillCurrent()->Bool {
+            self.panel === existing && existing.isVisible && !self.overlaySuspended &&
+            (!requiresViewDetection || self.automaticViewEnabled) && self.automaticPlacementMode==backend &&
+            CameraPreferences.shared.bool(forKey:self.regionKey("automaticBounds")) &&
+            self.currentModule()==module && self.displayedOverlayModule==module &&
+            self.overlayLayout==mode && self.liveViewGeneration==generation &&
+            self.selectionEpoch()==epoch && self.overlayHost?.id==host.id && self.isLightroom()
+        }
+        func apply(_ area:CGRect,_ photo:CGRect,_ background:NSColor?) {
+            guard stillCurrent(),NSScreen.screens.contains(where:{$0.frame.intersects(area)}) else { return }
+            // Keep the same panel, image and export snapshot. No hide/order/reload.
+            existing.setFrame(area.insetBy(dx:-1,dy:-1),display:false)
+            view.imageViewport=view.convert(existing.convertFromScreen(photo),from:nil)
+            if let background { view.backgroundColour=background }
+            view.needsDisplay=true
+            self.displayedOverlayLayout=mode
+            self.lastLayout += "\nVisible overlay followed view change: \(mode.viewName), \(mode.label). Same image and zoom retained."
+            self.recordLifecycle("view changed: \(mode.viewName), \(mode.label)")
+            self.clearAXTrialBorders();self.runAXTrial(after:existing)
+            self.saveInvocationDiagnostics()
+        }
+        if axPlacementEnabled {
+            startAXPlacement(epoch:epoch,full:false) { ui in
+                guard stillCurrent(),let ui,
+                      let placed=settings.placement(ui:appKitRect(ui,primaryHeight:height),image:image.size) else { return }
+                apply(appKitRect(placed.region,primaryHeight:height),appKitRect(placed.photo,primaryHeight:height),nil)
+            }
+        } else {
+            guard #available(macOS 14.0,*),FeaturePermission.screenCapture.granted else { return }
+            // Request fresh geometry through the selected, unchanged detector.
+            // The existing overlay is excluded by the Lightroom-only capture filter.
+            startPhotoDetection(imageSize:image.size,layout:mode) { result in
+                guard stillCurrent(),result.windowID==host.id,let area=result.candidate else { return }
+                self.rememberPlacement(result,epoch:epoch,settings:settings,layout:mode)
+                let b=result.background
+                apply(area,result.photoFrame ?? area,NSColor(srgbRed:b[0],green:b[1],blue:b[2],alpha:1))
             }
         }
     }

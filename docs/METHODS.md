@@ -213,3 +213,9 @@ Raw side-panel tops constrain the upper search band and reject any fallback rect
 After validating the combined outer area, the unchanged inset divider scanner runs. Only its failure permits a midpoint split in assisted mode. Failure to validate the outer rectangle never permits midpoint placement. ViewportDetector.swift, PhotoDetector.swift, the original split scanner and AX-only geometry remain unchanged.
 
 Settings exposes the method submenu and the independent screenshot options. Calibration hints wrap to available screen width. Runtime ScreenCaptureKit denial is distinguished from rejected geometry. Diagnostic failures are snapshotted and saved before opening the calibration modal when saving is enabled; background results are explicitly labelled as potentially older. No personal settings are reset.
+
+## Live overlay view changes (1.0.31)
+
+Keep the displayed layout/module separately from the inferred menu view. A successful two-second AX view poll updates menu state only when it changes, then compares that view with the displayed overlay. Menu view/pane selections use the same update route without requiring AX view inference. Only an existing visible, unsuspended, automatically placed overlay in the same module is eligible.
+
+Recalculate via the selected existing backend without loading the JPEG or hiding/reordering the panel. Apply geometry to that panel and retain its image, export snapshot and navigation state; ordinary rendering clamps pan to the new region. Guard completion by panel identity, module, selected layout, backend, auto preference, view generation, selection epoch and host ID. A failed read or missing permission leaves the overlay intact, with no calibration modal. Detected-view changes can retry on subsequent polls if displayed geometry still differs. Existing confirmed module-change handling dismisses/cancels. Screenshot algorithms, AX geometry and manual placement are untouched.

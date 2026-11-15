@@ -1,4 +1,6 @@
-# Camera Reference 1.0.30 — candidate
+# Camera Reference 1.0.31 — candidate
+
+An open overlay now follows view/pane selection. With AX view detection (including AX-only mode), it follows detected views within the same module on the existing two-second check. Otherwise it follows menu selection. The same image, window and zoom are retained; placement failure keeps the current overlay. An off overlay stays off, and module switches dismiss it. Placement algorithms are unchanged.
 
 Detection controls now live in Settings. Choose Accessibility or Screenshot; screenshot mode has independent AX view detection and AX-assisted placement options. Manual placement takes precedence. View menus use Loupe View and Reference View names.
 
