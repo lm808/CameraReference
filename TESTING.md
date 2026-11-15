@@ -1,6 +1,6 @@
-# Camera Reference 1.0.32 — candidate
+# Camera Reference 1.0.32 — remaining checks
 
-Run `release/CameraReference Testing.app` in `worktrees/ax-assisted-screenshot-detection`. Main remains 1.0.28. Previous user annotations are retained in docs/VALIDATION.md (trailing whitespace normalised). Automated checks do not replace native acceptance.
+Merged to main at the user’s request. Run `release/CameraReference.app` from the main checkout. Unchecked items below remain outstanding; merge acceptance does not mark them passed. Previous user annotations are retained in docs/VALIDATION.md (trailing whitespace normalised). Automated checks do not replace native acceptance.
 
 ## AX-only Live update
 
@@ -20,7 +20,7 @@ Run `release/CameraReference Testing.app` in `worktrees/ax-assisted-screenshot-d
 - [ ] Without Screen Recording permission: calibration allows free dragging, explains optional snapping, and does not request permission. Instructions wrap and fit the screen. Capture preview reports missing permission gracefully; an existing overlay stays open.
 - [ ] AX-assisted screenshot: Library side-by-side with Embedded Preview labels in both panes; verify the outer top/bottom and both pane choices. Repeat without labels and with toolbar hidden. Diagnostics identify a detected divider or a 50/50 fallback; fallback requires a validated outer area.
 - [ ] A failed invocation saves its failure before the calibration dialog when automatic diagnostic saving is enabled. Cancelling preserves mode/region; subsequent success retains a separately labelled failure snapshot. Off-screen guidance is conditional wording, not a claim that all failures need a restart.
-- [ ] AX-only and pure screenshot placement still behave as before. Test usual overlay/float invocation and repeated toggles. Main's stable app remains unchanged.
+- [ ] AX-only and pure screenshot placement still behave as before. Test usual overlay/float invocation and repeated toggles.
 
 ## Deferred to-dos
 

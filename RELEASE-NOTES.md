@@ -1,4 +1,4 @@
-# Camera Reference 1.0.32 — candidate
+# Camera Reference 1.0.32
 
 Accessibility mode now has one **Update overlay with LrC view (instead of dismiss)** option, default on. An open overlay follows view, pane and panel changes; with Live update off, those changes dismiss it. Library Grid and module changes dismiss; an off overlay never reopens automatically. Failed AX placement retains the current overlay.
 
@@ -12,4 +12,4 @@ AX-assisted screenshot placement adds a raw-panel top boundary check, limited to
 
 AX-only placement geometry and the original screenshot detector are unchanged. Pure screenshot failures associated with Library status text remain under investigation. Off-screen capture instability is not claimed fixed.
 
-Main's accepted 1.0.28 app is unchanged. No DMG packaged.
+Merged into main at the user’s request. No DMG packaged.

@@ -81,3 +81,7 @@ Next worktree: AX-assisted screenshot placement, a separate off-by-default exper
 ## Implemented experiment — 1.0.29
 
 User authorised an independent assisted backend, with raw AX bands and pixel-authoritative placement. No calibrated offsets enter the assisted detector. Main remains unchanged while candidate is tested. Retained background screenshots are counted/timed alongside AX signatures; pixel changes with unchanged AX provide evidence of their contribution. Do not remove or reduce these checks until native measurements support it. See METHODS for exact routing and fallback.
+
+## Main integration — 1.0.32
+
+Merged at the user’s request. AX-assisted screenshot placement is implemented as a separate optional path: raw AX structure narrows pixel searches; screenshot evidence determines final edges, without calibrated AX offsets. Original screenshot detection remains available. The contribution and overhead of retained background screenshots are instrumented but not yet established by sufficient native measurements; no background screenshot reduction is claimed. Remaining edge cases and comparison tests are in TESTING.md.

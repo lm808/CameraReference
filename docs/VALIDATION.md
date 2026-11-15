@@ -792,3 +792,7 @@ The user's saved report showed two Grid entries with missing marks; the second c
 ### Menu wording (same 1.0.32)
 
 Renamed the AX-only option to “Update overlay with LrC view (instead of dismiss)” and aligned the user-facing documentation/checklist. Preference key/default and runtime behaviour are unchanged. Testing app rebuilt; this text-only change does not require repeating the previously passed behavioural suites. No merge to main is performed by this update.
+
+### Main merge — 1.0.32
+
+User authorised merging the candidate after testing. Main fast-forwarded to 088b27e; stable release/CameraReference.app rebuilt and staged with org.local.CameraReference, version 1.0.32, verified signature. No source changes beyond the already checked candidate; no repeat behavioural suite needed for the merge. Remaining unchecked native items are preserved in TESTING.md. No push, app launch, installation or DMG.
