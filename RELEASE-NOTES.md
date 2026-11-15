@@ -1,6 +1,6 @@
 # Camera Reference 1.0.32 — candidate
 
-Accessibility mode now has one **Live update** option, default on. An open overlay follows view, pane and panel changes; with Live update off, those changes dismiss it. Library Grid and module changes dismiss; an off overlay never reopens automatically. Failed AX placement retains the current overlay.
+Accessibility mode now has one **Update overlay with LrC view (instead of dismiss)** option, default on. An open overlay follows view, pane and panel changes; with Live update off, those changes dismiss it. Library Grid and module changes dismiss; an off overlay never reopens automatically. Failed AX placement retains the current overlay.
 
 Screenshot backup modes retain their earlier behaviour: optional AX view inference updates menus, background checks invalidate cache only, and explicit menu view/pane selection dismisses. Live update appears only for Accessibility; the two AX screenshot options appear only for Screenshot.
 

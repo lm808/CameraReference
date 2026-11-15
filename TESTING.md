@@ -4,7 +4,7 @@ Run `release/CameraReference Testing.app` in `worktrees/ax-assisted-screenshot-d
 
 ## AX-only Live update
 
-- [ ] Accessibility shows only the indented Live update option beneath Detection method, default on. Screenshot shows only AX view detection and AX-assisted placement. Switching methods remembers preferences; manual placement disables detection controls.
+- [ ] Accessibility shows only the indented **Update overlay with LrC view (instead of dismiss)** option beneath Detection method, default on. Screenshot shows only AX view detection and AX-assisted placement. Switching methods remembers preferences; manual placement disables detection controls.
 - [ ] AX Live update on: an open overlay follows Loupe/split view, chosen pane, and surrounding panel/toolbar visibility or size changes. Same photo and zoom remain; an off overlay stays off.
 - [ ] AX Live update off: those same view, pane and panel changes dismiss. Toggling the setting alone does not dismiss. Test toolbar and filmstrip independently.
 - [ ] Grid diagnostics list only the direct View → Grid command, excluding Loupe Overlay → Grid. Test Grid selected and Loupe selected, with the Loupe grid overlay both on and off. Missing selection marks must remain unknown.

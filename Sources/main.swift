@@ -569,7 +569,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         viewToggleItem=add("AX view detection",#selector(toggleAutomaticView),to:settings)
         assistedToggleItem=add("AX-assisted placement",#selector(toggleScreenshotAssistance),to:settings)
         assistedToggleItem?.indentationLevel=1;viewToggleItem?.indentationLevel=1
-        liveUpdateItem=add("Live update",#selector(toggleAXLiveUpdate(_:)),to:settings)
+        liveUpdateItem=add("Update overlay with LrC view (instead of dismiss)",#selector(toggleAXLiveUpdate(_:)),to:settings)
         liveUpdateItem?.indentationLevel=1
         updateDetectionMenu()
         settings.addItem(.separator())
@@ -1688,7 +1688,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             DiagnosticSection(title:"Placement method & assisted evidence",body:"Method: \(automaticPlacementMode.title). View detection: \(automaticViewEnabled ? "automatic AX":"menu selection").\nRetained screenshot checks: \(assistedChecks); AX time: \(Int(assistedAXSeconds*1000)) ms; retained capture/check time: \(Int((assistedCheckSeconds-assistedAXSeconds)*1000)) ms.\nAX changes: \(assistedAXChanges); AX unavailable/stale: \(assistedAXFailures).\nPixel boundary changes after unchanged AX: \(assistedPixelChanges); pixel validation failures: \(assistedPixelFailures).\n\(assistedEvidence)\nAll periodic screenshot checks retained for this measurement trial; counters are session-only."),
             DiagnosticSection(title:"AX placement trial",body:lastAXTrial),
             DiagnosticSection(title:"AX toolbar visibility",body:lastAXToolbar),
-            DiagnosticSection(title:"Grid view & view-change policy",body:lastGridStatus+"\nAX-only Live update: \(axLiveUpdate). Screenshot modes retain cache-invalidation behaviour."),
+            DiagnosticSection(title:"Grid view & view-change policy",body:lastGridStatus+"\nAX-only update overlay with LrC view: \(axLiveUpdate). Screenshot modes retain cache-invalidation behaviour."),
             DiagnosticSection(title:"Last result",body:lastResult),
             DiagnosticSection(title:"Last placement failure (retained snapshot)",body:lastPlacementFailure),
             DiagnosticSection(title:"Lightroom bridge",body:"Heartbeat: \(age)\nPlugin status: \(state.trimmingCharacters(in:.whitespacesAndNewlines))"),

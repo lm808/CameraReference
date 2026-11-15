@@ -788,3 +788,7 @@ Testing build and Swift/Lua suites passed, including the full AX/screenshot × a
 ### First-level Grid menu correction (same 1.0.32)
 
 The user's saved report showed two Grid entries with missing marks; the second command was identified as Loupe Overlay → Grid. The reader now traverses only AXMenu wrappers beneath View and never enters a command's submenu. Selection-mark interpretation is unchanged. Testing build and recompiled core regressions pass, including Grid mark semantics; staged signature verified. Native confirmation of the direct Grid item's selected mark remains required. Screenshot/AX placement algorithms, settings and version/build are unchanged.
+
+### Menu wording (same 1.0.32)
+
+Renamed the AX-only option to “Update overlay with LrC view (instead of dismiss)” and aligned the user-facing documentation/checklist. Preference key/default and runtime behaviour are unchanged. Testing app rebuilt; this text-only change does not require repeating the previously passed behavioural suites. No merge to main is performed by this update.
