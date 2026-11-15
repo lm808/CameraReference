@@ -3,6 +3,7 @@
 ## 1.0.32 — AX-only live behaviour (candidate correction)
 
 - Replace the two work-in-progress dismissal/panel options with default-on Live update for Accessibility only. Off dismisses on view, pane or panel changes; on repositions.
+- Grid checks inspect only direct View commands, excluding Loupe Overlay → Grid.
 - AX Library Grid and module changes dismiss. Unknown menu state does not trigger dismissal.
 - Restore screenshot backup behaviour before the live-update experiment. Show only options relevant to the selected detection method.
 - Keep placement algorithms and version unchanged; native acceptance pending.

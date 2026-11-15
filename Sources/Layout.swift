@@ -635,19 +635,27 @@ func accessibilityGridReading(module:String?)->(selected:Bool?,report:String) {
     let bar=unsafeBitCast(raw,to:AXUIElement.self)
     let menus=(read(bar,kAXChildrenAttribute) as? [AXUIElement] ?? []).filter { (read($0,kAXTitleAttribute) as? String)?.lowercased()=="view" }
     guard menus.count==1 else { return (nil,"Grid check: no unique View menu (incomplete menu or unsupported language).") }
-    var queue=[(menus[0],0)],index=0,entries=[(String,String?)](),complete=true
+    // The menu-bar View item contains an AXMenu wrapper. Inspect its direct
+    // commands only: never descend through a command into its submenu.
+    guard let children=read(menus[0],kAXChildrenAttribute) as? [AXUIElement] else {
+        return (nil,"Grid check: View menu children unavailable.")
+    }
+    var queue=children,index=0,entries=[(String,String?)]()
     while index<queue.count,index<250,ProcessInfo.processInfo.systemUptime<deadline {
-        let (node,depth)=queue[index];index += 1
-        if read(node,kAXRoleAttribute) as? String == kAXMenuItemRole,
-           let title=read(node,kAXTitleAttribute) as? String,["grid","grid view"].contains(title.trimmingCharacters(in:.whitespacesAndNewlines).lowercased()) {
-            entries.append((title,read(node,"AXMenuItemMarkChar") as? String))
-        }
-        if let children=read(node,kAXChildrenAttribute) as? [AXUIElement] {
-            if depth<6 { queue += children.map{($0,depth+1)} } else if !children.isEmpty { complete=false }
+        let node=queue[index];index += 1
+        let role=read(node,kAXRoleAttribute) as? String
+        if role == kAXMenuItemRole {
+            if let title=read(node,kAXTitleAttribute) as? String,
+               ["grid","grid view"].contains(title.trimmingCharacters(in:.whitespacesAndNewlines).lowercased()) {
+                entries.append((title,read(node,"AXMenuItemMarkChar") as? String))
+            }
+            // This excludes View → Loupe Overlay → Grid, even if marked.
+        } else if role == kAXMenuRole,let commands=read(node,kAXChildrenAttribute) as? [AXUIElement] {
+            queue += commands
         }
     }
-    guard complete,index==queue.count,ProcessInfo.processInfo.systemUptime<deadline,
+    guard index==queue.count,ProcessInfo.processInfo.systemUptime<deadline,
           NSWorkspace.shared.frontmostApplication?.processIdentifier==app.processIdentifier else { return (nil,"Grid check: incomplete read or focus changed.") }
     let selected=axGridMenuSelection(entries)
-    return (selected,"Grid menu check: \(selected.map{$0 ? "selected":"not selected"} ?? "unknown"); candidates: \(entries.map { "\($0.0): mark=\(String(describing:$0.1))" }); collected \(Date()).")
+    return (selected,"Grid menu check (View first level only): \(selected.map{$0 ? "selected":"not selected"} ?? "unknown"); candidates: \(entries.map { "\($0.0): mark=\(String(describing:$0.1))" }); collected \(Date()).")
 }
