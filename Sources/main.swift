@@ -98,6 +98,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         overlayLifecycleStatus="Lifecycle: minimise notifications \(overlayAccessibility?.watchesMinimize == true ? "active":"unavailable"); dialog \(overlayDialogVisible); minimised \(minimized.map(String.init) ?? "unavailable"); \(overlayAccessibility == nil ? "window-list fallback":"Accessibility + window list")."
         overlayLifecycleStatus += "\n" + accessibilityBindingStatus + "\n" + (overlayAccessibility?.diagnostic ?? "No AX observer; window-list fallback.")
     }
+    var selectionRefreshPanel:OverlayPanel?
+    var attemptedSelectionRefresh:String?
     var overlayEpoch:String?
     var overlaySuspended=false
     var overlayResumeAfter:TimeInterval=0
@@ -569,7 +571,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         viewToggleItem=add("AX view detection",#selector(toggleAutomaticView),to:settings)
         assistedToggleItem=add("AX-assisted placement",#selector(toggleScreenshotAssistance),to:settings)
         assistedToggleItem?.indentationLevel=1;viewToggleItem?.indentationLevel=1
-        liveUpdateItem=add("Update overlay with LrC view (instead of dismiss)",#selector(toggleAXLiveUpdate(_:)),to:settings)
+        liveUpdateItem=add("Update overlay with LrC view",#selector(toggleAXLiveUpdate(_:)),to:settings)
         liveUpdateItem?.indentationLevel=1
         updateDetectionMenu()
         settings.addItem(.separator())
@@ -643,6 +645,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             if self.panel != nil { _ = self.orderOverlayAboveLightroom() }
             self.checkPanelBoundariesIfDue()
             self.checkLiveAXViewIfDue()
+            self.checkOverlaySelection(epoch)
             // Module/heartbeat uncertainty invalidates reuse, not the user-visible image.
         }
         if let moduleTimer { RunLoop.main.add(moduleTimer,forMode:.common) }
@@ -691,7 +694,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     func cancelRequest() {
         viewProbeID=nil
-        cancellation?.cancel(); cancellation = nil; pending = nil; destination = nil
+        cancellation?.cancel(); cancellation = nil; pending = nil; destination = nil;selectionRefreshPanel=nil
         timer?.invalidate(); timer = nil
         try? FileManager.default.removeItem(at: folder.appendingPathComponent("request.txt"))
         try? FileManager.default.removeItem(at: folder.appendingPathComponent("response.txt"))
@@ -701,7 +704,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         clearAXTrialBorders()
         if destination == .overlay { cancelRequest() }
         (panel?.contentView as? ReferenceView)?.releaseContent()
-        panel?.orderOut(nil); panel = nil;livePanelSignature=nil;displayedOverlayLayout=nil;displayedOverlayModule=nil;overlayHost=nil;overlayGeometrySettler.reset();overlayAccessibility=nil;overlayBaselineWindows=[];overlayDialogVisible=false;overlayEpoch=nil;overlaySuspended=false;updateIcon()
+        panel?.orderOut(nil); panel = nil;attemptedSelectionRefresh=nil;livePanelSignature=nil;displayedOverlayLayout=nil;displayedOverlayModule=nil;overlayHost=nil;overlayGeometrySettler.reset();overlayAccessibility=nil;overlayBaselineWindows=[];overlayDialogVisible=false;overlayEpoch=nil;overlaySuspended=false;updateIcon()
     }
     func currentModule() -> String? {
         let url = folder.appendingPathComponent("heartbeat.txt")
@@ -769,7 +772,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         request(.overlay)
     }
     @objc func checkPhoto() { request(.check) }
-    func request(_ target: Destination, viewChecked:Bool=false) {
+    func request(_ target: Destination, viewChecked:Bool=false,refreshing existing:OverlayPanel?=nil) {
         diagnosticGeneration += 1
         savingInvocation = target == .overlay || target == .window
         guard !regionResetting,requireSupportedModule() else { return }
@@ -779,7 +782,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         cancelPanelCheck();nextPanelCheck=ProcessInfo.processInfo.systemUptime+reloadDetectionConfig().panelCheckIntervalSeconds
         cancelScreenInspection(); cancelRequest()
         let token = UUID().uuidString, work = Cancellation()
-        pending = token; destination = target; cancellation = work; pendingModule=currentModule()
+        pending = token; destination = target; cancellation = work; pendingModule=currentModule();selectionRefreshPanel=existing
         updateToggleTitle()
         let invoked = ProcessInfo.processInfo.systemUptime
         invocationStart=invoked
@@ -807,6 +810,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         collectCompleteDiagnostics()
         if target == .window { floating?.title = floatingTitle + " — unchanged; refresh failed" }
     }
+    func checkOverlaySelection(_ epoch:String?) {
+        guard axPlacementEnabled,CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
+              let existing=panel,isLightroom(),supportedLightroomModule(currentModule()),
+              displayedOverlayModule==currentModule(),let epoch else { return }
+        guard let previous=overlayEpoch else { overlayEpoch=epoch;return }
+        let action=axSelectionChangeAction(accessibility:true,automatic:true,overlayOpen:true,previous:previous,current:epoch,live:axLiveUpdate)
+        if action == .dismiss {
+            cancelScreenInspection();hide();report("Photo selection changed; overlay dismissed.");return
+        }
+        guard action == .adjust,attemptedSelectionRefresh != epoch,
+              existing.isVisible,!overlaySuspended,!workspaceOverview,
+              pending == nil,screenInspectionID == nil,viewProbeID == nil,calibration == nil,!liveViewBusy else { return }
+        // One attempt per selection; failure keeps the old photo without retry storms.
+        attemptedSelectionRefresh=epoch
+        request(.overlay,viewChecked:true,refreshing:existing)
+    }
+    func refreshAXSelection(_ image:CGImage,snapshot:ExportSnapshot?,epoch:String,panel existing:OverlayPanel,generation:Int) {
+        let module=currentModule(),host=overlayHost?.id,settings=reloadDetectionConfig()
+        let height=CGDisplayBounds(CGMainDisplayID()).height
+        startAXPlacement(epoch:epoch,full:false) { [weak self] ui in
+            guard let self,self.panel === existing,self.axPlacementEnabled,self.axLiveUpdate,
+                  self.liveViewGeneration==generation,self.selectionEpoch()==epoch,
+                  self.currentModule()==module,self.overlayHost?.id==host,
+                  self.isLightroom(),existing.isVisible,!self.overlaySuspended,
+                  CameraPreferences.shared.bool(forKey:self.regionKey("automaticBounds")),
+                  let view=existing.contentView as? ReferenceView else { return }
+            guard let ui,let placed=settings.placement(ui:appKitRect(ui,primaryHeight:height),image:CGSize(width:image.width,height:image.height)) else {
+                self.report("Photo refresh placement unavailable; previous overlay retained.");return
+            }
+            let area=appKitRect(placed.region,primaryHeight:height),photo=appKitRect(placed.photo,primaryHeight:height)
+            guard NSScreen.screens.contains(where:{$0.frame.intersects(area)}) else { return }
+            existing.setFrame(area.insetBy(dx:-1,dy:-1),display:false)
+            view.imageViewport=view.convert(existing.convertFromScreen(photo),from:nil)
+            view.image=NSImage(cgImage:image,size:NSSize(width:image.width,height:image.height))
+            view.exportSnapshot=snapshot
+            self.overlayEpoch=epoch;self.livePanelSignature=self.pendingAXPanelSignature
+            self.displayedOverlayLayout=self.overlayLayout
+            self.recordLifecycle("photo selection refreshed; Fit reset")
+            self.clearAXTrialBorders();self.runAXTrial(after:existing);self.saveInvocationDiagnostics()
+        }
+    }
     func selectionEpoch()->String? {
         let url=folder.appendingPathComponent("selection.txt")
         guard let attrs=try? FileManager.default.attributesOfItem(atPath:url.path),let date=attrs[.modificationDate] as? Date,
@@ -820,7 +864,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         return lines.count==4 && lines[0]==token && lines[2]=="END" ? lines[1]:nil
     }
     func load(_ path: String, token: String, target: Destination, work: Cancellation, invoked: TimeInterval) {
-        let requestedModule=pendingModule
+        let requestedModule=pendingModule,refreshingPanel=selectionRefreshPanel,refreshGeneration=liveViewGeneration
         let loadStarted=ProcessInfo.processInfo.systemUptime
         let bridgeMS=(loadStarted-invoked)*1000
         let prefer = CameraPreferences.shared.bool(forKey: "preferEmbedded")
@@ -859,7 +903,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                     self.imageCache.observe(self.selectionEpoch());self.cancelRequest()
                     self.report("Selection changed while loading; invoke again for the current photo.");return
                 }
-                self.pending = nil; self.destination = nil; self.cancellation = nil
+                if let refreshingPanel {
+                    guard let epoch,self.panel === refreshingPanel,self.axPlacementEnabled,self.axLiveUpdate,
+                          self.liveViewGeneration==refreshGeneration,
+                          CameraPreferences.shared.bool(forKey:self.regionKey("automaticBounds")) else { self.cancelRequest();return }
+                    guard self.selectionEpoch()==epoch else { self.cancelRequest();return }
+                }
+                self.pending = nil; self.destination = nil; self.cancellation = nil;self.selectionRefreshPanel=nil
                 self.updateToggleTitle()
                 switch result {
                 case .failure(let error):
@@ -876,7 +926,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                     let snapshot=loaded.embeddedBytes.map { ExportSnapshot(raw:URL(fileURLWithPath:path),bytes:$0,orientation:loaded.cameraOrientation) }
                     if target == .overlay {
                         guard self.isLightroom(), supportedLightroomModule(self.currentModule()) else { self.report("Overlay cancelled: Library or Develop is no longer active."); return }
-                        self.resolveOverlay(loaded.image,snapshot:snapshot,selectionEpoch:epoch)
+                        if let refreshingPanel,let epoch {
+                            self.refreshAXSelection(loaded.image,snapshot:snapshot,epoch:epoch,panel:refreshingPanel,generation:refreshGeneration)
+                        } else { self.resolveOverlay(loaded.image,snapshot:snapshot,selectionEpoch:epoch) }
                     } else if target == .detect {
                         self.startPhotoDetection(imageSize:CGSize(width:loaded.image.width,height:loaded.image.height))
                     } else if target == .window {

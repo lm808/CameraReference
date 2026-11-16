@@ -2,9 +2,9 @@
 
 Merged to main at the user’s request. Run `release/CameraReference.app` from the main checkout. Unchecked items below remain outstanding; merge acceptance does not mark them passed. Previous user annotations are retained in docs/VALIDATION.md (trailing whitespace normalised). Automated checks do not replace native acceptance.
 
-## AX-only Live update
+## AX-only overlay updates
 
-- [ ] Accessibility shows only the indented **Update overlay with LrC view (instead of dismiss)** option beneath Detection method, default on. Screenshot shows only AX view detection and AX-assisted placement. Switching methods remembers preferences; manual placement disables detection controls.
+- [ ] Accessibility shows only the indented **Update overlay with LrC view** option beneath Detection method, default on. Screenshot shows only AX view detection and AX-assisted placement. Switching methods remembers preferences; manual placement disables detection controls.
 - [ ] AX Live update on: an open overlay follows Loupe/split view, chosen pane, and surrounding panel/toolbar visibility or size changes. Same photo and zoom remain; an off overlay stays off.
 - [ ] AX Live update off: those same view, pane and panel changes dismiss. Toggling the setting alone does not dismiss. Test toolbar and filmstrip independently.
 - [ ] Grid diagnostics list only the direct View → Grid command, excluding Loupe Overlay → Grid. Test Grid selected and Loupe selected, with the Loupe grid overlay both on and off. Missing selection marks must remain unknown.
@@ -12,6 +12,13 @@ Merged to main at the user’s request. Run `release/CameraReference.app` from t
 - [ ] Screenshot backup modes: detected views update the menu but leave an open overlay alone; panel checks invalidate cache only. Explicit menu view/pane selection dismisses as before. No AX live update/Grid policy applies.
 - [ ] Repeated photo edits/clicks cause no unnecessary movement. Move Lightroom without changing panels: translation follows without dismissal. Failed AX placement retains the overlay; rapid changes, selection/module changes and explicit dismissal reject stale results.
 - [ ] Manual calibration and floating display remain unchanged. Test AX on/off panel updates after selecting another photo while the original overlay remains visible.
+
+## Photo-selection usability checks — same version
+
+- [ ] Accessibility → Update overlay with LrC view: on refreshes an open overlay to the new selection at Fit (portrait/landscape, embedded/standalone). Off dismisses on selection change. Toggling the option alone does nothing.
+- [ ] Rapidly step through several photos, dismiss during loading, or switch module: no late photo appears or reopens the overlay. Grid still dismisses.
+- [ ] Missing/unreadable JPEG keeps the old photo without repeated requests or calibration dialogs. A later selection refreshes normally. Export refers to the newly displayed photo after success.
+- [ ] Screenshot modes and manual placement retain their previous selection behaviour. With overlay off, selection never opens it. Floating display is unaffected.
 
 ## 1.0.30 checks still awaiting native acceptance
 

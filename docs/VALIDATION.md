@@ -796,3 +796,7 @@ Renamed the AX-only option to “Update overlay with LrC view (instead of dismis
 ### Main merge — 1.0.32
 
 User authorised merging the candidate after testing. Main fast-forwarded to 088b27e; stable release/CameraReference.app rebuilt and staged with org.local.CameraReference, version 1.0.32, verified signature. No source changes beyond the already checked candidate; no repeat behavioural suite needed for the merge. Remaining unchecked native items are preserved in TESTING.md. No push, app launch, installation or DMG.
+
+### Photo-selection usability update on main — same 1.0.32
+
+User explicitly authorised main and no version bump. Stable app built/staged and signature checked. Split/behaviour regressions pass, including an exhaustive AX/screenshot, automatic/manual, overlay on/off, known/unknown/same/changed epoch and update/dismiss selection-policy matrix. Source review confirms existing token/epoch cancellation is retained; automatic refresh adds panel identity, generation/backend/preference and host guards, with no calibration fallback or repeated attempts for a failing selection. No detector or AX geometry changes. Test checklist includes rapid selections, portrait/landscape Fit, export snapshot, failure retention and stale completion dismissal. Native tests remain user-owned; no app launched or personal settings modified.

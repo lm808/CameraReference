@@ -124,3 +124,11 @@ for ax in [false,true] { for auto in [false,true] { for live in [false,true] {
     assert(axOverlayChangeAction(accessibility:ax,automatic:auto,displayed:nil,selected:.left,panelsChanged:true,live:live) == .retain)
 } } }
 print("PASS: AX-only live policy covers view, pane and panels; screenshot/manual/off overlays remain untouched")
+
+for ax in [false,true] { for auto in [false,true] { for open in [false,true] { for live in [false,true] {
+    for previous in [nil,"A"] as [String?] { for current in [nil,"A","B"] as [String?] {
+        let changed=ax && auto && open && previous != nil && current != nil && previous != current
+        assert(axSelectionChangeAction(accessibility:ax,automatic:auto,overlayOpen:open,previous:previous,current:current,live:live) == (changed ? (live ? .adjust:.dismiss):.retain))
+    } }
+} } } }
+print("PASS: photo-selection policy ignores uncertainty, unchanged selection, off/manual/screenshot overlays")

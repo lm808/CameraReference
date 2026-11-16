@@ -102,3 +102,8 @@ func axOverlayChangeAction(accessibility:Bool,automatic:Bool,displayed:OverlayLa
     guard accessibility,automatic,let displayed,displayed != selected || panelsChanged else { return .retain }
     return live ? .adjust:.dismiss
 }
+
+func axSelectionChangeAction(accessibility:Bool,automatic:Bool,overlayOpen:Bool,previous:String?,current:String?,live:Bool)->AXOverlayChangeAction {
+    guard accessibility,automatic,overlayOpen,let previous,let current,previous != current else { return .retain }
+    return live ? .adjust:.dismiss
+}

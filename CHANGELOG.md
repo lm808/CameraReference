@@ -1,7 +1,8 @@
 # Changelog
 
-## 1.0.32 — AX-only live behaviour (candidate correction)
+## 1.0.32 — AX-only overlay updates
 
+- Photo-selection changes now follow Update overlay with LrC view: refresh at Fit when enabled, dismiss when disabled (AX-only automatic placement).
 - Replace the two work-in-progress dismissal/panel options with default-on Live update for Accessibility only. Off dismisses on view, pane or panel changes; on repositions.
 - Grid checks inspect only direct View commands, excluding Loupe Overlay → Grid.
 - AX Library Grid and module changes dismiss. Unknown menu state does not trigger dismissal.
