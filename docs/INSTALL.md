@@ -1,10 +1,10 @@
-# Installing Camera Reference 1.0.11
+# Installing Camera Reference
 
 For manual source builds, older-commit recovery, and stable/candidate Git worktrees, see [Building from source and keeping a working version](SOURCE-BUILD.md).
 
 ## Requirements
 
-- macOS 13 or later; macOS 14 or later for automatic detection, capture preview and snapping.
+- macOS 13 or later; macOS 14 or later for screenshot detection, capture preview and snapping (Accessibility placement does not require macOS 14).
 - Lightroom Classic and the included Camera Reference bridge (0.5.3). Development verification used Lightroom Classic 15.6.
 - ExifTool for CR3/ARW embedded JPEG extraction/export. Obtain it from https://exiftool.org/ and use Settings → Choose ExifTool if the app cannot find it. A paired standalone JPEG can be used without embedded extraction.
 - Choose the DMG matching your Mac (`arm64` for Apple silicon, `x86_64` for Intel). This build script does not produce a universal binary.
@@ -42,7 +42,7 @@ Bridge 0.5.3 uses the unspaced CameraReference/Bridge folder. Quit the old compa
 
 ## Verify
 
-The menu should say **Camera Reference 1.0.11**. Bridge diagnostics should report bridge 0.5.3 and a recent heartbeat. Start with Full, Lightroom Develop at Fit, and a known paired/embedded JPEG.
+The menu should show the version you installed (current source: **1.0.32**). Developer tools → Diagnostics… should report bridge 0.5.3 and a recent heartbeat. Start with Loupe View, Lightroom Develop at Fit, and a known paired/embedded JPEG.
 
 Use TESTING.md in the repository for staged-app acceptance; DMG installation is tested only when a package is requested. For checksum verification, compare `shasum -a 256 <downloaded.dmg>` with the adjacent `.sha256` download; this detects file corruption, not publisher identity.
 
@@ -50,6 +50,6 @@ Use TESTING.md in the repository for staged-app acceptance; DMG installation is 
 
 Use `bash scripts/stage.sh --testing` in the candidate worktree for Camera Reference Testing (purple icon, `org.local.CameraReference.testing`). Stable builds keep `org.local.CameraReference`. Keep main’s accepted app while testing; quit one before starting the other because settings/bridge are shared. The testing identity uses its own permissions entries: Accessibility for AX features, optional Screen Recording for screenshot features. Separate identity protects stable’s permissions entry; ad-hoc-signed testing updates may still require renewed approval. No permission is granted or reset by the build scripts.
 
-Testing app path: `release/CameraReference Testing.app` (purple with T badge). Add this exact file in permission settings; leave the stable entry alone. Quit and reopen this exact build after approval if required. Current builds are ad-hoc signed; rebuilding does not guarantee resolution of a stale or unrecognised macOS grant. No valid signing certificate was found during the 1.0.11 rebuild; persistent certificate signing remains outstanding.
+Testing app path: `release/CameraReference Testing.app` (purple with T badge). Add this exact file in permission settings; leave the stable entry alone. Quit and reopen this exact build after approval if required. Current builds are ad-hoc signed; rebuilding does not guarantee resolution of a stale or unrecognised macOS grant. Persistent certificate signing remains outstanding.
 
-For 1.0.14, confirm bridge 0.5.3 in diagnostics. If an older bridge is loaded, update/reload the staged CameraReference.lrplugin manually. It permits Library/Develop photo requests and rejects other modules. No plugin update is needed if 0.5.3 is already running. Main now stages the accepted normal-identity CameraReference.app; the testing worktree stays separate.
+Confirm bridge 0.5.3 in diagnostics. If an older bridge is loaded, update/reload the staged CameraReference.lrplugin manually. It permits Library/Develop photo requests and rejects other modules. No plugin update is needed if 0.5.3 is already running. Main now stages the accepted normal-identity CameraReference.app; the testing worktree stays separate.

@@ -6,17 +6,17 @@ Standalone, read-only Lightroom Accessibility investigation. It does not link Ca
 
 Double-click the staged `build/AXExplorer/Explore.command` (opens Terminal), or run `build/AXExplorer/AXExplorer` from Terminal. Type `permission` if access has not been granted, follow System Settings, then `refresh`. macOS may attribute permission to Terminal or the executable. Do not remove existing CameraReference permissions. If access remains unavailable, restart the explorer. No automatic permission prompt on startup.
 
-## Delayed reading (1.0.2)
+## Delayed toolbar reading
 
 Use `toolbar-after 10` to give yourself ten seconds to switch to Lightroom. Leave View closed and Lightroom active. The explorer does not activate any application: it waits, verifies Lightroom is frontmost, then reads. If Lightroom is not active it skips the read and reports unknown. Immediate and delayed readings report focus before and after; missing menus also mean unknown. Delay can be 1–60 seconds, default ten; `toolbar-after 10 MENU-TITLE` supports localized menu titles. Ctrl-C exits the explorer if you need to cancel the wait.
 
 For the comparison: `refresh`, `note Develop toolbar shown`, `toolbar-after 10`; switch to Lightroom before the delay ends. Wait a few seconds beyond the delay before returning to Terminal. Repeat with `note Develop toolbar hidden` and `toolbar-after 10`, returning to Lightroom and pressing T before the reading. Save both with `save develop-toolbar-menu-delayed-pair`. Ensure Lightroom's normal menu headings have recovered first; if they are still missing, the result is inconclusive. No need to open View to prime it.
 
-## Toolbar menu state (1.0.1)
+## Toolbar evidence and immediate inspection
 
-Quit the previous explorer and reopen the staged Explore.command. After `refresh`, run `toolbar` with Lightroom's toolbar shown. It reads the View menu without opening it or selecting anything. Return to Lightroom, press T, return to the explorer and run `toolbar` again. Do not open View between readings. Use `note toolbar shown` / `note toolbar hidden` to label each reading, then `save develop-toolbar-menu-pair` (or Library).
+Prefer the delayed comparison above so Lightroom remains frontmost during the read. `toolbar` is an immediate diagnostic command; a focus/menu failure is unknown, not a hidden toolbar. Neither command opens View or selects an item.
 
-The command reports candidate title, shortcut/modifiers, checkmark, enabled state, identifier, errors and traversal limits. Hide Toolbar suggests visible; Show Toolbar suggests hidden. Enabled state alone does not indicate visibility; absent/multiple candidates and unfamiliar titles remain inconclusive. Titles are an experimental signal until freshness is verified. Run in both Library and Develop.
+The command reports candidate title, shortcut/modifiers, checkmark, enabled state, identifier, errors and traversal limits. Hide Toolbar suggests visible; Show Toolbar suggests hidden. Enabled state alone does not indicate visibility; absent/multiple candidates and unfamiliar titles remain inconclusive. Shown/hidden title pairs were verified in the sampled Library and Develop sessions; freshness, localization and other versions remain limitations. See [consolidated findings](../../docs/AX-ASSISTANCE.md).
 
 Default menu title is English `View`; `toolbar MENU-TITLE` selects a localized menu. A localized toolbar item can be found by its unmodified T shortcut, but its title is not automatically translated. Generic tree scans still omit titles. This command reads menu titles only (not photo names or control values), and logs only candidates or top-level menu names if View cannot be found.
 
@@ -38,6 +38,6 @@ IDs and recorded routes describe this session only. Do not use child indices as 
 
 ## Build and validation
 
-From the candidate worktree: `bash scripts/build-ax-explorer.sh`. It builds/stages only this tool under ignored build/release folders; no main app build, installation or launch. `build/AXExplorer/AXExplorer --self-test` checks argument validation and safe filenames without live AX calls. Native permission/traversal acceptance is performed by the user.
+From the development worktree: `bash scripts/build-ax-explorer.sh`. It builds/stages only this tool under ignored build/AXExplorer only (never release/); no main app build, installation or launch. `build/AXExplorer/AXExplorer --self-test` checks argument validation and safe filenames without live AX calls. Native permission/traversal acceptance is performed by the user.
 
-Report location is derived from the executable location, not the shell working directory. The build/AXExplorer location resolves to the worktree. A copy outside those folders saves in ax-reports beside that executable. Existing reports were moved out of Application Support; reopen Explorer 1.0.4 before saving more reports. The main app’s Diagnostics/latest.txt remains runtime state in Application Support.
+Report location is derived from the executable location, not the shell working directory. The build/AXExplorer location resolves to the worktree. A copy outside those folders saves in ax-reports beside that executable. Original probes are retained in investigations/ax-reports; their findings and uncertain cases are indexed in docs/AX-ASSISTANCE.md. Keep raw evidence out of Git. The main app’s Diagnostics/latest.txt remains runtime state in Application Support.

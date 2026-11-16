@@ -1,5 +1,7 @@
 # Validation evidence
 
+Dated build/test records and original user annotations follow. A historical “pending” or “current” statement belongs to that entry, not necessarily today. For current outstanding checks see [TESTING.md](../TESTING.md); for the implemented behaviour see [METHODS.md](METHODS.md).
+
 ## 1.0.4 candidate
 
 Full automated suite passed, including new-dialog fallback versus known panes/untitled redraws, thumbnail versus ordinary/off-screen host geometry, and calibration text for all five layouts and both modes. App compiled and staged; signature/plist checks passed. Native AX/window-list semantics, Email Photo/View Options, minimise animation and restoration remain pending. No app launch, plugin change or new permission request was performed.

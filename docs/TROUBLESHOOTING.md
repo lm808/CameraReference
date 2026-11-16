@@ -1,15 +1,16 @@
 # Troubleshooting and uninstalling
 
-- **Bridge timeout:** confirm the enabled plugin points to its permanent installed location. Restart the bridge from Lightroom’s Plug-in Extras and check the heartbeat in Developer tools → Bridge diagnostics.
-- **No camera JPEG:** check source preference and standalone filename pairing. Embedded extraction supports CR3 and needs ExifTool; choose its executable in Settings if necessary.
-- **Wrong area:** use Lightroom Fit and matching Full/split selection. Clear region while keeping auto enabled. The current verified setup uses `sideSearchPercent = 30`; wider ranges may select unintended edges. If Full is wrong, split will inherit its wrong outer bounds. Use manual calibration when uncertain.
-- **Capture unavailable:** grant the requested Screen Recording permission. New automatic capture needs the Lightroom window wholly on one display. Existing placement/manual calibration may still follow partial off-screen movement.
-- **Unexpected disappearance:** copy Bridge diagnostics before another invocation. It includes background rejection reasons. Resize, changed panels, selection or heartbeat uncertainty must retain the visible reference; only explicit dismissal or confirmed host closure releases it. Background checks should pause during overview transitions.
-- **Overview restoration:** return to the same Lightroom window in Develop without resizing it. This alpha uses native transient behaviour plus a public window-list heuristic for Dock overview surfaces; native macOS versions/setups still require testing. A false suspension is a bug to report.
-- **Config edits:** edit `config.conf`, not the retained `detection.conf` backup. Unknown/duplicate settings are errors. Interval 0 disables periodic image checks, not the lightweight window geometry tracker.
-- **Privacy icon stale:** quit the app/System Settings, reopen the installed app and then System Settings. Do not reset permissions as a routine troubleshooting step.
+- **Bridge timeout:** confirm the enabled plugin points to its permanent installed location and bridge 0.5.3 is running. Restart through Lightroom’s Plug-in Extras; check the heartbeat in Developer tools → Diagnostics….
+- **No camera JPEG:** check source preference and paired filenames. CR3/ARW extraction needs ExifTool; choose its executable in Settings. Sony embedded previews may be smaller than the RAW.
+- **Wrong area:** first check automatic versus manual placement and Detection method. Use Lightroom Fit. Clear overlay region setting preserves the mode; in automatic mode it forces fresh placement. Screenshot without AX view inference uses your menu layout. Manual calibration is a fallback. Current fresh side-search default is 40; do not overwrite a working personal setting blindly.
+- **Capture unavailable:** Screen Recording is optional and never requested. Grant it yourself for screenshot features if wanted. Manual calibration still works without snapping, and Accessibility automatic placement does not need it. Screenshot features require macOS 14.
+- **Off-screen failure:** if detection keeps failing with Lightroom partly off-screen, try restarting Lightroom Classic. Intermittent capture padding/scale errors remain unresolved. Capture / bridge actions → Preview captured Lightroom window… shows raw pixels even when placement rejects them; a plausible preview alone does not validate geometry.
+- **Unexpected dismissal or unchanged image:** in automatic Accessibility mode, Update overlay with LrC view determines update versus dismissal on photo/view/pane/panel changes. Screenshot/manual modes retain the earlier photo; explicit screenshot view/pane selection dismisses. Confirmed module changes dismiss. Positive Library Grid evidence also dismisses in AX mode, but native mark reliability remains under test. Uncertainty alone should retain the current overlay.
+- **Overview restoration:** return to the same Lightroom host. Suspension retains content for restoration; brief minimise linger is accepted. Report false suspension, failed restoration or detached overlays with diagnostics.
+- **Config edits:** use Advanced settings or its Open config file button. config.conf is authoritative; unknown/duplicate settings are errors. Interval 0 disables periodic screenshot checks, not host tracking or AX view polling.
+- **Permissions identity:** stable and purple testing apps have different identities but share settings/bridge. Run only one. Ad-hoc-signed updates can require renewed approval; do not reset system permissions routinely.
 
-Report app/bridge versions, macOS/Lightroom versions, mode/pane, whether Full works, and Bridge diagnostics. If comfortable, include an overlay-free screenshot without changing window/panels after failure. See PRIVACY.md before sharing.
+Enable **Developer tools → Save diagnostics after invocation** to write `~/Library/Application Support/CameraReference/Diagnostics/latest.txt`, or use **Diagnostics… → Copy all**. Include mode/pane, app/bridge and macOS/Lightroom versions, and what changed. If sharing a screenshot, keep the window/panels unchanged after failure and review private content first. See [privacy](../PRIVACY.md).
 
 ## Uninstall
 
@@ -24,4 +25,4 @@ None of these steps should delete photographs or exported JPEGs. Keep config/pre
 
 ## Folder consolidation upgrade
 
-Missing heartbeat after upgrade usually means Lightroom still runs an older bridge. Disable old copies and install/reload 0.5.2. App and bridge now use CameraReference/Bridge. A live old heartbeat defers consolidation; stop the old bridge. The app merges the spaced folder once inactive, preserves conflicting files with a .migrated suffix, and removes the empty old folder. If moving a loaded plugin, re-add its canonical path in Plug-in Manager.
+Missing heartbeat after upgrade usually means Lightroom still runs an older bridge. Disable old copies and install/reload 0.5.3. App and bridge now use CameraReference/Bridge. A live old heartbeat defers consolidation; stop the old bridge. The app merges the spaced folder once inactive, preserves conflicting files with a .migrated suffix, and removes the empty old folder. If moving a loaded plugin, re-add its canonical path in Plug-in Manager.

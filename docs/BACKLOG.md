@@ -1,59 +1,33 @@
 # Outstanding work
 
-## 1.0 alpha acceptance
+Current state: 1.0.32 on main. Daily use is accepted by the user; this does not imply every deferred native test has passed. [TESTING.md](../TESTING.md) holds the actionable checklist; [research findings](AX-ASSISTANCE.md) and [validation](VALIDATION.md) retain evidence.
 
-- Use sectioned diagnostics to identify missing Accessibility permission/window binding/notification support; verify minimise/restore timing. Retain accepted Mission Control/App Exposé/Space behaviour.
-- Compare on-screen baseline and off-screen window-only pixels (1.0.8). 1.0.9 re-enables placement/snapping with no source crop after the user’s matching-preview result; verify actual alignment. Retain off-screen following and other-app covering.
-- Check DMG installation and advanced config migration without losing personal settings.
-- Retain Full and all split-pane portrait/landscape placement; user accepted 0.9.15 with sideSearchPercent = 30.
+## Screenshot backup modes
 
-## Before broader distribution
+- Validate all combinations of AX-assisted placement and AX view detection, preserving the original pure screenshot path.
+- Determine the cause of pure screenshot Library split failures associated with Embedded Preview text, and Develop side-by-side with the right panel hidden. Fix only after establishing the failed stage and separate authorisation.
+- Validate assisted raw-header rejection, bottom-label tolerance and midpoint fallback within validated outer bounds; these do not fix malformed capture surfaces.
+- Measure contribution, elapsed cost and sustained overhead of retained background pixel checks before reducing or removing them.
 
-- Choose a licence (author explicitly deferred this decision).
-- Decide on Developer ID signing/notarisation and a stable publisher identity.
-- Test supported macOS/Lightroom versions and both processor architectures; current packages are native architecture only.
-- Add release automation/CI when the supported build environment is agreed.
-- Measure sustained background-check CPU/power cost; current detector benchmarks exclude some capture overhead.
+## Continued native use and edge cases
 
-## Possible later work
+- Confirm direct View → Grid selection marks are available and reliable; nested Loupe Overlay → Grid must not match.
+- Exercise AX photo/view/pane/panel updates and dismiss policy through rapid selection, module changes, failed loads and explicit dismissal.
+- Validate toolbarUnknownFallback modes, hidden-panel combinations, both split orientations/panes, display scales and multi-display configurations. Minimum-size AX placement passed in 1.0.28; broader coverage remains.
+- Collect intermittent off-screen padded/oversized capture evidence via diagnostics and raw previews. Restarting Lightroom has helped; cause and general fix remain unknown.
+- Retain working movement/other-app covering and minimise/overview/Space restoration. Brief minimise linger is accepted; no early-command interception is planned.
+- Check Lightroom/macOS version and language sensitivity of AX label/menu assumptions and geometry defaults.
 
-- Improve automatic placement across more panel widths without personal side-search tuning.
-- Investigate reliable main-view identification only if Lightroom exposes evidence; current SDK diagnostics do not identify it.
-- Broader RAW support beyond CR3/ARW, additional Sony camera samples and cropped RAW/JPEG aspect handling.
+## Maintenance and distribution
 
-Completed functionality belongs in README; implementation rationale in METHODS; historical evidence in VALIDATION and Git history. Pinch gestures were deliberately removed; Cmd-scroll is supported.
+- Reduce AppDelegate coordination complexity incrementally; centralise policy and add event-sequence tests before structural changes. See ARCHITECTURE.md.
+- Verify installation/upgrades without losing explicit config, calibration or settings. Test DMG only when packaging is requested.
+- Decide licensing (author deferred), Developer ID signing/notarisation and publisher identity.
+- Validate both architectures and supported macOS/Lightroom versions; builds currently target the native architecture. Add CI/release automation when the environment is agreed.
 
-- Library Loupe/module transitions passed in 1.0.11; per-module layout memory and on-screen placement passed in 1.0.12. Off-screen capture remains blocked: 1.0.13 exposed inconsistent content geometry and later successes; 1.0.14 enables raw previews during failure. Collect native intermittent cases before changing mapping again. Consider retaining the last failed frame/diagnostics separately from later successes. Main accepted at 1.0.14 for continued use. Brief minimise lingering is accepted; no further early-command monitoring planned.
-- Later: investigate AX panel-derived viewport bounds and explicit 50/50 split fallback; preserve capture detection until accepted.
+## Possible later features
 
+- Additional RAW formats/Sony samples and cropped RAW/JPEG aspect handling.
+- Better screenshot placement across unusual panel widths without personal side-search tuning.
 
-### AX diagnostic candidate 1.0.16
-
-- Native validation of independent green/purple outlines and their lifecycle is pending.
-- Determine exact toolbar/backdrop edges; current panel-edge estimate is deliberately raw.
-- Validate label heuristics across Library, display scales, session changes and hidden panels.
-- AX placement is opt-in; retain screenshot detection and layout selection while native validation proceeds.
-
-
-### AX investigation follow-up (1.0.19)
-- Trial automatic view classification and per-orientation pane choices in native Lightroom; keep the capture backend intact.
-- Compare fresh child/parent AX reports with toolbar shown/hidden, then after resizing. Establish whether a real toolbar container replaces the provisional offsets.
-- Validate geometry hints across modules/scales/hidden panels. V2 defaults are calibrated against the fixed-size baseline; validate at other sizes.
-- AX backend switch is experimental in 1.0.24; native acceptance is pending.
-
-- Maintain [AX assistance investigation log](AX-ASSISTANCE.md): potential search-band hints, candidate disambiguation, toolbar/hidden-panel evidence, split guidance and cache cross-checks. Trial suggestions diagnostically before changing the established detector.
-
-- 1.0.21 implements live AX menu inference and automatic complete diagnostic collection. Native acceptance and stable toolbar-boundary evidence remain pending.
-
-## Retained follow-up after 1.0.27
-
-- Small-window AX width-filter fix is implemented in 1.0.28; native confirmation remains in TESTING.md.
-- Screenshot detection fails in Develop side-by-side with right panel hidden; regression status unknown.
-- Broader AX edge-case validation remains deferred to normal use (TESTING.md).
-- AX-assisted screenshot placement is implemented as a separate candidate path; retain the old detector path and measure the unique contribution/cost of periodic screenshot checks before considering their removal. See AX-ASSISTANCE.md.
-
-## Screenshot follow-up from 1.0.29 testing
-
-- Pure screenshot Library split detection can fail with Embedded Preview text; changing to a photo without it succeeded. Confirm the exact failed stage before a separately authorised fix. Preserve the pure detector in 1.0.30.
-- Validate assisted-only header rejection, two bottom-label tolerance and validated-area midpoint fallback in native Lightroom. No claim that these fix oversized off-screen captures.
-- Intermittent padded/oversized off-screen capture remains unresolved; restarting Lightroom has cleared it. Retain raw preview and diagnostic evidence.
+AX placement, view inference, configurable corrections and assisted search are already implemented; they are not future feature proposals. Pinch was deliberately removed in favour of Command-scroll. Historical development tasks belong in HISTORICAL-NOTES.md, not here.

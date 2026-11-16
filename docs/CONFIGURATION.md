@@ -7,7 +7,11 @@ The app uses macOS `UserDefaults` under `org.local.CameraReference`, normally st
 - Overlay/floating shortcuts, key labels and modifiers.
 - JPEG source preference and custom ExifTool path.
 - Selected layout/pane and auto/manual preference for each layout/pane.
+- Detection method, independent screenshot AX options, and Update overlay with LrC view (Accessibility only, default on).
+- Diagnostic saving and AX preview preferences.
 - Internal saved calibration geometry, display/window association and migration metadata.
+
+Stable and testing identities share this preference domain and the support folder. Run only one at a time.
 
 Each setting has one authoritative storage location. Calibration remains internal app state; it is not duplicated in the advanced file.
 
@@ -15,7 +19,7 @@ Each setting has one authoritative storage location. Calibration remains interna
 
 `~/Library/Application Support/CameraReference/config.conf`
 
-Settings → Advanced settings… → Open config file opens this plain-text file. Parsed settings stay in memory; metadata checks detect edits. Valid changes apply on the next invocation/check as appropriate, without changing an already drawn photo midway. Invalid edits retain the last valid settings and are reported on explicit use. Background checks do not show configuration alerts.
+Settings → Advanced settings… → Open config file opens this plain-text file. Parsed settings stay in memory; metadata checks detect edits. Valid changes apply on the next invocation/check as appropriate; automatic Accessibility updates may apply changed geometry when recalculation is required. Invalid edits retain the last valid settings and are reported on explicit use. Background checks do not show configuration alerts.
 
 | Setting | Default | Allowed values / purpose |
 |---|---|---|
@@ -42,7 +46,9 @@ All app-owned Application Support files now live under `~/Library/Application Su
 - `config.conf`: advanced settings.
 - `Plugins/`: installed Lightroom bridge.
 - `Bridge/`: transient request/response, heartbeat and selection-revision files.
-Bridge 0.5.2 and this app share CameraReference/Bridge. Stop/disable old bridge copies before moving their installed folder and reload the new plugin. Existing settings are copied first if the canonical files are absent, so defaults cannot replace them while waiting for old writers. A legacy heartbeat newer than ten seconds defers the remainder; the app retries every five seconds and reports progress in diagnostics.
+- `Diagnostics/latest.txt`: optional automatically saved diagnostic report (text only).
+
+Bridge 0.5.3 and this app share CameraReference/Bridge. Stop/disable old bridge copies before moving their installed folder and reload the new plugin. Existing settings are copied first if the canonical files are absent, so defaults cannot replace them while waiting for old writers. A legacy heartbeat newer than ten seconds defers the remainder; the app retries every five seconds and reports progress in diagnostics.
 
 Once inactive, contents of the spaced Camera Reference folder are merged into CameraReference. Known stale IPC is discarded rather than replayed. Unknown files are preserved, identical files deduplicated, and the empty spaced folder removed. If differing files have the same destination, the canonical file wins and the old file is preserved beside it with a `.migrated-…` suffix for review. No legacy folder backup is created. Previously created backups are user data and are not silently deleted. Do not run older apps again: they may recreate the old folder.
 
@@ -51,7 +57,7 @@ GUI settings intentionally remain in the conventional macOS Preferences domain d
 JPEG bytes, decoded images, captured pixels and automatic placement caches are held in RAM. No disk image cache is created. An independent floating display owns its displayed image until closed/reloaded.
 
 
-## Experimental AX geometry (v2)
+## Geometry corrections
 
 Use ordinary name = value entries in config.conf. Missing geometry keys are appended with defaults; explicit values are preserved. Obsolete v1 settings and prefixed directives have been removed. Screenshot settings and their cache key are unaffected.
 
@@ -68,9 +74,9 @@ All signed offsets start at raw AX boundaries: **right/up positive; left/down ne
 | axBaseHiddenLeftInsetPoints / axBaseHiddenRightInsetPoints | 18 / 18 |
 | axBaseHiddenTopInsetPoints / axBaseHiddenBottomInsetPoints | 50 / 0 |
 
-Bottom correction is cumulative: filmstrip correction + toolbar height when shown/unknown + Library correction in Library split views only (zero in single view). The user-calibrated Library split-view allowance defaults to +25 pt; positive moves the bottom upwards. Unknown toolbar visibility uses toolbarUnknownFallback: shown (default), hidden, or lastKnown. Last-known state is held in RAM per Lightroom process and module; if none exists, assume shown. Diagnostics distinguish fresh readings from fallback. Filmstrip shown/toolbar hidden's -11 pt remains inferred. Correct the combined area, then split at its midpoint constrained between labels.
+Bottom correction is cumulative: filmstrip correction + toolbar height when effectively shown (including a shown fallback) + Library correction in Library split views only (zero in single view). The user-calibrated Library split-view allowance defaults to +25 pt; positive moves the bottom upwards. Unknown toolbar visibility uses toolbarUnknownFallback: shown (default), hidden, or lastKnown. Last-known state is held in RAM per Lightroom process and module; if none exists, assume shown. Diagnostics distinguish fresh readings from fallback. Filmstrip shown/toolbar hidden's -11 pt remains inferred. Correct the combined area, then split at its midpoint constrained between labels.
 
-These defaults ship in the parser and example for fresh installations. They apply to AX preview and experimental AX-only placement, never the screenshot detector. Geometry is read anew per AX invocation; no placement cache. JPEG RAM caching remains enabled.
+These defaults ship in the parser and example for fresh installations. They apply to AX preview and Accessibility placement, never the screenshot detector. Geometry is read anew per AX invocation; no placement cache. JPEG RAM caching remains enabled.
 
 ### Advanced settings editor
 

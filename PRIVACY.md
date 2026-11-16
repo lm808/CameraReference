@@ -2,7 +2,7 @@
 
 Camera Reference reads the Lightroom selection and a matching JPEG or embedded CR3/ARW JPEG. The bridge exchanges local request/response files; selection responses include the selected source path. Heartbeat and revision files track bridge/module/selection state.
 
-Automatic placement and snapping capture the selected Lightroom window in memory. Background checks do this periodically while eligible; interval 0 disables them. The app does not perform OCR or save screenshots. Explicit capture preview is in-memory only.
+Accessibility automatic placement reads AX geometry/menu state and public window-list metadata without capturing pixels. Screenshot placement and permission-available snapping capture the selected Lightroom window in memory. Screenshot background checks do this periodically while eligible; interval 0 disables them. Screen Recording is optional and never requested by the app. The app does not perform OCR or save screenshots. Explicit capture preview is in-memory only.
 
 Extracted JPEG bytes and decoded images may remain in RAM while the same photo is selected. A floating display retains its own reference until closed/reloaded. The app creates no disk image cache. **Save extracted JPEG** is an explicit user action that writes beside the RAW, with replacement confirmation. RAW files, catalogue and Develop settings are not modified.
 
@@ -12,4 +12,4 @@ There is no app telemetry, analytics or automatic network update mechanism. macO
 
 Migration preserves unknown files and differing conflicts beside their destination with a .migrated suffix. Old backups from previous versions may contain paths; review them before sharing. Known obsolete protocol files are discarded, not replayed.
 
-Optional minimise monitoring uses read-only Accessibility access, requested only by an explicit menu action. Diagnostics include window geometry, API status and a bounded event timeline; no window titles or photo pixels are logged. A retained capture baseline and latest preview are memory-only and released on close or quit.
+Accessibility placement, view/menu inspection and minimise monitoring use read-only Accessibility access. Feature-triggered permission requests are separate from Screen Recording. Diagnostics include geometry, bounded menu command evidence, API status and event timelines; they contain no photo pixels. Optional Save diagnostics after invocation writes a local text report including fresh AX evidence; it does not upload it. A retained capture baseline and latest preview are memory-only and released on close or quit.

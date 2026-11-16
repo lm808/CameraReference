@@ -1,109 +1,73 @@
-# Camera Reference — 1.0.11
+# Camera Reference
 
-Camera Reference is a macOS menu-bar companion for Lightroom Classic. It displays a camera JPEG over Lightroom’s working area, or in an independent floating window, so you can compare it with your RAW edit.
+A macOS menu-bar companion for Lightroom Classic. Display the camera JPEG over Lightroom’s working area, or in an independent floating window, to compare it with your RAW edit.
 
-It can read a matching standalone JPEG or extract the embedded JPEG from Canon CR3 or Sony ARW using ExifTool. It does not change the RAW file, Lightroom catalogue or Develop settings.
+Camera Reference reads a matching standalone JPEG or extracts an embedded JPEG from Canon CR3 or Sony ARW using ExifTool. It does not modify RAW files, the catalogue or Develop settings.
 
-ARW extraction checks `JpgFromRaw` and `PreviewImage`, choosing the largest valid JPEG by pixel dimensions. Available preview size depends on the camera/file; it may be much smaller than the RAW. The original CR3 extraction path is unchanged. Diagnostics identify the chosen tag. Export retains the existing `_JpgFromRaw.jpg` filename convention for either tag.
+## Install and start
 
-## Install
+The app requires macOS 13 or later; screenshot detection, capture previews and calibration snapping require macOS 14 or later. Embedded extraction/export requires ExifTool. The Lightroom bridge is version 0.5.3; development verification used Lightroom Classic 15.6. Other versions need verification.
 
-Download the disk image for your Mac’s architecture from the repository’s GitHub Releases, when available. Drag **CameraReference.app** to **Applications**, install the included Lightroom bridge, then enable it in Lightroom’s Plugin Manager.
+See [installation](docs/INSTALL.md) for the app and bridge, or [building from source](docs/SOURCE-BUILD.md) for manual installation and keeping a known-good version. Packaged downloads are available only when a release has been published. Current builds are ad-hoc signed, not notarised.
 
-See [installation and upgrades](docs/INSTALL.md) for the complete steps, dependencies and alpha signing limitations. The app requires macOS 13 or later; automatic detection, capture preview and calibration snapping require macOS 14 or later. The bridge has been developed/tested with Lightroom Classic 15.6; other releases need verification. ExifTool is required for CR3/ARW extraction and lossless embedded-JPEG export.
+1. Start the app and enable its bridge in Lightroom’s Plug-in Manager. If needed, choose **File → Plug-in Extras → Start / restart Camera Reference bridge**.
+2. Select a photo in Library Loupe or Develop, with Lightroom at **Fit**.
+3. Toggle **Show overlay** with **Control–Option–Command–J**.
+4. Toggle the floating display with **Control–Option–Command–F**. Change shortcuts in **Settings → Keyboard shortcuts…**.
 
-For candidate testing, run **release/CameraReference Testing.app** after `bash scripts/stage.sh --testing`. The purple Camera Reference Testing app has a separate permissions identity; stable retains its teal icon. Run only one copy at a time; settings and the bridge are shared. Ad-hoc signing can still require permission approval after testing updates. build/ is internal. This update requires bridge **0.5.3**. Stop old copies before consolidation; see the upgrade instructions.
+## Placement
 
-## Use
+**Settings → Auto-detect viewing area** enables automatic placement. Choose its method under **Detection method**:
 
-1. Start Camera Reference and the Lightroom bridge. In Lightroom, choose **File → Plug-in Extras → Start / restart Camera Reference bridge** if needed.
-2. Select a photo in **Library Loupe or Develop**, with Lightroom’s image zoom set to **Fit**.
-3. Use **Show overlay**, or **Control–Option–Command–J**, to toggle the camera reference.
-4. Use **Show floating display**, or **Control–Option–Command–F**, for an independent reference. Change either shortcut in **Settings → Keyboard shortcuts**.
+| Method | Behaviour |
+|---|---|
+| Accessibility (default for new settings) | Uses panel geometry, view labels and toolbar state, with configurable geometry corrections. Always infers the view; no automatic screenshots or capture fallback. |
+| Screenshot | Finds viewport boundaries in captured pixels. With both AX options off, uses your menu view selection and the original detector. |
+| Screenshot + AX view detection | Infers the view for the menu and screenshot detector. Placement still comes from pixels. |
+| Screenshot + AX-assisted placement | Uses raw AX structure to guide a separate pixel search. Can be combined with AX view detection; calibrated AX offsets are not applied. |
 
-The layout section appears only when **Auto-detect viewing area** is enabled. Accessibility always infers the view. Its **Update overlay with LrC view** option (default on, below Detection method) moves an open overlay when the photo selection, view, selected pane or surrounding panels change; turn it off to dismiss instead. Library Grid and module changes dismiss; an off overlay stays off. Screenshot mode instead shows **AX view detection** and **AX-assisted placement**. Screenshot view inference updates the menu only; background panel checks invalidate cached placement, leaving an open overlay alone. Explicit menu view/pane changes dismiss it. These choices do not change Lightroom’s view. Library and Develop remember their own layout and pane.
+Choose the desired pane for split views. These choices do not change Lightroom’s own view. Accessibility needs macOS Accessibility permission. Screenshot features need Screen Recording permission, which the app **does not request**: grant it yourself if wanted. Existing preferences are preserved when upgrading.
 
-If automatic placement is unavailable, choose **Set overlay region…** and select the entire photo backdrop between panels (or the chosen split pane), including its margins. Hold **Option** to snap to edges when Screen Recording permission is available. Successful calibration switches to manual mode; cancelling preserves your previous settings.
+For manual placement, choose **Set overlay region…** and drag around the entire desired photo backdrop, including its inset margins. Hold **Option** for edge snapping if Screen Recording permission is already available; otherwise free dragging still works. Accepting switches to manual mode. Cancelling changes nothing. **Clear overlay region setting** clears bounds without changing auto/manual mode. Calibration and layout state are kept separately for Library and Develop.
 
-**Clear overlay region setting** discards the current saved/cached region without changing auto/manual mode. The next invocation either detects again or asks for manual calibration.
+## What happens while an overlay is open
+
+In automatic Accessibility mode, **Update overlay with LrC view** defaults on:
+
+- View, selected pane and panel changes reposition the existing reference, preserving its photo and zoom.
+- Photo-selection changes load the new JPEG into the same overlay at Fit.
+- Turning the option off makes those changes dismiss instead. Toggling the option alone does not dismiss.
+- Failed updates retain the previous reference. An overlay that is off never opens automatically.
+
+Confirmed module changes dismiss in every mode. Accessibility mode also checks the direct **View → Grid** menu selection to dismiss/block overlays in Library Grid; selection-mark reliability still needs native confirmation. Missing menu evidence is treated as unknown.
+
+Screenshot backup modes keep their earlier behaviour: AX view inference updates the menu, panel checks invalidate cached placement for the next invocation, and explicit menu view/pane changes dismiss. Photo-selection changes do not refresh the displayed reference in screenshot or manual mode.
+
+The overlay follows Lightroom movement and can be covered by other apps. Overview, minimise and Space transitions temporarily suspend it; a brief linger during minimise is a known limitation. Intermittent off-screen capture failures remain under investigation.
 
 ## Floating display and navigation
 
 - **Command-scroll:** zoom around the pointer. **Two-finger scroll:** pan a zoomed image.
-- At Fit, drag the floating picture to move its window. When zoomed, drag the picture to pan; the title bar always moves the window.
-- Hover over the floating picture to reveal its title and controls.
-- Double-click to reload the selected photo and reset Fit. Right-click for Fit, 100%, Reload and embedded-JPEG export.
-- An open floating display keeps its own photo when Lightroom selection changes. Closing/reopening loads the current selection.
+- At Fit, drag the floating picture to move its window; when zoomed, drag to pan. The title bar always moves the window and appears when hovering over the picture.
+- Double-click to reload the selected photo at Fit. Right-click for Fit, 100%, Reload and embedded-JPEG export.
+- Floating displays keep their own photo until reload or reopening. Initial size approximates a photo fitted into half the full viewport width, using its full height.
 
-Initial floating size approximates a photo fitted into one side-by-side pane: half the Full working-area width and its full height. Both portrait and landscape use this rule.
+Zoomed overlays use the whole placement region; Fit preserves the photo alignment/inset. Pinch zoom and automatic synchronisation with Lightroom zoom/pan are not supported.
 
-Zoomed overlays can draw and pan across their whole region; Fit keeps the original photo alignment and inset.
+## Settings, speed and diagnostics
 
-## Placement and speed
+GUI preferences use macOS preferences. Advanced settings are edited through **Settings → Advanced settings…**, with an **Open config file** button for the underlying `~/Library/Application Support/CameraReference/config.conf`. See [configuration](docs/CONFIGURATION.md). Fresh defaults include `sideSearchPercent = 40` and all four bounds set to `ui`; upgrades preserve explicit values.
 
-The current selected photo’s JPEG bytes and decoded image are cached in RAM. Automatic UI bounds are reused for repeated toggles; window movement translates them, while resize, selection and relevant settings changes invalidate reuse. No disk image cache is created.
+The current selection’s JPEG is cached in RAM. Screenshot placement can reuse validated bounds; its background checks default to every **3 seconds** at reduced resolution. Accessibility reads fresh geometry instead and performs no automatic pixel checks. See [methods](docs/METHODS.md) for cache and polling details.
 
-The overlay floats while Lightroom is active, preventing Lightroom clicks from covering it. When another app becomes active, it drops to normal window level so other applications can cover it. It follows Lightroom movement. In this alpha, overview/Space/minimisation transitions suspend it rather than release its image; return to the host window permits restoration, even after resize or selection changes. Partial off-screen movement uses normal clipping. Placement uncertainty invalidates the cache for the next invocation without dismissing the visible overlay. Switching modules dismisses the overlay; invoke again in Library or Develop. Other modules are not supported. The floating display stays open. You can also dismiss the overlay manually. These behaviours still need native acceptance on your display setup.
+Use **Developer tools → Diagnostics…** for consolidated information. **Save diagnostics after invocation** automatically updates `~/Library/Application Support/CameraReference/Diagnostics/latest.txt`, including AX evidence. No screenshot is saved. Capture previews are under **Developer tools → Capture / bridge actions**; they show raw captures even if placement rejects their geometry. **Experimental features → Show AX placement preview** draws independent boundary outlines.
 
-AX view/panel updates retain the displayed JPEG and zoom. Photo-selection updates load the new JPEG into the same overlay and reset to Fit. A failed placement leaves the current overlay intact. Manual calibration takes precedence; Live update does not affect screenshot modes.
-
-Background checks detect internal panel changes while Lightroom is active. They default to every **3 seconds**, use a lower-resolution capture, and are cancelled for foreground requests. Set the interval to **0** to disable them; use Clear region after panel changes in that case.
-
-For minimise troubleshooting, **Developer tools → Bridge diagnostics…** provides six selectable sections with **Copy all**. Permission, window binding, notification events, placement and timing are separated. The redundant monitoring action is removed; if Accessibility access is missing, **Inspect Accessibility layout…** provides the existing permission flow. Movement prefers Lightroom’s logical Accessibility frame and holds resize/restoration geometry until stable. The overlay may briefly linger during minimise animation; this is an accepted limitation of the current cross-app monitoring.
-
-To compare capture alignment, use **Developer tools → Keep on-screen capture baseline…** with Lightroom fully on-screen. Keep that preview open, move Lightroom without resizing, then use **Preview captured Lightroom window…**. The two named previews retain pixels only in RAM; close them to release the images. Compare full window corners and panel edges. Diagnostics include both geometries and warn if the window/size changed.
-
-## Settings
-
-GUI preferences and calibration state remain in macOS-managed preferences. Advanced settings are in:
-
-`~/Library/Application Support/CameraReference/config.conf`
-
-Open it through **Settings → Advanced settings… → Open config file**. Existing `detection.conf` is copied automatically when no new file exists; existing values are preserved and the original remains as a backup. See [configuration](docs/CONFIGURATION.md) and the [example file](config/config.example.conf).
-
-`sideSearchPercent = 40` is the current preferred setting. New configs default to 40 and all four bounds set to `ui`. Existing explicit settings are preserved.
-
-## Limitations and help
-
-Placement assumes Lightroom Fit and a supported, clearly bounded viewport. Crop, lens/perspective corrections and RAW/JPEG aspect differences can prevent exact alignment. Split wipe views and automatic synchronisation with Lightroom’s zoom/pan are not supported. Off-screen capture now uses the complete window surface without setting sourceRect, matching the user-tested preview path. Fresh placement and Option-snapping are enabled again; actual off-screen placement still needs acceptance. The fully on-screen display-capture path is unchanged.
-
-See [troubleshooting and uninstalling](docs/TROUBLESHOOTING.md), [privacy](PRIVACY.md), [current acceptance tests](TESTING.md), and [release notes](RELEASE-NOTES.md). Report failures with app/bridge versions, layout/pane, diagnostics and a screenshot if you are comfortable sharing it.
+See [troubleshooting](docs/TROUBLESHOOTING.md), [privacy](PRIVACY.md), [remaining tests](TESTING.md) and [current release notes](RELEASE-NOTES.md). Fit alignment can differ after cropping, perspective/lens corrections or differing RAW/JPEG aspect ratios. ARW preview size varies by camera. Library split screenshot failures associated with status text remain unresolved; assisted fixes need further testing.
 
 ## Development
 
-See [source builds, manual installation and Git rollback workflow](docs/SOURCE-BUILD.md) to keep a known-good version while testing updates.
+[Architecture and source map](docs/ARCHITECTURE.md) describes ownership, mode routing and asynchronous guards. [Methods](docs/METHODS.md) explains current implementation; [research findings](docs/AX-ASSISTANCE.md) records evidence and limitations. [Validation](docs/VALIDATION.md) retains test evidence, [backlog](docs/BACKLOG.md) tracks remaining work, and [historical notes](docs/HISTORICAL-NOTES.md) preserves superseded investigations. [AGENTS.md](AGENTS.md) defines contributor constraints.
 
-Run `bash test.sh` for automated checks and `bash scripts/stage.sh` to build and update the app you test in **release/**. `build/` holds internal compiler/test output. Only when packaging is requested, run `bash scripts/package.sh`; it packages the staged payload without rebuilding it.
+Run `bash test.sh` for automated checks. `bash scripts/stage.sh` builds and refreshes the stable app in `release/`; use `--testing` in a separate candidate worktree for the purple testing app. Run only one copy at a time: settings and bridge are shared. `build/` is intermediate output. Packaging is explicit via `scripts/package.sh`; it does not rebuild. See the source-build guide before replacing a working app.
 
-Each delivered update increments patch (1.0.1 → 1.0.2). A requested packaged feature release increments minor and resets patch (1.1.0). Major revamps increment major and reset both smaller numbers only on the author's instruction (2.0.0).
-
-Builds require Apple command-line tools; Lua bridge tests use texlua. Packaging uses macOS hdiutil. Generated build/, release/ and dist/ contents are not tracked in Git.
-
-[AGENTS.md](AGENTS.md) maps the source and development rules. [Methods](docs/METHODS.md) records why the implementation works; [validation](docs/VALIDATION.md) separates measured evidence from native acceptance still pending. [Backlog](docs/BACKLOG.md) tracks future work; [changelog](CHANGELOG.md) records releases.
-
-Licensing is undecided for this alpha; no open-source licence has been selected yet.
-
-Library and Develop use separate saved calibration keys within the same GUI preferences file. Library starts in automatic placement mode; Develop settings are preserved. Use Library Loupe for single-photo alignment—Grid/Survey/Compare placement is not validated. AX-based viewport detection and a guessed 50/50 split remain deferred.
-
-Diagnostic capture previews show the raw image even when geometry checks would reject overlay placement. Use **Developer tools → Preview captured Lightroom window…** to inspect padding or displacement, then copy Bridge diagnostics. A preview captures afresh and stays in RAM; it is not proof that placement is valid.
-
-For Accessibility-to-screenshot mapping, run **Developer tools → Inspect Accessibility layout…**, then copy the **Accessibility & display map** section (or Copy all). It lists AX rectangles and display names/scales without reading titles or control values. Send an original full-display screenshot taken with Lightroom's geometry unchanged, and identify its D-number/name. Unavailable visibility properties are reported as unknown, not hidden.
-
-### Candidate AX diagnostics
-
-
-
-AX preview is under **Developer tools → Experimental features**. Detection choices are under **Settings**. Optional AX view detection in screenshot mode chooses the layout independently of placement assistance. AX preview and AX placement use the accepted configurable geometry offsets in `config.conf`. All entries use ordinary name = value syntax.
-
-For investigation, enable **Save diagnostics after invocation** to maintain one text report at `~/Library/Application Support/CameraReference/Diagnostics/latest.txt`. **Diagnostics → Refresh AX** refreshes window mapping and toolbar-menu evidence and refreshes this file when saving is enabled. Manual **Copy all** remains available. No screenshots are saved automatically.
-
-In the investigation build, automatic AX view detection polls while Lightroom is active. Saving diagnostics also gathers fresh window and toolbar-menu data after invocation; manual Refresh AX is optional.
-
-
-**Settings → Detection method** switches between Accessibility and Screenshot placement. AX-only is the default for new settings and always uses AX view detection. Existing placement preferences are preserved.
-
-Two independent options remain underneath: **AX view detection** and **AX-assisted placement**. They are disabled in Accessibility mode; the whole detection section is disabled when Auto-detect viewing area is off. With both off, the original screenshot detector uses your menu layout selection. Assisted placement uses raw AX panel edges to narrow pixel searches without calibrated AX offsets; inconclusive guidance falls back to the original outer search with a raw-panel header check. A missing divider permits a 50/50 split only after the outer area passes validation. **Show AX placement preview** remains independent. Manual calibration takes precedence over all placement methods.
-
-Screen Recording is optional and the app never requests it. Without permission, manual calibration works without snapping; capture previews/inspection explain that capture is unavailable, and background screenshot checks pause. To use screenshot features, grant permission yourself in macOS settings. AX-only placement needs Accessibility, but no automatic screenshots. Explicit capture previews and calibration snapping can still use existing Screen Recording permission in AX-only mode.
-
-Assisted diagnostics measure AX changes and retained screenshot checks. All periodic screenshot checks remain in this trial when permission is available. AX-only offsets are described in docs/CONFIGURATION.md.
+Licensing remains undecided. No open-source licence has been selected.
