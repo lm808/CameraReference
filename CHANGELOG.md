@@ -2,6 +2,8 @@
 
 ## 1.1.3 — migration stage 3 candidate
 
+- Build 60 presentation correction: restore the existing inline view/pane symbols alongside native menu images, and shorten automatically detected pane submenu labels to Left/Right or Top/Bottom. Manual screenshot choices retain full view names. No selection behaviour changes.
+
 - Build 59: consolidate view selection into one root item showing the selected view/pane and icon; submenus offer all five manual screenshot choices or the two automatically detected panes. Automatic Loupe has no submenu. Selection behaviour unchanged.
 
 - Extract settings interpretation and menu ownership, preserving existing actions, choices and update triggers.

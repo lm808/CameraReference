@@ -211,20 +211,20 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         app.updateLayoutMenu()
         let root=app.menus.layoutRoot!
         func visibleChoices()->[String] { root.submenu?.items.filter { !$0.isHidden }.map(\.title) ?? [] }
-        expect(root.title=="Reference View (Left)" && root.state == .off,"Root shows pane without checkmark")
+        expect(root.title=="◧  Reference View (Left)" && root.state == .off,"Root shows pane without checkmark")
         expect(root.image === app.layoutItems[.left]!.image,"Root uses selected pane icon")
-        expect(visibleChoices()==["Reference View (Left)","Reference View (Right)"],"Auto side-by-side offers two panes")
+        expect(visibleChoices()==["◧  Left","◨  Right"],"Auto side-by-side offers two panes")
         expect(app.layoutItems[.left]!.state == .on,"Detected pane checked in submenu")
         for mode in OverlayLayout.allCases {
             app.detectedLayout=mode;app.updateLayoutMenu()
             expect(root.state == .off && root.image === app.layoutItems[mode]!.image,"Each root icon follows selection without a tick")
-            if mode == .full { expect(root.title=="Loupe View" && root.submenu==nil && root.action==nil,"Automatic Loupe has no submenu/action") }
+            if mode == .full { expect(root.title=="▣  Loupe View" && root.submenu==nil && root.action==nil,"Automatic Loupe has no submenu/action") }
             else { expect(visibleChoices().count==2,"Automatic split has two choices") }
         }
         app.detectedLayoutModule="library";app.updateLayoutMenu()
         expect(root.title=="View detected on next invocation" && root.submenu==nil && root.image==nil,"Unknown view does not imply confirmed selection")
         prefs.set(true,forKey:"useScreenshotDetection");prefs.set(false,forKey:"experimentalAutomaticView")
-        let expectedTitles=["Loupe View","Reference View (Left)","Reference View (Right)","Reference View (Top)","Reference View (Bottom)"]
+        let expectedTitles=["▣  Loupe View","◧  Reference View (Left)","◨  Reference View (Right)","⬒  Reference View (Top)","⬓  Reference View (Bottom)"]
         for mode in OverlayLayout.allCases {
             app.overlayLayout=mode; prefs.set(true,forKey:app.regionKey("automaticBounds"));app.updateLayoutMenu()
             expect(visibleChoices()==expectedTitles && root.title==app.layoutItems[mode]!.title,"Manual screenshot selection always offers all five")

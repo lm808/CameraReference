@@ -8,3 +8,5 @@ Stage 2 diagnostics extraction remains included. Main’s accepted 1.0.32 app is
 
 
 Build 59 — view-menu presentation follow-up: one root item shows the current view/pane and icon without a checkmark. Automatic Loupe has no submenu; automatic split views offer their two panes. Screenshot mode without AX view detection offers all five choices. Selection actions and update/dismiss behaviour are unchanged.
+
+Build 60 presentation correction: restore the existing inline view/pane symbols alongside native menu images, and shorten automatically detected pane submenu labels to Left/Right or Top/Bottom. Manual screenshot choices retain full view names. No selection behaviour changes.

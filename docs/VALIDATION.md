@@ -827,3 +827,8 @@ Full test.sh passed core/Lua/detection/viewport/reset/preview/capture/split; con
 User completed stage 3 testing; exact annotations are preserved in migration/STAGE-3-ACCEPTANCE.md. The follow-up changes only SettingsMenu.swift production code: one root title/icon without checkmark, no submenu for automatically detected Loupe, two available panes for automatic split, all five choices for manual screenshot selection. Unknown inference retains waiting text; manual calibration still hides view controls. selectLayout, update/dismiss policy, polling, preferences and placement are unchanged.
 
 The migration harness passed all seven groups, including root icon/checkmark, submenu membership across all five selections, automatic-to-manual transitions, unknown-module evidence, hidden calibration controls and unchanged action targets. Request/cancellation/cache and report-equivalence checks also passed. Native menu acceptance is pending in the lean TESTING.md; no app launch or Lightroom interaction was performed. Version remains migration step 1.1.3; build 59 distinguishes this presentation revision.
+
+
+### Build 60 menu presentation correction
+
+User reported missing icons in build 59. Native menu images were still assigned, but the previous inline symbols had been removed; restore those existing symbols alongside the images without claiming a native rendering diagnosis. Automatically inferred split submenus now use Left/Right or Top/Bottom; manual screenshot choices retain full view names. Seven migration test groups passed, including menu labels/icon assignment, state and unchanged action targets. Native appearance remains for user verification. No selection, placement or update/dismiss code changed.

@@ -102,6 +102,24 @@ final class SettingsMenuController {
         add("Quit Camera Reference", #selector(AppDelegate.quit), to: menu)
         return menu
     }
+    private func layoutSymbol(_ mode:OverlayLayout)->String {
+        switch mode {
+        case .full: return "▣"
+        case .left: return "◧"
+        case .right: return "◨"
+        case .upper: return "⬒"
+        case .lower: return "⬓"
+        }
+    }
+    private func paneTitle(_ mode:OverlayLayout)->String {
+        switch mode {
+        case .full: return "Loupe View"
+        case .left: return "Left"
+        case .right: return "Right"
+        case .upper: return "Top"
+        case .lower: return "Bottom"
+        }
+    }
     private func layoutTitle(_ mode:OverlayLayout)->String {
         switch mode {
         case .full: return "Loupe View"
@@ -129,7 +147,7 @@ final class SettingsMenuController {
         let inferred=detectedLayoutModule == currentModule() ? detectedLayout:nil
         let mode=overlayLayout
         let unknown=automaticViewEnabled && inferred == nil
-        root.title=unknown ? "View detected on next invocation":layoutTitle(mode)
+        root.title=unknown ? "View detected on next invocation":layoutSymbol(mode)+"  "+layoutTitle(mode)
         root.image=unknown ? nil:layoutItems[mode]?.image
         let hasChoices = !unknown && (!automaticViewEnabled || mode != .full)
         if hasChoices {
@@ -139,6 +157,7 @@ final class SettingsMenuController {
         }
         root.isEnabled=hasChoices
         for (choice,item) in layoutItems {
+            item.title=layoutSymbol(choice)+"  "+(automaticViewEnabled ? paneTitle(choice):layoutTitle(choice))
             item.isHidden=automaticViewEnabled && (unknown || choice.group != mode.group)
             item.state=choice==mode ? .on:.off
         }
