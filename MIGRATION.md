@@ -47,7 +47,7 @@ Each stage can take several small commits. Dependency reason: tests first; repor
 
 - [ ] Collect matched native before/after timing samples using the baseline protocol before accepting migrated performance. No timing samples have been collected by this stage.
 
-Stage 2 is accepted for migration continuation. Stage 3 is implemented and automatically checked; native acceptance is pending. Stage 4 has not started. Existing unresolved edge cases remain in the findings/backlog.
+Stage 2 is accepted for migration continuation. Stage 3 user testing is complete; annotations are preserved in docs/migration/STAGE-3-ACCEPTANCE.md. The separately requested view-menu presentation follow-up (1.1.3 build 59) awaits native testing. Stage 4 has not started. Existing unresolved edge cases remain in the findings/backlog.
 
 ### Stage 2 ownership boundary
 
@@ -60,3 +60,7 @@ The formatter temporarily reads AppDelegate state synchronously. Replace that in
 AppSettings owns mode/default preference interpretation and startup registration/migration against the existing CameraPreferences.shared domain. SettingsMenuController owns menu construction, item references, titles, enablement/visibility and validation. AppDelegate remains the action target and menu delegate; forwarding accessors preserve existing update triggers. Contextual calibration keys, shortcut registration, selection/placement actions and their ordering remain with their current owners until later stages. No new preference schema, caching, polling or event delivery is introduced.
 
 The separately authorised AX fix requires strip candidates to align with both host horizontal edges (the same <4 pt edge tolerance used for side panels), preventing the inset info-overlay window from masquerading as a top panel when sides hide. Existing size/position filters and all offsets remain. Screenshot algorithms are unchanged.
+
+### Stage 3 presentation follow-up
+
+User authorised a single current-view root item with matching icon and no root checkmark. Automatic Loupe has no submenu; detected split views offer two panes; screenshot without AX view inference offers all five choices. Unknown inference retains the existing waiting text, and manual calibration still hides view controls. Only SettingsMenu.swift presentation changes; selectLayout, inference, placement and update/dismiss actions remain unchanged. Stage 4 has not started.

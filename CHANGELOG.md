@@ -2,6 +2,8 @@
 
 ## 1.1.3 — migration stage 3 candidate
 
+- Build 59: consolidate view selection into one root item showing the selected view/pane and icon; submenus offer all five manual screenshot choices or the two automatically detected panes. Automatic Loupe has no submenu. Selection behaviour unchanged.
+
 - Extract settings interpretation and menu ownership, preserving existing actions, choices and update triggers.
 - Fix AX placement mistaking the expanded info overlay for a top panel when both side panels are hidden; require panel alignment with both host edges. Screenshot algorithms and calibrated offsets unchanged.
 

@@ -15,7 +15,8 @@ final class SettingsMenuController {
     var detectionMethodItems=[NSMenuItem]()
     var liveUpdateItem:NSMenuItem?
     var layoutItems=[OverlayLayout:NSMenuItem]()
-    var layoutGroups=[Int:NSMenuItem]()
+    var layoutRoot:NSMenuItem?
+    let layoutChoices=NSMenu()
     var layoutSeparator:NSMenuItem?
     var floatingMenuItem:NSMenuItem!
     var toggleItem: NSMenuItem!
@@ -101,36 +102,46 @@ final class SettingsMenuController {
         add("Quit Camera Reference", #selector(AppDelegate.quit), to: menu)
         return menu
     }
+    private func layoutTitle(_ mode:OverlayLayout)->String {
+        switch mode {
+        case .full: return "Loupe View"
+        case .left: return "Reference View (Left)"
+        case .right: return "Reference View (Right)"
+        case .upper: return "Reference View (Top)"
+        case .lower: return "Reference View (Bottom)"
+        }
+    }
     func buildLayoutMenu(_ menu:NSMenu) {
         layoutSeparator=NSMenuItem.separator();menu.addItem(layoutSeparator!)
-        let full=add("▣  Loupe View",#selector(AppDelegate.selectLayout(_:)),to:menu)
-        full.representedObject=OverlayLayout.full.rawValue;full.image=layoutMenuIcon(.full);layoutItems[.full]=full
-        for (title,modes) in [("◧  Reference View (Left/Right)",[OverlayLayout.left,.right]),("⬒  Reference View (Top/Bottom)",[OverlayLayout.upper,.lower])] {
-            let parent=NSMenuItem(title:title,action:nil,keyEquivalent:"")
-            parent.image=layoutMenuIcon(modes[0]);let child=NSMenu(title:title);parent.submenu=child;menu.addItem(parent)
-            layoutGroups[modes[0].group]=parent
-            for mode in modes {
-                let item=add((mode == .left ? "◧":mode == .right ? "◨":mode == .upper ? "⬒":"⬓")+"  "+mode.label,#selector(AppDelegate.selectLayout(_:)),to:child)
-                item.representedObject=mode.rawValue;item.image=layoutMenuIcon(mode);layoutItems[mode]=item
-            }
+        let root=NSMenuItem(title:"",action:nil,keyEquivalent:"")
+        menu.addItem(root);layoutRoot=root
+        for mode in OverlayLayout.allCases {
+            let item=add(layoutTitle(mode),#selector(AppDelegate.selectLayout(_:)),to:layoutChoices)
+            item.representedObject=mode.rawValue;item.image=layoutMenuIcon(mode);layoutItems[mode]=item
         }
         updateLayoutMenu()
     }
     func updateLayoutMenu() {
         let hidden = !CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
         layoutSeparator?.isHidden=hidden
-        layoutItems[.full]?.isHidden=hidden
-        for item in layoutGroups.values { item.isHidden=hidden }
+        guard let root=layoutRoot else { return }
+        root.isHidden=hidden;root.state = .off
         let inferred=detectedLayoutModule == currentModule() ? detectedLayout:nil
-        layoutItems[.full]?.action = automaticViewEnabled ? nil:#selector(AppDelegate.selectLayout(_:))
-        if automaticViewEnabled && !hidden {
-            layoutItems[.full]?.title = inferred == nil ? "View detected on next invocation":"▣  Loupe View"
-            layoutItems[.full]?.isEnabled=false
-            layoutItems[.full]?.isHidden = inferred != nil && overlayLayout.group != 0
-            for (group,item) in layoutGroups { item.isHidden = inferred == nil || group != overlayLayout.group }
-        } else { layoutItems[.full]?.title="▣  Loupe View";layoutItems[.full]?.isEnabled=true }
-        for (mode,item) in layoutItems { item.state=mode==overlayLayout ? .on:.off }
-        for (group,item) in layoutGroups { item.state=group==overlayLayout.group ? .on:.off }
+        let mode=overlayLayout
+        let unknown=automaticViewEnabled && inferred == nil
+        root.title=unknown ? "View detected on next invocation":layoutTitle(mode)
+        root.image=unknown ? nil:layoutItems[mode]?.image
+        let hasChoices = !unknown && (!automaticViewEnabled || mode != .full)
+        if hasChoices {
+            if root.submenu !== layoutChoices { root.submenu=layoutChoices }
+        } else {
+            root.submenu=nil;root.action=nil;root.target=nil
+        }
+        root.isEnabled=hasChoices
+        for (choice,item) in layoutItems {
+            item.isHidden=automaticViewEnabled && (unknown || choice.group != mode.group)
+            item.state=choice==mode ? .on:.off
+        }
     }
     func updateDetectionMenu() {
         let automatic=CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
@@ -218,10 +229,6 @@ extension AppDelegate {
     var layoutItems:[OverlayLayout:NSMenuItem] {
         get { menus.layoutItems }
         set { menus.layoutItems=newValue }
-    }
-    var layoutGroups:[Int:NSMenuItem] {
-        get { menus.layoutGroups }
-        set { menus.layoutGroups=newValue }
     }
     var layoutSeparator:NSMenuItem? {
         get { menus.layoutSeparator }
