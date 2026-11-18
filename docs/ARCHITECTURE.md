@@ -1,11 +1,12 @@
 # Architecture and source map
 
-Current candidate implementation: 1.1.3 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
+Current candidate implementation: 1.1.4 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
 
 ## Source ownership
 
 | File under Sources/ | Owns / connects to |
 |---|---|
+| OverlayBehaviour.swift | Pure per-event decisions for geometry/photo changes, host movement/suspension, modules, Grid evidence and explicit selection. Original guards and action execution remain at callers. |
 | AppSettings.swift | Existing preference-domain access for mode interpretation and startup defaults/legacy registration; no second store. |
 | SettingsMenu.swift | Menu construction, references, refresh and validation; one current-view root with manual five-choice or inferred two-pane submenu (automatic Loupe has none). AppDelegate adapters retain action targets and event triggers. |
 | Diagnostics.swift | DiagnosticsService owns report state/formatting/saving and diagnostic windows/previews. Transitional AppDelegate adapters retain existing collection/capture guards and scheduling; production AX observation and shared capture tasks remain outside the service. |

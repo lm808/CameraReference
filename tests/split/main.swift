@@ -132,3 +132,27 @@ for ax in [false,true] { for auto in [false,true] { for open in [false,true] { f
     } }
 } } } }
 print("PASS: photo-selection policy ignores uncertainty, unchanged selection, off/manual/screenshot overlays")
+
+
+// Qualifying observations remains with callers; pure policy must preserve unknowns.
+for previous in [nil,"library","develop","map"] as [String?] {
+    for current in [nil,"library","develop","map"] as [String?] {
+        let expected=previous != nil && current != nil && previous != current
+        assert(OverlayBehaviourPolicy.moduleChanged(previous:previous,current:current)==expected)
+    }
+}
+for evidence in [nil,false,true] as [Bool?] {
+    assert(OverlayBehaviourPolicy.isGridSelected(evidence)==(evidence == true))
+}
+for screenshot in [false,true] {
+    assert(OverlayBehaviourPolicy.dismissForExplicitSelection(screenshot:screenshot)==screenshot)
+}
+// Same observations have deliberately different consequences by event/mode.
+assert(OverlayBehaviourPolicy.geometryChange(accessibility:true,automatic:true,displayed:.full,selected:.left,panelsChanged:false,live:true) == .adjust)
+assert(OverlayBehaviourPolicy.geometryChange(accessibility:false,automatic:true,displayed:.full,selected:.left,panelsChanged:true,live:true) == .retain)
+assert(OverlayBehaviourPolicy.photoSelectionChange(accessibility:true,automatic:true,overlayOpen:false,previous:"A",current:"B",live:false) == .retain)
+let policyHost=CGRect(x:100,y:100,width:1000,height:700)
+assert(OverlayBehaviourPolicy.hostChange(saved:policyHost,current:nil,onScreen:false,overview:false) == .retain)
+assert(OverlayBehaviourPolicy.hostChange(saved:policyHost,current:nil,onScreen:false,overview:true) == .suspend)
+assert(OverlayBehaviourPolicy.hostChange(saved:policyHost,current:policyHost.offsetBy(dx:-500,dy:0),onScreen:true,overview:false) == .translate(CGPoint(x:-500,y:0)))
+print("PASS: pure policy module/Grid unknowns, explicit selection, absent overlay and off-screen translation")

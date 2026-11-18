@@ -19,13 +19,14 @@ The user runs only staged apps: stable `release/CameraReference.app` or candidat
 - `bash scripts/package.sh`: package the existing release/ payload as a DMG/checksum under ignored dist/. Uses hdiutil; may require sandbox approval. Does not install the app or publish anything. Existing DMG is not overwritten.
 - Verify signature/plist and `git diff --check` before committing. Run checks appropriate to the change; avoid repeating unchanged suites without reason.
 
-Use plain three-component versions in CFBundleShortVersionString (candidate `1.1.3`); the menu and package script read that value. Stable keeps org.local.CameraReference. User authorised testing identity org.local.CameraReference.testing with a purple icon; candidate builds use bash build.sh --testing or bash scripts/stage.sh --testing. Both use the existing org.local.CameraReference preference domain and shared support/bridge folder; run only one app at a time. Do not rebuild main’s accepted staged app while working on candidates.
+Use plain three-component versions in CFBundleShortVersionString (candidate `1.1.4`); the menu and package script read that value. Stable keeps org.local.CameraReference. User authorised testing identity org.local.CameraReference.testing with a purple icon; candidate builds use bash build.sh --testing or bash scripts/stage.sh --testing. Both use the existing org.local.CameraReference preference domain and shared support/bridge folder; run only one app at a time. Do not rebuild main’s accepted staged app while working on candidates.
 
 ## Source map and flow
 
 | Source | Responsibility / relationship |
 |---|---|
 | `Sources/main.swift` | Menu/app lifecycle, shortcuts, bridge request pipeline, dispatch to display/capture, calibration, cache ownership, background/geometry timers, suspension and window ordering |
+| `OverlayBehaviour.swift` | Pure behaviour decisions; no reads, timers or window mutations. Callers preserve evidence guards and action order |
 | `AppSettings.swift`, `SettingsMenu.swift` | Mode/default preference interpretation and menu ownership; AppDelegate retains actions and existing triggers |
 | `Diagnostics.swift` | Diagnostic state, formatting, saving and preview ownership; transitional AppDelegate adapters preserve collection/capture coordination |
 | `Core.swift` | Protocol/source primitives, cancellation, extraction helpers |

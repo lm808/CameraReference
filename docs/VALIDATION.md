@@ -832,3 +832,12 @@ The migration harness passed all seven groups, including root icon/checkmark, su
 ### Build 60 menu presentation correction
 
 User reported missing icons in build 59. Native menu images were still assigned, but the previous inline symbols had been removed; restore those existing symbols alongside the images without claiming a native rendering diagnosis. Automatically inferred split submenus now use Left/Right or Top/Bottom; manual screenshot choices retain full view names. Seven migration test groups passed, including menu labels/icon assignment, state and unchanged action targets. Native appearance remains for user verification. No selection, placement or update/dismiss code changed.
+
+
+## 1.1.4 — migration stage 4 candidate
+
+2026-11-18. Pure OverlayBehaviourPolicy consolidates geometry, selection, host visibility/movement, module and Grid decisions. Four extracted helper bodies compare equivalent to build 60 after whitespace normalization. AppDelegate call substitutions preserve short-circuit evaluation, guards, timer order and action execution. Compatibility helper entry points remain. Placement calculations and screenshot paths were not changed.
+
+The existing core/Lua/detection/viewport/reset/preview/capture/split suites passed, including new policy tests for unknown evidence, absent overlays and off-screen host translation. Config-editor encountered the known sandbox atomic-save error 512; the same executable passed outside the restriction. Seven migration harness groups passed separately, covering request/cache guards, report equivalence and menu state. Optional external crop fixtures were not supplied.
+
+The authorised Loupe appearance fix disables automatic validation only on the root menu, explicitly retains the disabled version heading and leaves child validation unchanged. Build/stage testing identity: 1.1.4, build 61, org.local.CameraReference.testing; strict deep signature and whitespace checks passed. No app launch or live Lightroom interaction. Main remains clean at a568c6e. Native appearance, behavioural acceptance and matched performance measurements remain pending in TESTING.md and MIGRATION.md.

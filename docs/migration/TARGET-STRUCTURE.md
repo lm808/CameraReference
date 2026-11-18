@@ -98,3 +98,8 @@ DiagnosticsService now exists in Sources/Diagnostics.swift. It owns stored repor
 ## Stage 3 implementation note
 
 AppSettings owns mode/default preference interpretation and original startup registration/migration using the same shared UserDefaults instance. SettingsMenuController owns menu references, construction and refresh/validation. It holds an unowned AppDelegate reference; menu actions/delegation and contextual current-module/layout decisions remain on AppDelegate through forwarding adapters. No timer, action order or preference schema changed. Later stages can replace these synchronous dependencies with the extracted coordinator/settings contexts locally. The separately authorised info-overlay strip fix is not part of the structural extraction.
+
+
+## Stage 4 implementation note
+
+OverlayBehaviourPolicy now owns existing pure decisions in OverlayBehaviour.swift. AppDelegate calls the policy at the same branch points; compatibility helpers remain for established tests/callers. Qualifying observations and applying effects remain in the existing coordinator. This deliberately does not consolidate request freshness, native visibility or asynchronous completion guards into an eagerly populated context: doing so could alter short-circuit reads and execution timing. Presentation/controller and monitor ownership remain later stages.

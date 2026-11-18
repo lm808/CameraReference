@@ -186,12 +186,8 @@ func hostWindowIsClosed(_ id:CGWindowID)->Bool {
     guard let rows=CGWindowListCopyWindowInfo(.optionAll,kCGNullWindowID) as? [[String:Any]],!rows.isEmpty else { return false }
     return !rows.contains { ($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value==id }
 }
-enum OverlayHostAction:Equatable { case retain,suspend,translate(CGPoint) }
 func overlayHostAction(saved:CGRect,current:CGRect?,onScreen:Bool,overview:Bool)->OverlayHostAction {
-    if overview { return .suspend }
-    guard let current else { return .retain }
-    if !onScreen { return .suspend }
-    return .translate(CGPoint(x:current.minX-saved.minX,y:current.minY-saved.minY))
+    OverlayBehaviourPolicy.hostChange(saved:saved,current:current,onScreen:onScreen,overview:overview)
 }
 
 // Keep the last accepted logical host geometry while a resize/restoration

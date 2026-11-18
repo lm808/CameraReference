@@ -209,6 +209,7 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         prefs.set(true,forKey:app.regionKey("automaticBounds"));prefs.set(false,forKey:"useScreenshotDetection")
         app.detectedLayoutModule="develop";app.detectedLayout = .left
         app.updateLayoutMenu()
+        expect(menu.items.first?.isEnabled == false,"Version heading remains disabled")
         let root=app.menus.layoutRoot!
         func visibleChoices()->[String] { root.submenu?.items.filter { !$0.isHidden }.map(\.title) ?? [] }
         expect(root.title=="◧  Reference View (Left)" && root.state == .off,"Root shows pane without checkmark")
@@ -218,7 +219,7 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         for mode in OverlayLayout.allCases {
             app.detectedLayout=mode;app.updateLayoutMenu()
             expect(root.state == .off && root.image === app.layoutItems[mode]!.image,"Each root icon follows selection without a tick")
-            if mode == .full { expect(root.title=="▣  Loupe View" && root.submenu==nil && root.action==nil,"Automatic Loupe has no submenu/action") }
+            if mode == .full { expect(root.title=="▣  Loupe View" && root.submenu==nil && root.action==nil && root.isEnabled && !menu.autoenablesItems,"Automatic Loupe is normal but has no submenu/action") }
             else { expect(visibleChoices().count==2,"Automatic split has two choices") }
         }
         app.detectedLayoutModule="library";app.updateLayoutMenu()

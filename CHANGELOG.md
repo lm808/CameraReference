@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.4 — migration stage 4 candidate
+
+- Consolidate existing overlay behaviour decisions in a pure policy, retaining caller guards, action order and mode distinctions. No intended overlay behaviour change.
+- Automatically detected Loupe View now appears normally without a submenu or action.
+
 ## 1.1.3 — migration stage 3 candidate
 
 - Build 60 presentation correction: restore the existing inline view/pane symbols alongside native menu images, and shorten automatically detected pane submenu labels to Left/Right or Top/Bottom. Manual screenshot choices retain full view names. No selection behaviour changes.

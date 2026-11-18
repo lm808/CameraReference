@@ -132,7 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             invalidateAutomaticGeometry() // Next invocation; keep the displayed image.
         }
         if let current,!NSScreen.screens.contains(where:{$0.frame.contains(current.frame)}) { cancelPanelCheck() }
-        switch overlayHostAction(saved:saved.frame,current:current?.frame,onScreen:current?.onScreen ?? false,overview:workspaceOverview) {
+        switch OverlayBehaviourPolicy.hostChange(saved:saved.frame,current:current?.frame,onScreen:current?.onScreen ?? false,overview:workspaceOverview) {
         case .retain:overlayVisibilityStatus="Overlay retained: host metadata temporarily unavailable."
         case .suspend:suspendOverlay(reason:workspaceOverview ? "Dock overview active":"host is off-screen or on another Space")
         case .translate(let delta):
@@ -365,7 +365,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard let raw=sender.representedObject as? String,let mode=OverlayLayout(rawValue:raw),mode != overlayLayout else { return }
         if automaticViewEnabled && (mode.group==0 || mode.group != overlayLayout.group) { return }
         cancelScreenInspection();cancelRequest();calibration?.finish(nil)
-        if screenshotDetectionEnabled { hide() }
+        if OverlayBehaviourPolicy.dismissForExplicitSelection(screenshot:screenshotDetectionEnabled) { hide() }
         if automaticViewEnabled {
             CameraPreferences.shared.set(mode.rawValue,forKey:"axPreferredPane.\(currentModule() ?? "develop").\(mode.group)")
             detectedLayout=mode
@@ -490,7 +490,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self.imageCache.observe(epoch)
             let module=self.currentModule()
             if let memory=self.placementMemory,memory.epoch != epoch || !supportedLightroomModule(module) { self.placementMemory=nil }
-            if confirmedModuleChange(previous:self.observedModule,current:module) {
+            if OverlayBehaviourPolicy.moduleChanged(previous:self.observedModule,current:module) {
                 self.hide();self.cancelRequest();self.cancelScreenInspection()
                 self.calibration?.finish(nil);self.calibrationTask?.cancel()
                 self.invalidateAutomaticGeometry()
@@ -660,7 +660,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
               let existing=panel,isLightroom(),supportedLightroomModule(currentModule()),
               displayedOverlayModule==currentModule(),let epoch else { return }
         guard let previous=overlayEpoch else { overlayEpoch=epoch;return }
-        let action=axSelectionChangeAction(accessibility:true,automatic:true,overlayOpen:true,previous:previous,current:epoch,live:axLiveUpdate)
+        let action=OverlayBehaviourPolicy.photoSelectionChange(accessibility:true,automatic:true,overlayOpen:true,previous:previous,current:epoch,live:axLiveUpdate)
         if action == .dismiss {
             cancelScreenInspection();hide();report("Photo selection changed; overlay dismissed.");return
         }
@@ -975,7 +975,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 guard self.automaticViewEnabled,self.liveViewGeneration==generation,module==self.currentModule(),
                       self.isLightroom(),self.pending == nil,self.viewProbeID == nil,self.screenInspectionID == nil,self.calibration == nil else { return }
                 if let grid { self.lastGridStatus=grid.report }
-                if grid?.selected == true {
+                if OverlayBehaviourPolicy.isGridSelected(grid?.selected) {
                     if self.panel != nil { self.dismissForGrid() }
                     return
                 }
@@ -1002,7 +1002,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard axPlacementEnabled,(!requiresViewDetection || automaticViewEnabled),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
               let module,module==displayedOverlayModule,(displayedOverlayLayout != mode || panelChange),
               let existing=panel else { return }
-        if axOverlayChangeAction(accessibility:true,automatic:true,displayed:displayedOverlayLayout,selected:mode,panelsChanged:panelChange,live:axLiveUpdate) == .dismiss {
+        if OverlayBehaviourPolicy.geometryChange(accessibility:true,automatic:true,displayed:displayedOverlayLayout,selected:mode,panelsChanged:panelChange,live:axLiveUpdate) == .dismiss {
             cancelScreenInspection();cancelRequest();hide()
             report("View, pane or panels changed; overlay dismissed.");return
         }
@@ -1061,7 +1061,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 self.viewProbeID=nil;self.updateToggleTitle()
                 self.lastAXMapping=mapping
                 if let grid { self.lastGridStatus=grid.report }
-                if module==self.currentModule(),grid?.selected == true { self.dismissForGrid();return }
+                if module==self.currentModule(),OverlayBehaviourPolicy.isGridSelected(grid?.selected) { self.dismissForGrid();return }
                 guard module==self.currentModule(),let proposal else {
                     self.lastViewDetection="AX view unavailable or module changed; no overlay requested. Disable automatic view detection to use the saved menu selection."
                     self.report(self.lastViewDetection);self.saveInvocationDiagnostics();return

@@ -39,3 +39,10 @@ The report formatter can move without changing its output, but automatic collect
 Native reports 2026-11-18 20:24:14 and 20:25:57 UTC used the same host (190,65,1058,808). With both sides hidden, the visible inset info window (208,157,1022,167) passed the old >90%-width strip rule, replacing the actual top-panel bottom y=167 with y=324. With right panel shown its width became 721 and failed that rule, producing correct placement. User also confirmed either/both side panels shown work. This is pre-existing in baseline AXTrial.swift, not introduced by diagnostics extraction. User authorised a narrow fix alongside stage 3: require both horizontal host edges within 4 pt. Commit 9ba1bdd includes all side-visibility combinations and top-hidden regression cases. No offset or screenshot change.
 
 Stage 3 menu extraction retains the coordinator as action target and delegate; AppKit's own submenu actions are not application commands and must be excluded from target-identity tests. Per-module/pane key logic remains contextual in the coordinator until placement/policy extraction, avoiding a second source of current-view state.
+
+
+## Stage 4 boundaries and risks
+
+The pure decisions can move mechanically: four method bodies match build 60 ignoring whitespace. Observation qualification must remain outside them for now. In particular, Grid evidence comes from a backend-qualified read with generation/module checks; do not introduce a differently timed second backend read while moving its positive-evidence branch. Host metadata uncertainty retains, overview/invisibility suspends, and movement is not restricted to full-display containment. No new product defect was established or fixed by this extraction.
+
+Known Loupe's actionless root row was automatically disabled by menu validation. Stage 4's separately requested presentation correction disables validation only at the root menu; its other commands previously always validated true, and child settings/pane menus retain their validation.

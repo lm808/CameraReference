@@ -44,7 +44,11 @@ final class SettingsMenuController {
     func regionKey(_ key:String)->String { owner.regionKey(key) }
     func build()->NSMenu {
         let menu = NSMenu(); menu.delegate=owner
-        menu.addItem(NSMenuItem(title: versionTitle, action: nil, keyEquivalent: ""))
+        // The root Loupe row is informational, enabled but deliberately actionless.
+        // Top-level commands always validated true; child menus retain validation.
+        menu.autoenablesItems=false
+        let versionItem=NSMenuItem(title: versionTitle, action: nil, keyEquivalent: "")
+        versionItem.isEnabled=false;menu.addItem(versionItem)
         menu.addItem(.separator())
         detail = NSMenuItem(title: "Ready — first test: Check selected photo", action: nil, keyEquivalent: "")
         floatingMenuItem = add("Show floating display", #selector(AppDelegate.openFloating), to: menu)
@@ -155,7 +159,7 @@ final class SettingsMenuController {
         } else {
             root.submenu=nil;root.action=nil;root.target=nil
         }
-        root.isEnabled=hasChoices
+        root.isEnabled = !unknown
         for (choice,item) in layoutItems {
             item.title=layoutSymbol(choice)+"  "+(automaticViewEnabled ? paneTitle(choice):layoutTitle(choice))
             item.isHidden=automaticViewEnabled && (unknown || choice.group != mode.group)

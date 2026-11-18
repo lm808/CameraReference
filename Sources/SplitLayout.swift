@@ -96,14 +96,10 @@ func savedOverlayLayout(_ defaults:UserDefaults,module:String?)->OverlayLayout {
     OverlayLayout(rawValue:defaults.string(forKey:overlayLayoutPreferenceKey(module:module)) ?? "full") ?? .full
 }
 
-// Screenshot backup modes never participate in AX live overlay policy.
-enum AXOverlayChangeAction { case retain, adjust, dismiss }
+// Compatibility entry points retained for existing geometry/helper callers.
 func axOverlayChangeAction(accessibility:Bool,automatic:Bool,displayed:OverlayLayout?,selected:OverlayLayout,panelsChanged:Bool,live:Bool)->AXOverlayChangeAction {
-    guard accessibility,automatic,let displayed,displayed != selected || panelsChanged else { return .retain }
-    return live ? .adjust:.dismiss
+    OverlayBehaviourPolicy.geometryChange(accessibility:accessibility,automatic:automatic,displayed:displayed,selected:selected,panelsChanged:panelsChanged,live:live)
 }
-
 func axSelectionChangeAction(accessibility:Bool,automatic:Bool,overlayOpen:Bool,previous:String?,current:String?,live:Bool)->AXOverlayChangeAction {
-    guard accessibility,automatic,overlayOpen,let previous,let current,previous != current else { return .retain }
-    return live ? .adjust:.dismiss
+    OverlayBehaviourPolicy.photoSelectionChange(accessibility:accessibility,automatic:automatic,overlayOpen:overlayOpen,previous:previous,current:current,live:live)
 }
