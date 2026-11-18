@@ -81,3 +81,7 @@ Do not commit build/release/dist artifacts, personal config, bridge runtime file
 ## Assisted screenshot path
 
 `Sources/AXAssisted.swift` contains raw structural hints, a separately maintained guided pixel search and placement-mode preference resolution. Do not modify ViewportDetector or the original split scanner to tune this experiment. The optional ScreenProbe hook must leave nil-hint behaviour unchanged. AX view inference remains separate from placement-method selection. Background screenshot checks are retained until measured evidence supports reducing them.
+
+## Structure migration worktree
+
+This branch follows MIGRATION.md and docs/migration/TARGET-STRUCTURE.md. Keep the checklist and docs/migration/FINDINGS.md current at each stage. Preserve current user-visible behaviour and timing; prioritise the default Accessibility workflow. Record issues and proposed fixes separately rather than fixing edge cases during extraction. Current architecture docs describe existing code; the target map is a proposal until stages actually move it. Stage 0 is documentation-only: no build, version change or release staging.
