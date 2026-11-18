@@ -26,7 +26,12 @@ func axTrialProposal(host:CGRect, windows:[AXTrialWindow], settings:DetectionCon
     }
     let leftPanel=sides.filter { abs($0.minX-host.minX)<4 }.map(\.maxX).max()
     let rightPanel=sides.filter { abs($0.maxX-host.maxX)<4 }.map(\.minX).min()
-    let strips=visible.filter { $0.width>host.width*0.9 && $0.height<host.height*0.25 }
+    // Real top/filmstrip panels span both host edges. The info overlay can
+    // exceed 90% width with hidden sides, but remains inset from those edges.
+    let strips=visible.filter {
+        $0.width>host.width*0.9 && $0.height<host.height*0.25 &&
+        abs($0.minX-host.minX)<4 && abs($0.maxX-host.maxX)<4
+    }
     let topPanel=strips.filter { $0.midY<host.minY+host.height*0.25 }.map(\.maxY).max()
     let bottomPanel=strips.filter { $0.midY>host.minY+host.height*0.75 }.map(\.minY).min()
     var left=leftPanel ?? host.minX+settings.axBaseHiddenLeftInsetPoints

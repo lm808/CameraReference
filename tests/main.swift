@@ -673,3 +673,25 @@ assert(axGridMenuSelection([("Loupe","✓")]) == nil)
 assert(axGridMenuSelection([("Grid","✓"),("Grid","")]) == nil)
 assert(axGridMenuSelection([("Grid View","•")]) == true)
 print("PASS: Grid requires unique explicit menu mark; missing, ambiguous and availability-only evidence remain unknown")
+
+
+// 2026-11-18 native report: info overlay expands when both side panels hide.
+// Test raw offsets so the assertion concerns panel classification, not calibration.
+let infoHost=CGRect(x:190,y:65,width:1058,height:808)
+let infoTop=AXTrialWindow(frame:CGRect(x:190,y:97,width:1058,height:70),visible:true)
+let infoBottom=AXTrialWindow(frame:CGRect(x:190,y:722,width:1058,height:151),visible:true)
+var infoConfig=DetectionConfig()
+infoConfig.axShownTopOffsetPoints=0
+for leftShown in [false,true] { for rightShown in [false,true] {
+    let infoWidth:CGFloat=1022-(leftShown ? 306:0)-(rightShown ? 301:0)
+    let info=AXTrialWindow(frame:CGRect(x:leftShown ? 514:208,y:157,width:infoWidth,height:167),visible:true)
+    let sideFrames=[AXTrialWindow(frame:CGRect(x:190,y:157,width:324,height:575),visible:leftShown),
+                    AXTrialWindow(frame:CGRect(x:913,y:157,width:335,height:575),visible:rightShown)]
+    let without=axTrialProposal(host:infoHost,windows:[infoTop,infoBottom]+sideFrames,settings:infoConfig)!
+    let withInfo=axTrialProposal(host:infoHost,windows:[infoTop,infoBottom,info]+sideFrames,settings:infoConfig)!
+    assert(withInfo.panes==without.panes && withInfo.panes[0].minY==167)
+    let hiddenTop=axTrialProposal(host:infoHost,windows:[infoBottom]+sideFrames,settings:infoConfig)!
+    let hiddenTopInfo=axTrialProposal(host:infoHost,windows:[infoBottom,info]+sideFrames,settings:infoConfig)!
+    assert(hiddenTopInfo.panes==hiddenTop.panes)
+} }
+print("PASS: AX info overlay cannot replace full-width top panel, all side visibility combinations and hidden top")
