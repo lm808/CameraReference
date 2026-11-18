@@ -6,6 +6,8 @@ import ApplicationServices
 enum Destination: String { case overlay, window, check, detect }
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemValidation, NSMenuDelegate {
     let diagnostics=DiagnosticsService()
+    let settings=AppSettings()
+    lazy var menus=SettingsMenuController(owner:self)
     var saving = false
     let saveToast=SaveToastController()
     var floatingTitle="Camera Reference"
@@ -45,8 +47,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     let folder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/CameraReference/Bridge")
     var floating: NSPanel?
     var floatingView: ReferenceView?
-    var preferItem: NSMenuItem!
-    var autoItem: NSMenuItem!
     var cancellation: Cancellation?
     var destination: Destination?
     var pendingModule:String?
@@ -56,8 +56,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var placementModule:String?
     var screenModule:String?
     var status: NSStatusItem!
-    var detail: NSMenuItem!
-    var shortcutItem: NSMenuItem!
     var panel: OverlayPanel?
     var overlayHost:HostWindowSnapshot?
     var displayedOverlayLayout:OverlayLayout?
@@ -157,23 +155,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
     let imageCache=SelectionImageCache()
-    var screenshotDetectionEnabled:Bool {
-        (CameraPreferences.shared.object(forKey:"useScreenshotDetection") as? Bool) ?? (legacyPlacementMode != .accessibility)
-    }
-    var legacyPlacementMode:AutomaticPlacementMode {
-        AutomaticPlacementMode.resolve(saved:CameraPreferences.shared.string(forKey:"automaticPlacementMode"),
-            legacy:CameraPreferences.shared.object(forKey:"experimentalAXPlacement") as? Bool)
-    }
-    var screenshotAssistanceEnabled:Bool {
-        (CameraPreferences.shared.object(forKey:"screenshotAXAssistance") as? Bool) ?? (legacyPlacementMode == .assisted)
-    }
-    var automaticPlacementMode:AutomaticPlacementMode {
-        screenshotDetectionEnabled ? (screenshotAssistanceEnabled ? .assisted:.screenshot):.accessibility
-    }
-    var axPlacementEnabled:Bool { !screenshotDetectionEnabled }
-    var assistedPlacementEnabled:Bool { screenshotDetectionEnabled && screenshotAssistanceEnabled }
-    var screenshotToggleItem:NSMenuItem?,assistedToggleItem:NSMenuItem?,viewToggleItem:NSMenuItem?
-    var detectionMethodItems=[NSMenuItem]()
     var assistedSignature:String?
     var assistedChecks=0,assistedAXChanges=0,assistedAXFailures=0,assistedPixelChanges=0,assistedPixelFailures=0
     var assistedCheckSeconds:Double=0,assistedAXSeconds:Double=0
@@ -187,7 +168,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
         return hints
     }
-    var automaticViewEnabled:Bool { automaticPlacementMode.usesAXViewDetection(screenshotOption:CameraPreferences.shared.bool(forKey:"experimentalAutomaticView")) }
     var detectedLayout:OverlayLayout?
     var detectedLayoutModule:String?
     var viewProbeID:UUID?
@@ -196,8 +176,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var liveViewGeneration=0
     var livePanelSignature:String?
     var pendingAXPanelSignature:String?
-    var liveUpdateItem:NSMenuItem?
-    var axLiveUpdate:Bool { (CameraPreferences.shared.object(forKey:"axLiveUpdate") as? Bool) ?? true }
     @objc func toggleAXLiveUpdate(_ item:NSMenuItem) {
         guard axPlacementEnabled else { return }
         CameraPreferences.shared.set(!axLiveUpdate,forKey:"axLiveUpdate")
@@ -218,9 +196,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
         set { CameraPreferences.shared.set(newValue.rawValue,forKey:overlayLayoutPreferenceKey(module:currentModule() ?? observedModule)) }
     }
-    var layoutItems=[OverlayLayout:NSMenuItem]()
-    var layoutGroups=[Int:NSMenuItem]()
-    var layoutSeparator:NSMenuItem?
     var placementMemory:PlacementMemory?
     func regionKey(_ key:String,layout:OverlayLayout? = nil)->String {
         let base=regionPreferenceKey(key,layout:layout ?? (key == "automaticBounds" && automaticViewEnabled ? manualOverlayLayout:overlayLayout))
@@ -229,7 +204,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var floatingHotKey: EventHotKeyRef?
     var floatingShortcut=(UInt32(kVK_ANSI_F),UInt32(controlKey | optionKey | cmdKey))
     var floatingKeyLabel="F"
-    var floatingMenuItem:NSMenuItem!
     var hotKey: EventHotKeyRef?
     var handler: EventHandlerRef?
     var pending: String?
@@ -238,7 +212,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var displayTimer: Timer?
     var screenTask: Task<Void, Never>?
     var screenInspectionID: UUID?
-    var toggleItem: NSMenuItem!
     var keyLabel = "J"
     var recording = false
     var currentShortcut: (UInt32, UInt32) = (UInt32(kVK_ANSI_J), UInt32(controlKey | optionKey | cmdKey))
@@ -388,37 +361,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         return true
     }
 
-    func buildLayoutMenu(_ menu:NSMenu) {
-        layoutSeparator=NSMenuItem.separator();menu.addItem(layoutSeparator!)
-        let full=add("▣  Loupe View",#selector(selectLayout(_:)),to:menu)
-        full.representedObject=OverlayLayout.full.rawValue;full.image=layoutMenuIcon(.full);layoutItems[.full]=full
-        for (title,modes) in [("◧  Reference View (Left/Right)",[OverlayLayout.left,.right]),("⬒  Reference View (Top/Bottom)",[OverlayLayout.upper,.lower])] {
-            let parent=NSMenuItem(title:title,action:nil,keyEquivalent:"")
-            parent.image=layoutMenuIcon(modes[0]);let child=NSMenu(title:title);parent.submenu=child;menu.addItem(parent)
-            layoutGroups[modes[0].group]=parent
-            for mode in modes {
-                let item=add((mode == .left ? "◧":mode == .right ? "◨":mode == .upper ? "⬒":"⬓")+"  "+mode.label,#selector(selectLayout(_:)),to:child)
-                item.representedObject=mode.rawValue;item.image=layoutMenuIcon(mode);layoutItems[mode]=item
-            }
-        }
-        updateLayoutMenu()
-    }
-    func updateLayoutMenu() {
-        let hidden = !CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
-        layoutSeparator?.isHidden=hidden
-        layoutItems[.full]?.isHidden=hidden
-        for item in layoutGroups.values { item.isHidden=hidden }
-        let inferred=detectedLayoutModule == currentModule() ? detectedLayout:nil
-        layoutItems[.full]?.action = automaticViewEnabled ? nil:#selector(selectLayout(_:))
-        if automaticViewEnabled && !hidden {
-            layoutItems[.full]?.title = inferred == nil ? "View detected on next invocation":"▣  Loupe View"
-            layoutItems[.full]?.isEnabled=false
-            layoutItems[.full]?.isHidden = inferred != nil && overlayLayout.group != 0
-            for (group,item) in layoutGroups { item.isHidden = inferred == nil || group != overlayLayout.group }
-        } else { layoutItems[.full]?.title="▣  Loupe View";layoutItems[.full]?.isEnabled=true }
-        for (mode,item) in layoutItems { item.state=mode==overlayLayout ? .on:.off }
-        for (group,item) in layoutGroups { item.state=group==overlayLayout.group ? .on:.off }
-    }
     @objc func selectLayout(_ sender:NSMenuItem) {
         guard let raw=sender.representedObject as? String,let mode=OverlayLayout(rawValue:raw),mode != overlayLayout else { return }
         if automaticViewEnabled && (mode.group==0 || mode.group != overlayLayout.group) { return }
@@ -511,81 +453,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             NSApp.activate(ignoringOtherApps:true);alert.runModal();NSApp.terminate(nil);return
         }
         if let url=Bundle.main.url(forResource:"AppIcon",withExtension:"icns") { NSApp.applicationIconImage=NSImage(contentsOf:url) }
-        CameraPreferences.shared.register(defaults:Dictionary(uniqueKeysWithValues:OverlayLayout.allCases.map {
-            ("library."+regionPreferenceKey("automaticBounds",layout:$0),true)
-        }))
-        // Carry only calibration and shortcut settings forward; no photo paths or images.
-        if !CameraPreferences.shared.bool(forKey: "migrated03") {
-            if let old = CameraPreferences.shared.persistentDomain(forName: "org.local.JPEGReference") {
-                for key in ["region", "key", "modifiers"] {
-                    if let value = old[key] { CameraPreferences.shared.set(value, forKey: key) }
-                }
-            }
-            CameraPreferences.shared.set(true, forKey: "migrated03")
-        }
+        settings.registerAndMigrate()
         do { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700]) }
         catch { fatalError("Cannot create bridge directory: \(error)") }
         consolidateStorageIfDue()
         status = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         updateIcon()
-        let menu = NSMenu(); menu.delegate=self
-        menu.addItem(NSMenuItem(title: versionTitle, action: nil, keyEquivalent: ""))
-        menu.addItem(.separator())
-        detail = NSMenuItem(title: "Ready — first test: Check selected photo", action: nil, keyEquivalent: "")
-        floatingMenuItem = add("Show floating display", #selector(openFloating), to: menu)
-        toggleItem = add("Show overlay", #selector(menuToggle), to: menu)
-        func submenu(_ title: String) -> NSMenu {
-            let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-            let child = NSMenu(title: title); item.submenu = child; menu.addItem(item); return child
-        }
-        buildLayoutMenu(menu)
-        menu.addItem(.separator())
-        let settings = submenu("Settings")
-        shortcutItem = add("Keyboard shortcuts…", #selector(changeShortcut), to: settings)
-        settings.addItem(.separator())
-        preferItem = add("Prefer RAW-embedded JPEG", #selector(changePreference), to: settings)
-        preferItem.state = CameraPreferences.shared.bool(forKey: "preferEmbedded") ? .on : .off
-        add("Choose ExifTool…", #selector(chooseExifTool), to: settings)
-        settings.addItem(.separator())
-        autoItem = add("Auto-detect viewing area", #selector(changeAutomatic), to: settings)
-        autoItem.state = CameraPreferences.shared.bool(forKey: regionKey("automaticBounds")) ? .on : .off
-        add("Set overlay region…", #selector(calibrate), to: settings)
-        add("Clear overlay region setting", #selector(clearAllRegionData), to: settings)
-        settings.addItem(.separator())
-        let method=NSMenuItem(title:"Detection method",action:nil,keyEquivalent:"")
-        let methods=NSMenu();method.submenu=methods;settings.addItem(method);screenshotToggleItem=method
-        for (title,value) in [("Screenshot",true),("Accessibility",false)] {
-            let item=add(title,#selector(selectDetectionMethod(_:)),to:methods)
-            item.representedObject=value;detectionMethodItems.append(item)
-        }
-        viewToggleItem=add("AX view detection",#selector(toggleAutomaticView),to:settings)
-        assistedToggleItem=add("AX-assisted placement",#selector(toggleScreenshotAssistance),to:settings)
-        assistedToggleItem?.indentationLevel=1;viewToggleItem?.indentationLevel=1
-        liveUpdateItem=add("Update overlay with LrC view",#selector(toggleAXLiveUpdate(_:)),to:settings)
-        liveUpdateItem?.indentationLevel=1
-        updateDetectionMenu()
-        settings.addItem(.separator())
-        add("Advanced settings…", #selector(editAdvancedSettings), to: settings)
-        let developer = submenu("Developer tools")
-        developer.addItem(detail); developer.addItem(.separator())
-        add("Diagnostics…", #selector(showDiagnostics), to: developer)
-        let copy=add("Save diagnostics after invocation", #selector(toggleAutoDiagnostics), to: developer)
-        copy.state = autoDiagnostics ? .on:.off
-        developer.addItem(.separator())
-        let experimental=NSMenu();let experimentalItem=NSMenuItem(title:"Experimental features",action:nil,keyEquivalent:"")
-        experimentalItem.submenu=experimental;developer.addItem(experimentalItem)
-        let trial=add("Show AX placement preview",#selector(toggleAXTrial),to:experimental)
-        trial.state=axTrialEnabled ? .on:.off
-        let actions=NSMenu();let actionsItem=NSMenuItem(title:"Capture / bridge actions",action:nil,keyEquivalent:"")
-        actionsItem.submenu=actions;developer.addItem(actionsItem)
-        add("Check selected photo", #selector(checkPhoto), to: actions)
-        add("Inspect Lightroom view state…", #selector(inspectViewState), to: actions)
-        add("Keep on-screen capture baseline…", #selector(keepCaptureBaseline), to: actions)
-        add("Preview captured Lightroom window…", #selector(previewCapture), to: actions)
-        add("Find viewing area…", #selector(inspectScreen), to: actions)
-        menu.addItem(.separator())
-        add("Quit Camera Reference", #selector(quit), to: menu)
-        status.menu = menu
+        status.menu = menus.build()
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         InstallEventHandler(GetApplicationEventTarget(), { _, event, context in
             guard let context else { return OSStatus(eventNotHandledErr) }
@@ -642,9 +516,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(frontAppChanged), name: NSWorkspace.didActivateApplicationNotification, object: nil)
         NSWorkspace.shared.notificationCenter.addObserver(self,selector:#selector(spaceChanged),name:NSWorkspace.activeSpaceDidChangeNotification,object:nil)
         NotificationCenter.default.addObserver(self, selector: #selector(displaysChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
-    }
-    @discardableResult func add(_ title: String, _ action: Selector, to menu: NSMenu) -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: ""); item.target = self; menu.addItem(item); return item
     }
     func register(_ shortcut: (UInt32, UInt32), floatingTarget:Bool=false) -> Bool {
         var replacement: EventHotKeyRef?
@@ -730,11 +601,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             guard let self,self.savedRegion != nil else { return }
             self.report(self.region != nil ? "Display checked: saved calibration retained." : "Saved calibration retained, but this display layout differs. Restore the display layout or calibrate again.")
         }
-    }
-    func updateToggleTitle() {
-        floatingMenuItem?.title=(floating?.isVisible == true ? "Hide floating display" : "Show floating display") + "   " + shortcutText(key:floatingKeyLabel,modifiers:floatingShortcut.1)
-        let active=panel != nil || destination == .overlay || viewProbeID != nil || detectionCompletion != nil
-        toggleItem?.title=(active ? "Hide overlay" : "Show overlay") + "   " + shortcutText(key:keyLabel,modifiers:currentShortcut.1)
     }
     func menuNeedsUpdate(_ menu:NSMenu) { updateToggleTitle();updateLayoutMenu();updateDetectionMenu() }
     @objc func menuToggle() { toggle() }
@@ -1026,14 +892,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard panel != nil, supportedLightroomModule(currentModule()) else { return }
         hide(); request(.overlay)
     }
-    func validateMenuItem(_ item:NSMenuItem) -> Bool {
-        if item === liveUpdateItem { return axPlacementEnabled && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) }
-        if item === assistedToggleItem || item === viewToggleItem {
-            return screenshotDetectionEnabled && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
-        }
-        if detectionMethodItems.contains(where:{$0 === item}) { return CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) }
-        return true
-    }
     func saveExtracted(_ snapshot:ExportSnapshot, from view:ReferenceView) {
         guard !saving else { return }
         let url=snapshot.destination
@@ -1218,29 +1076,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             }
         }
     }
-    var axTrialEnabled:Bool { CameraPreferences.shared.bool(forKey:"developerAXTrial") }
-    var autoDiagnostics:Bool {
-        (CameraPreferences.shared.object(forKey:"developerAutoSaveDiagnostics") as? Bool) ?? CameraPreferences.shared.bool(forKey:"developerAutoCopyDiagnostics")
-    }
     var diagnosticSaveURL:URL { folder.deletingLastPathComponent().appendingPathComponent("Diagnostics/latest.txt") }
-    func updateDetectionMenu() {
-        let automatic=CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
-        screenshotToggleItem?.title="Detection method: " + (screenshotDetectionEnabled ? "Screenshot":"Accessibility")
-        screenshotToggleItem?.isEnabled=automatic
-        for item in detectionMethodItems {
-            item.state=(item.representedObject as? Bool)==screenshotDetectionEnabled ? .on:.off
-            item.isEnabled=automatic
-        }
-        liveUpdateItem?.isHidden=screenshotDetectionEnabled
-        liveUpdateItem?.isEnabled=automatic && axPlacementEnabled
-        liveUpdateItem?.state=axLiveUpdate ? .on:.off
-        assistedToggleItem?.isHidden=axPlacementEnabled
-        viewToggleItem?.isHidden=axPlacementEnabled
-        assistedToggleItem?.state=assistedPlacementEnabled ? .on:.off
-        viewToggleItem?.state=automaticViewEnabled ? .on:.off
-        assistedToggleItem?.isEnabled=automatic && screenshotDetectionEnabled
-        viewToggleItem?.isEnabled=automatic && screenshotDetectionEnabled
-    }
     func placementOptionsChanged() {
         cancelScreenInspection();cancelPanelCheck();cancelRequest()
         assistedSignature=nil;liveViewGeneration += 1;nextLiveViewCheck=0

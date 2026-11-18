@@ -87,3 +87,8 @@ No calibrated AX offsets are applied to screenshot results. The original screens
 - Current app reports overwrite CameraReference/Diagnostics/latest.txt under Application Support; they are runtime evidence, not an archive. User-uploaded attachments remain outside the repository; generated build/release files are not research records.
 
 Raw evidence is retained because it supports these findings. No photographs, personal configs or permission data are copied into tracked documentation. Future cleanup should remove reproducible scratch output, not sole copies of observations or user test annotations.
+
+
+## Info-overlay strip false match — 1.1.3 candidate
+
+On 2026-11-18, a 1058 × 808 pt host exposed a visible 1022 × 167 pt info window inset by 18 pt. Both side panels hidden made it pass the former >90%-width strip filter, lowering raw top from 167 to 324. Showing either side narrowed the info rectangle and avoided the false match; showing both also worked. The authorised fix additionally requires both horizontal host edges to align within 4 pt. Regression fixtures cover all side combinations and top hidden; native candidate verification remains pending. Existing calibrated offsets and screenshot algorithms are unchanged.

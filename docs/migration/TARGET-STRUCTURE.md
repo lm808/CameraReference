@@ -93,3 +93,8 @@ Lightroom zoom/pan following would supply a view-transform observation to shared
 ## Stage 2 implementation note
 
 DiagnosticsService now exists in Sources/Diagnostics.swift. It owns stored report/preview state, section formatting, atomic save and diagnostics-window creation. AppDelegate forwarding accessors and diagnostic coordination adapters are colocated in that file as a temporary bridge; these retain their original request/monitor/capture dependencies and dispatch order. The formatter reads the current AppDelegate synchronously rather than introducing eagerly generated snapshots. Later owner extractions should replace that dependency locally. Production AX readers/classification and shared capture ownership have not moved into the diagnostics service.
+
+
+## Stage 3 implementation note
+
+AppSettings owns mode/default preference interpretation and original startup registration/migration using the same shared UserDefaults instance. SettingsMenuController owns menu references, construction and refresh/validation. It holds an unowned AppDelegate reference; menu actions/delegation and contextual current-module/layout decisions remain on AppDelegate through forwarding adapters. No timer, action order or preference schema changed. Later stages can replace these synchronous dependencies with the extracted coordinator/settings contexts locally. The separately authorised info-overlay strip fix is not part of the structural extraction.

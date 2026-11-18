@@ -1,12 +1,10 @@
-# Migration testing — 1.0.33 / stage 2
+# Migration testing — 1.1.3 / stage 3
 
-Quit the stable app, then run this worktree’s `release/CameraReference Testing.app`. Compare with your usual 1.0.32 behaviour; report regressions, rather than investigating existing edge cases.
+Quit the previous app, then run this worktree’s `release/CameraReference Testing.app`. Main remains unchanged. [Stage 2 annotations](docs/migration/STAGE-2-ACCEPTANCE.md) are preserved separately.
 
-- [ ] **Daily use:** invoke/toggle the AX overlay, change photo/view/pane/panels, and briefly use the floating window. Behaviour and responsiveness should feel unchanged.
-- [ ] **Diagnostics:** open the report; check its usual sections. Enable saving and invoke: `Diagnostics/latest.txt` updates. Disable saving: it stops updating. Any retained failure remains separately labelled.
-- [ ] **AX preview:** enable the boundary preview, invoke and dismiss. Borders should appear and disappear as before, with no late borders after dismissal.
-- [ ] **Capture preview, if already permitted:** open a capture preview, retain a baseline and compare another capture. Closing/reopening should work as before. Skip if Screen Recording is unavailable.
+- [ ] **Info-overlay fix:** with LrC info overlay on, hide both side panels: placement should no longer start below the info text. Show either or both side panels, and toggle the top panel: bounds should remain correct.
+- [ ] **Settings menu:** existing choices are remembered; Accessibility shows its update option, Screenshot shows its two AX options, and manual placement disables detection controls. Advanced settings remains last.
+- [ ] **View menus and actions:** Loupe/split pane choices, shortcuts and overlay/floating toggles work as before; menu titles/checkmarks follow current state. Switching a choice retains the previous update/dismiss behaviour.
+- [ ] **Daily use:** brief normal AX overlay use, including photo/view/panel changes and Diagnostics. No unexpected delay or behaviour change apart from the authorised info-overlay fix.
 
-Automated checks passed; these native checks are pending. If responsiveness differs, use the [timing comparison protocol](docs/migration/BASELINE.md).
-
-The [older testing backlog](docs/migration/PRE-MIGRATION-TESTING.md) is preserved separately and is outside this migration checklist.
+Automated checks do not replace these native checks. Existing unrelated edge cases remain outside migration acceptance.

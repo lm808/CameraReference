@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.3 — migration stage 3 candidate
+
+- Extract settings interpretation and menu ownership, preserving existing actions, choices and update triggers.
+- Fix AX placement mistaking the expanded info overlay for a top panel when both side panels are hidden; require panel alignment with both host edges. Screenshot algorithms and calibrated offsets unchanged.
+
 ## 1.0.33 — structure migration candidate
 
 - Extract diagnostic report state, formatting, saving and preview ownership without intended behaviour changes. Preserve collection/capture coordination and all placement algorithms. Native acceptance pending.

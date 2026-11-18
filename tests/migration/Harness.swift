@@ -171,5 +171,48 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         expect(app.diagnostics.axTrialGeneration==8 && app.axTrialBorders.isEmpty,"Clearing diagnostic borders invalidates late preview work")
         expect(app.diagnostics.lastResult=="Replacement result","Adapter and service share one state owner")
         print("PASS migration: frozen report equivalence, save off/on/replace/failure and preview invalidation")
+
+        // Build menus without creating a status item, launching NSApplication,
+        // invoking actions, or touching Lightroom. The targets remain AppDelegate.
+        prefs.set(true,forKey:"migrated03") // avoid reading an external legacy suite
+        let libraryFull="library."+regionPreferenceKey("automaticBounds",layout:.full)
+        prefs.set(false,forKey:libraryFull)
+        app.settings.registerAndMigrate()
+        expect(!prefs.bool(forKey:libraryFull),"Registering defaults preserves explicit Library preference")
+        for layout in OverlayLayout.allCases where layout != .full {
+            expect(prefs.bool(forKey:"library."+regionPreferenceKey("automaticBounds",layout:layout)),"Library defaults registered for every pane")
+        }
+        try heartbeat("develop")
+        let menu=app.menus.build()
+        let settingsMenu=menu.items.first { $0.title=="Settings" }!.submenu!
+        expect(settingsMenu.items.last?.title=="Advanced settings…","Advanced settings remains last")
+        let titles=settingsMenu.items.filter { !$0.isSeparatorItem }.map(\.title)
+        expect(Array(titles.prefix(6)) == ["Keyboard shortcuts…","Prefer RAW-embedded JPEG","Choose ExifTool…","Auto-detect viewing area","Set overlay region…","Clear overlay region setting"],"Settings order and titles unchanged")
+        func verifyTargets(_ menu:NSMenu) {
+            for item in menu.items {
+                if item.submenu == nil && item.action != nil { expect(item.target === app,"Actions still target AppDelegate") }
+                if let child=item.submenu { verifyTargets(child) }
+            }
+        }
+        verifyTargets(menu)
+        for screenshot in [false,true] { for automatic in [false,true] {
+            prefs.set(screenshot,forKey:"useScreenshotDetection")
+            prefs.set(automatic,forKey:app.regionKey("automaticBounds"))
+            app.updateDetectionMenu()
+            expect(app.liveUpdateItem!.isHidden==screenshot,"AX live option visible only in Accessibility")
+            expect(app.viewToggleItem!.isHidden == !screenshot && app.assistedToggleItem!.isHidden == !screenshot,"Screenshot options visible only in Screenshot")
+            expect(app.liveUpdateItem!.isEnabled == (automatic && !screenshot),"AX option enablement unchanged")
+            expect(app.viewToggleItem!.isEnabled == (automatic && screenshot),"Screenshot option enablement unchanged")
+            expect(app.screenshotToggleItem!.isEnabled==automatic,"Manual placement disables method submenu")
+            expect(app.validateMenuItem(app.liveUpdateItem!) == (automatic && !screenshot),"Validation agrees with enabled state")
+        } }
+        prefs.set(true,forKey:app.regionKey("automaticBounds"));prefs.set(false,forKey:"useScreenshotDetection")
+        app.detectedLayoutModule="develop";app.detectedLayout = .left
+        app.updateLayoutMenu()
+        expect(app.layoutItems[.full]!.isHidden && !app.layoutGroups[1]!.isHidden && app.layoutGroups[2]!.isHidden,"Inferred split shows only its pane group")
+        expect(app.layoutItems[.left]!.state == .on,"Detected pane checked")
+        app.detectedLayout = .full;app.updateLayoutMenu()
+        expect(!app.layoutItems[.full]!.isHidden && app.layoutGroups.values.allSatisfy(\.isHidden),"Inferred Loupe hides split groups")
+        print("PASS migration: settings defaults, menu order/targets, mode/manual visibility and inferred pane states")
     }
 }

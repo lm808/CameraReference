@@ -1,13 +1,15 @@
 # Architecture and source map
 
-Current candidate implementation: 1.0.33 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
+Current candidate implementation: 1.1.3 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
 
 ## Source ownership
 
 | File under Sources/ | Owns / connects to |
 |---|---|
+| AppSettings.swift | Existing preference-domain access for mode interpretation and startup defaults/legacy registration; no second store. |
+| SettingsMenu.swift | Menu construction, references, refresh and validation; AppDelegate adapters retain action targets and event triggers. |
 | Diagnostics.swift | DiagnosticsService owns report state/formatting/saving and diagnostic windows/previews. Transitional AppDelegate adapters retain existing collection/capture guards and scheduling; production AX observation and shared capture tasks remain outside the service. |
-| main.swift | AppDelegate: menus/preferences, bridge request pipeline, cache ownership, mode dispatch, calibration, timers and overlay lifecycle; forwards diagnostic state to DiagnosticsService. Coordinates all paths below. |
+| main.swift | AppDelegate: menu action routing/contextual preferences, bridge request pipeline, cache ownership, mode dispatch, calibration, timers and overlay lifecycle; forwards diagnostic state to DiagnosticsService. Coordinates all paths below. |
 | Core.swift | Protocol/source primitives, cancellation and extraction helpers. |
 | ImageSource.swift | JPEG selection/extraction/orientation/decode, fingerprints and the one-selection RAM cache. |
 | Export.swift | Display-specific JPEG snapshots and explicit safe export. |

@@ -1,6 +1,6 @@
 # Current implementation methods
 
-Current implementation: 1.0.32. This file describes operative methods. [Research findings](AX-ASSISTANCE.md) distinguishes observations from assumptions; [historical notes](HISTORICAL-NOTES.md) preserves superseded implementations and experiments. [Architecture](ARCHITECTURE.md) maps source ownership and update routing.
+Current candidate implementation: 1.1.3; accepted main remains 1.0.32. This file describes operative methods. [Research findings](AX-ASSISTANCE.md) distinguishes observations from assumptions; [historical notes](HISTORICAL-NOTES.md) preserves superseded implementations and experiments. [Architecture](ARCHITECTURE.md) maps source ownership and update routing.
 
 ## Selection, extraction and Fit
 
@@ -22,7 +22,7 @@ Panel/label geometry comes from the AX window map, supplemented by matched publi
 
 Visible label-sized rectangles in the expected central relationship suggest Reference/Active and split orientation. They are geometric candidates, not guaranteed semantic pane containers. A successful read without a clear pair assumes single view; read failure stays unknown. Information-overlay rectangles are not anchors because they disappeared after window recreation/resizing in testing.
 
-Raw surrounding panel edges define a combined area; hidden sides use configurable base insets. Signed corrections use **right/up positive, left/down negative**. Vertical shifts are subtracted from top-left Y. Bottom correction accumulates filmstrip state, toolbar height when effectively shown, and +25 pt in Library split views only. Defaults and exact keys are in [CONFIGURATION.md](CONFIGURATION.md). Explicit user values are preserved.
+Top/bottom strip candidates must align with both horizontal host edges within 4 pt, in addition to the existing width, height and vertical-position checks. This excludes inset info-overlay rectangles that can grow past 90% of host width when both side panels hide. Raw surrounding panel edges define a combined area; hidden sides use configurable base insets. Signed corrections use **right/up positive, left/down negative**. Vertical shifts are subtracted from top-left Y. Bottom correction accumulates filmstrip state, toolbar height when effectively shown, and +25 pt in Library split views only. Defaults and exact keys are in [CONFIGURATION.md](CONFIGURATION.md). Explicit user values are preserved.
 
 After correcting the combined area, split at 50/50, constrained into the nearby label gap. No independent calibrated divider correction is used. Boundary preview computes the same geometry independently of the selected production pane and can draw both panes. Floating initial size fits the photo into half the combined width and full height.
 

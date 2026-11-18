@@ -33,3 +33,9 @@ No newly confirmed product defect was established during the planning stage. The
 ## Stage 2 extraction findings
 
 The report formatter can move without changing its output, but automatic collection remains coupled to `axMappingInProgress`, foreground request IDs and diagnostic generations. Capture preview also shares `startPhotoDetection` cancellation with placement/calibration. Both coordination adapters were moved verbatim, with forwarding accessors into one DiagnosticsService state owner. No new background worker, queue, observation or capture lifetime was introduced. A future cleanup should replace synchronous AppDelegate formatter inputs with snapshots from the extracted owners; doing that before those owners exist would add abstraction without reducing the shared coordination risk. No new product defect was confirmed.
+
+## Stage 3 authorised behaviour fix — info overlay
+
+Native reports 2026-11-18 20:24:14 and 20:25:57 UTC used the same host (190,65,1058,808). With both sides hidden, the visible inset info window (208,157,1022,167) passed the old >90%-width strip rule, replacing the actual top-panel bottom y=167 with y=324. With right panel shown its width became 721 and failed that rule, producing correct placement. User also confirmed either/both side panels shown work. This is pre-existing in baseline AXTrial.swift, not introduced by diagnostics extraction. User authorised a narrow fix alongside stage 3: require both horizontal host edges within 4 pt. Commit 9ba1bdd includes all side-visibility combinations and top-hidden regression cases. No offset or screenshot change.
+
+Stage 3 menu extraction retains the coordinator as action target and delegate; AppKit's own submenu actions are not application commands and must be excluded from target-identity tests. Per-module/pane key logic remains contextual in the coordinator until placement/policy extraction, avoiding a second source of current-view state.
