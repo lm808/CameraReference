@@ -12,6 +12,10 @@ Record issues/opportunities separately from structural moves. No item here autho
 | M4 | Screen inspection is shared by automatic screenshot placement and explicit diagnostic/calibration actions. | Backend separation must preserve cancellation/permissions and preview behaviour. Do not create two independently running capture owners inadvertently. |
 | M5 | Build script explicitly lists Swift inputs; tests also compile explicit subsets. | Register moved files in relevant build/test lists at extraction time. File moves alone are not proof of compilation/link coverage. |
 
+## Stage 1 test boundary
+
+The coordinator currently needs generated test copies to isolate its entry point, bridge/config/preferences and status-bar rendering. The harness preserves completion guards and executes actual async load/decode/cache logic; native panel ownership and live AX completions remain uncovered at this level. Replace these temporary seams as owners become injectable, without creating a second simulated behaviour controller. See BASELINE.md for the coverage matrix. No product bug was established during this stage.
+
 ## Pre-existing unresolved issues (carry forward, do not fix implicitly)
 
 - Direct Library Grid menu mark reliability requires native confirmation; nested Grid must not match. Preserve unknown handling.

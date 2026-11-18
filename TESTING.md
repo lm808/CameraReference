@@ -2,6 +2,10 @@
 
 Merged to main at the user’s request. Run `release/CameraReference.app` from the main checkout. Unchecked items below remain outstanding; merge acceptance does not mark them passed. Previous user annotations are retained in docs/VALIDATION.md (trailing whitespace normalised). Automated checks do not replace native acceptance.
 
+## Structure migration baseline
+
+Stage 1 adds an isolated coordinator harness to `bash test.sh`; it does not deliver a new app. Existing native checks and annotations below remain unchanged. Before comparing the first migrated candidate, collect matched stable-app timings following [the baseline protocol](docs/migration/BASELINE.md). Native timing samples are still pending; automated checks cannot certify display latency or window lifecycle behaviour.
+
 ## AX-only overlay updates
 
 - [ ] Accessibility shows only the indented **Update overlay with LrC view** option beneath Detection method, default on. Screenshot shows only AX view detection and AX-assisted placement. Switching methods remembers preferences; manual placement disables detection controls.

@@ -27,3 +27,6 @@ fi
 # File-driven advanced settings editor: no live app or AX interaction.
 xcrun swiftc -swift-version 5 -module-cache-path build/module-cache Sources/DetectionConfig.swift Sources/ConfigEditor.swift tests/config-editor/main.swift -o build/config-editor-tests
 ./build/config-editor-tests
+
+# Coordinator characterisation; isolated bridge/preferences, no app or live AX.
+bash tests/migration/run.sh

@@ -1,7 +1,7 @@
 # Structure migration — working checklist
 
 Branch: `codex/structure-migration` · worktree: `worktrees/structure-migration`
-Baseline: main at `a568c6e`, application 1.0.32. Main and its staged daily-use app remain untouched. This branch starts with planning only; no migrated executable is available yet.
+Baseline: main at `a568c6e`, application 1.0.32. Main and its staged daily-use app remain untouched. This branch has planning and a baseline test harness; no migrated application executable is available yet.
 
 ## Contract and priority
 
@@ -14,7 +14,7 @@ Target ownership and the mapping from existing symbols are in [TARGET-STRUCTURE.
 ## Stages
 
 - [x] **0 — Baseline and design.** Create separate worktree; inspect routing/timers/state ownership; define component contracts, source-to-target map and risks. Record outstanding issues. No code/build/version changes.
-- [ ] **1 — Behaviour and performance harness.** Characterise existing policy and completion guards with focused tests before extraction. Cover fresh/default preferences separately from existing saved settings; normal AX invocation, warm toggle, photo/view/pane/panel updates, option off, module/Grid evidence, suspension and failure retention. Include absent-overlay, unknown evidence and stale completion sequences. Record baseline timings using existing diagnostics during user testing; do not claim automated tests reproduce macOS behaviour.
+- [x] **1 — Behaviour and performance harness (automated baseline/protocol).** Characterise existing policy and completion guards with focused tests before extraction. Cover fresh/default preferences separately from existing saved settings; normal AX invocation, warm toggle, photo/view/pane/panel updates, option off, module/Grid evidence, suspension and failure retention. Include absent-overlay, unknown evidence and stale completion sequences. Native timing collection remains pending below; do not claim automated tests reproduce macOS behaviour. See [coverage and limitations](docs/migration/BASELINE.md).
 - [ ] **2 — Diagnostics extraction.** Move report state/formatting, saving and diagnostic-only preview ownership into a concrete component. Preserve automatic post-invocation collection, guards and all current report content. Do not add work before display. Keep production AX observation/placement separate from diagnostic collection even where they share readers.
 - [ ] **3 — Settings/menu extraction.** Move menu construction and preference access behind a concrete settings/menu owner. Initially retain selectors forwarding to existing actions. Preserve menu update triggers, per-module/pane keys, defaults/migration and hidden/disabled states. Do not change preferences schema or introduce a second store.
 - [ ] **4 — Behaviour decisions.** Consolidate existing action helpers and branches into a tested policy. Initially callers execute the decisions exactly as before. Preserve distinctions between manual, pure AX and both screenshot options; do not make the modes more alike. Preserve timer/handler order and evidence freshness rules.
@@ -30,7 +30,7 @@ Each stage can take several small commits. Dependency reason: tests first; repor
 
 1. Record moved symbols/state and the commit; distinguish mechanical moves from later simplification commits.
 2. Run relevant automated checks, including cancellation/late-result sequences when orchestration changes. Review diff for defaults, messages, permissions, scheduling or algorithm changes.
-3. For delivered code updates, increment patch per AGENTS.md; build/stage **only** `release/CameraReference Testing.app` in this worktree, verify plist/signature/diff. No DMG. Planning/docs stages do not rebuild or change version.
+3. For delivered code updates, increment patch per AGENTS.md; build/stage **only** `release/CameraReference Testing.app` in this worktree, verify plist/signature/diff. No DMG. Planning/docs and test-only stages do not rebuild the application or change its version.
 4. Add a short focused native checklist to TESTING.md, preserving existing annotations. Label automated pass and native acceptance separately. Keep existing known defects distinguishable from migration regressions.
 5. Compare equivalent display timings/work counts: cold photo, warm same-photo toggle, new selection and view/panel update. Record bridge/load/placement/total separately. Same host/layout/photo/config/diagnostics state; AX-only must not acquire screenshots. Investigate unexplained repeatable slowdown before accepting, rather than inventing a threshold without a baseline.
 6. Ask the user to test a coherent checkpoint, not every file move. Leave main usable. Update this checklist and findings as work progresses; never mark native acceptance from unit tests alone.
@@ -40,5 +40,8 @@ Each stage can take several small commits. Dependency reason: tests first; repor
 | Stage | Status | Evidence / native acceptance |
 |---|---|---|
 | 0 | Design prepared | Clean baseline a568c6e; source-symbol mapping and existing timer/request flow reviewed. Documentation checks only; no app changes or native testing required. |
+| 1 | Harness/protocol complete | 2026-11-18: new coordinator tests pass; existing automated suites pass (config-editor required an outside-sandbox rerun for temporary atomic save). No production symbols moved, no application build/version change. Native display timings and window acceptance pending. |
 
-The next implementation step is stage 1. Later stages are planned, not started by this document.
+- [ ] Collect matched native before/after timing samples using the baseline protocol before accepting migrated performance. No timing samples have been collected by this stage.
+
+The next implementation step is stage 2. It has not started. Stage 1 adds tests only; existing unresolved edge cases remain in the findings/backlog.
