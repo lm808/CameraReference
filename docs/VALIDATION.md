@@ -802,3 +802,12 @@ User authorised merging the candidate after testing. Main fast-forwarded to 088b
 ### Photo-selection usability update on main — same 1.0.32
 
 User explicitly authorised main and no version bump. Stable app built/staged and signature checked. Split/behaviour regressions pass, including an exhaustive AX/screenshot, automatic/manual, overlay on/off, known/unknown/same/changed epoch and update/dismiss selection-policy matrix. Source review confirms existing token/epoch cancellation is retained; automatic refresh adds panel identity, generation/backend/preference and host guards, with no calibration fallback or repeated attempts for a failing selection. No detector or AX geometry changes. Test checklist includes rapid selections, portrait/landscape Fit, export snapshot, failure retention and stale completion dismissal. Native tests remain user-owned; no app launched or personal settings modified.
+
+
+## 1.0.33 — structure migration stage 2 candidate
+
+2026-11-18, codex/structure-migration. DiagnosticsService now owns report strings, generations/busy state, diagnostic windows/previews, formatting and atomic saving. Transitional AppDelegate adapters keep the existing call graph; ten moved orchestration methods were compared verbatim with 93117d8. Production placement/source/lifecycle implementations and defaults were not changed.
+
+`bash tests/migration/run.sh` passed six groups, including exact report output against a frozen 1.0.32 formatter, disabled saving, same-report save status, overwrite, save failure, preview invalidation and stage 1 real request completion/cache tests. `bash test.sh` passed core/Lua/detection/viewport/reset/preview/capture/split; config-editor encountered the existing sandbox temporary atomic-save error 512, then the same executable passed outside the sandbox. The script stopped before its final harness invocation; the updated harness had passed separately. Optional external crop fixtures were not supplied.
+
+`bash build.sh --testing` and `bash scripts/stage.sh --no-build` succeeded. Staged testing app version 1.0.33, build 57, org.local.CameraReference.testing; strict deep signature and diff whitespace checks passed. No application was launched. Main remains clean at a568c6e and its staged app was untouched. Native report/preview/window behaviour and matched latency comparisons remain unchecked in TESTING.md; automated results are not user acceptance.

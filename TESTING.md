@@ -1,6 +1,16 @@
-# Camera Reference 1.0.32 — remaining checks
+# Camera Reference 1.0.33 candidate — remaining checks
 
-Merged to main at the user’s request. Run `release/CameraReference.app` from the main checkout. Unchecked items below remain outstanding; merge acceptance does not mark them passed. Previous user annotations are retained in docs/VALIDATION.md (trailing whitespace normalised). Automated checks do not replace native acceptance.
+The 1.0.32 baseline was merged to main at the user’s request; this 1.0.33 candidate is not merged. Unchecked baseline items below remain outstanding; earlier merge acceptance does not mark them passed. Previous user annotations are retained in docs/VALIDATION.md (trailing whitespace normalised). Automated checks do not replace native acceptance.
+
+## Stage 2 candidate acceptance
+
+Run only this worktree’s `release/CameraReference Testing.app` (1.0.33); quit the stable app first. Main’s accepted 1.0.32 app remains unchanged. No native acceptance is claimed yet.
+
+- [ ] Default Accessibility overlay: invoke, toggle off/on, change photo/view/pane/panels; behaviour and responsiveness match 1.0.32. Float remains unchanged.
+- [ ] Diagnostics opens with the same sections/content. With saving enabled, invocation refreshes `Diagnostics/latest.txt`; saving disabled does not write it. A previous placement failure remains in its separate section.
+- [ ] AX boundary preview follows existing show/hide/suspension behaviour. Dismiss during collection: no late border appears on a new/off overlay.
+- [ ] If Screen Recording is already granted, explicit capture preview and retained baseline still open/close/compare as before. No automatic screenshot is introduced in AX placement. Without permission, existing guidance remains.
+- [ ] Compare matched timings with 1.0.32 using the baseline protocol below; record differences without trying to fix existing edge cases here.
 
 ## Structure migration baseline
 

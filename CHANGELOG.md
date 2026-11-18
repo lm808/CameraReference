@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.33 — structure migration candidate
+
+- Extract diagnostic report state, formatting, saving and preview ownership without intended behaviour changes. Preserve collection/capture coordination and all placement algorithms. Native acceptance pending.
+
 ## 1.0.32 — AX-only overlay updates
 
 - Photo-selection changes now follow Update overlay with LrC view: refresh at Fit when enabled, dismiss when disabled (AX-only automatic placement).

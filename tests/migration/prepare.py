@@ -17,7 +17,8 @@ main = once(main, 'let app = NSApplication.shared\nlet delegate = AppDelegate()\
 main = once(main, 'FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/CameraReference/Bridge")', 'MigrationEnvironment.bridge')
 main = once(main, 'let detectionSettings=DetectionConfigStore()', 'let detectionSettings=DetectionConfigStore(url:MigrationEnvironment.root.appendingPathComponent("config.conf"))')
 # No status-bar object is created. Keep report scheduling and text behaviour.
-main = once(main, 'lastResult = text; detail.title = String(text.prefix(100)); status.button?.toolTip = text', 'lastResult = text')
+diagnostics = (root / 'Sources/Diagnostics.swift').read_text()
+diagnostics = once(diagnostics, 'lastResult = text; detail.title = String(text.prefix(100)); status.button?.toolTip = text', 'lastResult = text')
 # Instrument arrival, without altering the completion guard or its body.
 main = once(main, 'guard self.pending == token, !work.isCancelled else { return }', 'MigrationEnvironment.loadCompletions += 1\n                guard self.pending == token, !work.isCancelled else { return }')
 (out / 'AppDelegate.swift').write_text(main)
@@ -26,3 +27,5 @@ start = core.index('    static let shared:UserDefaults =')
 end = core.index('\n}', start)
 core = core[:start] + '    static let shared = MigrationEnvironment.preferences' + core[end:]
 (out / 'Core.swift').write_text(core)
+
+(out / 'Diagnostics.swift').write_text(diagnostics)

@@ -1,7 +1,7 @@
 # Structure migration — working checklist
 
 Branch: `codex/structure-migration` · worktree: `worktrees/structure-migration`
-Baseline: main at `a568c6e`, application 1.0.32. Main and its staged daily-use app remain untouched. This branch has planning and a baseline test harness; no migrated application executable is available yet.
+Baseline: main at `a568c6e`, application 1.0.32. Main and its staged daily-use app remain untouched. Stage 2 has staged candidate 1.0.33; main and its accepted app stay at 1.0.32.
 
 ## Contract and priority
 
@@ -15,7 +15,7 @@ Target ownership and the mapping from existing symbols are in [TARGET-STRUCTURE.
 
 - [x] **0 — Baseline and design.** Create separate worktree; inspect routing/timers/state ownership; define component contracts, source-to-target map and risks. Record outstanding issues. No code/build/version changes.
 - [x] **1 — Behaviour and performance harness (automated baseline/protocol).** Characterise existing policy and completion guards with focused tests before extraction. Cover fresh/default preferences separately from existing saved settings; normal AX invocation, warm toggle, photo/view/pane/panel updates, option off, module/Grid evidence, suspension and failure retention. Include absent-overlay, unknown evidence and stale completion sequences. Native timing collection remains pending below; do not claim automated tests reproduce macOS behaviour. See [coverage and limitations](docs/migration/BASELINE.md).
-- [ ] **2 — Diagnostics extraction.** Move report state/formatting, saving and diagnostic-only preview ownership into a concrete component. Preserve automatic post-invocation collection, guards and all current report content. Do not add work before display. Keep production AX observation/placement separate from diagnostic collection even where they share readers.
+- [x] **2 — Diagnostics extraction (implemented; native acceptance pending).** Move report state/formatting, saving and diagnostic-only preview ownership into a concrete component. Preserve automatic post-invocation collection, guards and all current report content. Do not add work before display. Keep production AX observation/placement separate from diagnostic collection even where they share readers.
 - [ ] **3 — Settings/menu extraction.** Move menu construction and preference access behind a concrete settings/menu owner. Initially retain selectors forwarding to existing actions. Preserve menu update triggers, per-module/pane keys, defaults/migration and hidden/disabled states. Do not change preferences schema or introduce a second store.
 - [ ] **4 — Behaviour decisions.** Consolidate existing action helpers and branches into a tested policy. Initially callers execute the decisions exactly as before. Preserve distinctions between manual, pure AX and both screenshot options; do not make the modes more alike. Preserve timer/handler order and evidence freshness rules.
 - [ ] **5 — Placement dispatch.** Introduce manual, AX, original screenshot and assisted screenshot adapters with a common UI-placement result. Delegate to existing calculations, not rewrites. Keep original detector/split scanner untouched, AX offsets out of screenshot routes, manual first and no AX capture fallback. Preserve cache and calibration decisions at the coordinator boundary. Confirm float combined-area sizing remains identical.
@@ -42,6 +42,14 @@ Each stage can take several small commits. Dependency reason: tests first; repor
 | 0 | Design prepared | Clean baseline a568c6e; source-symbol mapping and existing timer/request flow reviewed. Documentation checks only; no app changes or native testing required. |
 | 1 | Harness/protocol complete | 2026-11-18: new coordinator tests pass; existing automated suites pass (config-editor required an outside-sandbox rerun for temporary atomic save). No production symbols moved, no application build/version change. Native display timings and window acceptance pending. |
 
+| 2 | Candidate 1.0.33 staged | DiagnosticsService and transitional adapters extracted; ten coordination methods checked verbatim. Frozen report-equivalence, save-path and request tests passed. Full existing suites passed with the config-editor temporary-save sandbox rerun. Testing identity/plist/signature verified. Native checklist pending; no main merge. |
+
 - [ ] Collect matched native before/after timing samples using the baseline protocol before accepting migrated performance. No timing samples have been collected by this stage.
 
-The next implementation step is stage 2. It has not started. Stage 1 adds tests only; existing unresolved edge cases remain in the findings/backlog.
+Stage 2 implementation and automated checks are complete; native acceptance is pending. Existing unresolved edge cases remain in the findings/backlog. Stage 3 is not started.
+
+### Stage 2 ownership boundary
+
+`Sources/Diagnostics.swift` now contains DiagnosticsService (report strings, save/collection generations, reporting window, capture previews/baseline and AX border ownership), the report formatter and atomic saving. Transitional AppDelegate accessors keep one state owner and unchanged call sites. The coordination adapters for reporting, complete AX collection, border trials, capture preview and explicit inspection are colocated there, retaining their original guards, weak/strong captures and dispatch order. They still use the shared production capture task and bounded AX readers; they do not create new capture or observation owners. No scheduling or algorithm simplification is part of this stage.
+
+The formatter temporarily reads AppDelegate state synchronously. Replace that input with owner snapshots as the later owners are extracted; do not introduce eager report generation before display. Native candidate acceptance remains separate from automated report-equivalence and request-guard checks.

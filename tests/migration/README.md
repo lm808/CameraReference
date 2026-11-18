@@ -7,3 +7,5 @@ Run `bash tests/migration/run.sh` from this worktree. This compiles the existing
 This is temporary test infrastructure, not the target application architecture. As injectable ownership boundaries emerge, replace the generated-copy seams with direct construction against those boundaries. Do not relax a failing seam match silently.
 
 Coverage distinguishes actual coordinator execution from helper tests. See docs/migration/BASELINE.md. This harness does **not** prove native window ordering, retained image/zoom in a real panel, AX menu availability, screenshot accuracy, timer fairness or end-to-end display latency. Those stay in focused native comparisons; do not mistake check-only JPEG timings for time to visible overlay.
+
+Stage 2 also compares the new formatter against a frozen 1.0.32 renderer, checks saving disabled/enabled/overwrite/failure and preview-generation invalidation. Permission status is read through non-prompting preflights only; no Lightroom AX inspection or capture is performed. The report seam now resides in the generated Diagnostics.swift adapter.

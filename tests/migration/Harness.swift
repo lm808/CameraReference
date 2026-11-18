@@ -140,5 +140,36 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         app.hide();app.hide()
         expect(app.panel==nil && app.overlayEpoch==nil && !app.overlaySuspended,"Repeated absent dismissal is safe")
         print("PASS migration: off-overlay guards and repeated dismissal")
+
+        // No live Lightroom reads: report permissions are non-prompting preflights.
+        // Omit heartbeat timestamp to make exact renderer comparison deterministic.
+        try fm.removeItem(at:MigrationEnvironment.bridge.appendingPathComponent("heartbeat.txt"))
+        app.lastAXMapping="Synthetic map";app.lastAXToolbar="Synthetic toolbar"
+        app.lastPlacementFailure="Retained failure";app.lastTiming="Measured sample"
+        app.assistedChecks=3;app.assistedAXSeconds=0.02;app.assistedCheckSeconds=0.05
+        for mode in [false,true] {
+            prefs.set(mode,forKey:"useScreenshotDetection")
+            expect(diagnosticReport(app.diagnosticSections()) == diagnosticReport(app.baselineDiagnosticSections()),"Report must match frozen 1.0.32 formatter")
+        }
+        let reportURL=MigrationEnvironment.root.appendingPathComponent("Diagnostics/latest.txt")
+        var generated=0,failures=0
+        func sections()->[DiagnosticSection] { generated += 1;return app.diagnosticSections() }
+        app.diagnostics.save(enabled:false,url:reportURL,sections:sections,failure:{ _ in failures += 1 })
+        expect(generated==0 && !fm.fileExists(atPath:reportURL.path),"Disabled saving must do no report work")
+        app.diagnostics.save(enabled:true,url:reportURL,sections:sections,failure:{ _ in failures += 1 })
+        let first=try String(contentsOf:reportURL,encoding:.utf8)
+        expect(first.contains(app.diagnosticSaveStatus) && first.contains("Retained failure"),"Saved status and retained failure are included in the same report")
+        app.lastResult="Replacement result"
+        app.diagnostics.save(enabled:true,url:reportURL,sections:sections,failure:{ _ in failures += 1 })
+        let replacement=try String(contentsOf:reportURL,encoding:.utf8)
+        expect(replacement == diagnosticReport(app.diagnosticSections()),"Latest report replaces previous content")
+        let blocked=MigrationEnvironment.root.appendingPathComponent("not-a-directory")
+        try Data().write(to:blocked)
+        app.diagnostics.save(enabled:true,url:blocked.appendingPathComponent("latest.txt"),sections:sections,failure:{ _ in failures += 1 })
+        expect(failures==1 && generated==2 && app.diagnosticSaveStatus.hasPrefix("Could not save diagnostics:"),"Save failure preserves original error reporting")
+        app.axTrialGeneration=7;app.clearAXTrialBorders()
+        expect(app.diagnostics.axTrialGeneration==8 && app.axTrialBorders.isEmpty,"Clearing diagnostic borders invalidates late preview work")
+        expect(app.diagnostics.lastResult=="Replacement result","Adapter and service share one state owner")
+        print("PASS migration: frozen report equivalence, save off/on/replace/failure and preview invalidation")
     }
 }

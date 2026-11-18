@@ -88,3 +88,8 @@ A change of owner must not imply a change of invalidation scope. Avoid retain cy
 ## Future seams, not features to implement now
 
 Lightroom zoom/pan following would supply a view-transform observation to shared presentation policy; keep source Fit and whole-region pan bounds distinct now. More RAW formats belong behind existing ImageSource extraction choices, not new placement branches. Environmental refinements belong in evidence interpretation/policy, with execution delegated to controllers. Neither capability is implemented by this migration plan.
+
+
+## Stage 2 implementation note
+
+DiagnosticsService now exists in Sources/Diagnostics.swift. It owns stored report/preview state, section formatting, atomic save and diagnostics-window creation. AppDelegate forwarding accessors and diagnostic coordination adapters are colocated in that file as a temporary bridge; these retain their original request/monitor/capture dependencies and dispatch order. The formatter reads the current AppDelegate synchronously rather than introducing eagerly generated snapshots. Later owner extractions should replace that dependency locally. Production AX readers/classification and shared capture ownership have not moved into the diagnostics service.

@@ -29,3 +29,7 @@ The coordinator currently needs generated test copies to isolate its entry point
 ID / stage / baseline or regression / observed evidence / affected component / proposed resolution / behaviour impact / test / user decision / commit.
 
 No newly confirmed product defect was established during the planning stage. These are migration hazards and existing limitations, not claims that a fix has been made.
+
+## Stage 2 extraction findings
+
+The report formatter can move without changing its output, but automatic collection remains coupled to `axMappingInProgress`, foreground request IDs and diagnostic generations. Capture preview also shares `startPhotoDetection` cancellation with placement/calibration. Both coordination adapters were moved verbatim, with forwarding accessors into one DiagnosticsService state owner. No new background worker, queue, observation or capture lifetime was introduced. A future cleanup should replace synchronous AppDelegate formatter inputs with snapshots from the extracted owners; doing that before those owners exist would add abstraction without reducing the shared coordination risk. No new product defect was confirmed.

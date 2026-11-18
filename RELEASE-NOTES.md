@@ -1,4 +1,8 @@
-# Camera Reference 1.0.32
+# Camera Reference 1.0.33 — testing candidate
+
+Internal diagnostics ownership extraction only. Report content, collection timing, placement algorithms and user-facing behaviour are intended to remain unchanged. Native acceptance is pending; main remains at 1.0.32.
+
+Retained functionality from 1.0.32:
 
 Accessibility mode now has one **Update overlay with LrC view** option, default on. An open overlay follows photo selection, view, pane and panel changes; with that option off, those changes dismiss it. Confirmed Library Grid selection and module changes dismiss. Native Grid selection-mark reliability remains to be verified. An off overlay never reopens automatically. Failed AX placement retains the current overlay.
 
@@ -12,6 +16,6 @@ AX-assisted screenshot placement adds a raw-panel top boundary check, limited to
 
 AX-only placement geometry and the original screenshot detector are unchanged. Pure screenshot failures associated with Library status text remain under investigation. Off-screen capture instability is not claimed fixed.
 
-Merged into main at the user’s request. No DMG packaged.
+The 1.0.32 baseline was merged at the user’s request. This 1.0.33 candidate is not merged or packaged as a DMG.
 
 Same-version usability update: photo selection follows the AX update option. Enabled refreshes the existing overlay to the selected JPEG at Fit; disabled dismisses. Failed refresh retains the prior photo. Screenshot and manual behaviour are unchanged.
