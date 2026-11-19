@@ -71,3 +71,7 @@ User authorised a single current-view root item with matching icon and no root c
 OverlayBehaviourPolicy in Sources/OverlayBehaviour.swift owns pure geometry-change, photo-selection, host visibility/movement, module-change, explicit-selection and positive-Grid decisions. Existing helper entry points delegate to it for compatibility. Callers still qualify observations with the original backend, epoch, host, module, pending-request and visibility guards, and execute actions in the original order. No unified event queue, timer, read or new state was introduced. A geometry adjust retains image/zoom; a photo adjust refreshes at Fit; host suspension is distinct from dismissal. Screenshot cache invalidation and calibration/floating execution remain unchanged.
 
 The separately requested presentation change enables known Loupe's actionless root item. Automatic validation is disabled only for the root menu (whose actionable entries already always validated true); child menu validation remains unchanged. Stage 5 has not started.
+
+### Stage 4 authorised follow-up — build 62
+
+User requested only the macOS full-screen hidden-top correction. AXFullScreen now qualifies removal of the windowed 32 pt allowance before shared AX classification/placement. This is separate from the policy extraction; no stage 5 work. Stage version remains 1.1.4, build 62. Existing checklist annotations are retained; focused full-screen checks appended. Native acceptance pending.

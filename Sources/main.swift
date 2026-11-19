@@ -162,7 +162,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     static func screenHints(module:String?)->AXScreenHints? {
         let toolbar=accessibilityToolbarReading(module:module)
         var hints:AXScreenHints?
-        _=accessibilityMappingReport { host,windows in
+        _=accessibilityMappingReport { host,windows,_ in
             hints=AXScreenHints(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),
                 toolbar:toolbar.shown.map { $0 ? "shown":"hidden" } ?? "unknown")
         }
@@ -966,8 +966,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let grid=axMode ? accessibilityGridReading(module:module):nil
             let toolbar=checkPanels ? accessibilityToolbarReading(fallback:fallback,module:module).effectiveState:"unknown"
             var proposal:AXTrialProposal?,hints:AXScreenHints?
-            _=accessibilityMappingReport { host,windows in
-                proposal=axTrialProposal(host:host,windows:windows)
+            _=accessibilityMappingReport { host,windows,fullScreen in
+                proposal=axTrialProposal(host:host,windows:windows,fullScreen:fullScreen)
                 if checkPanels { hints=AXScreenHints(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),toolbar:toolbar) }
             }
             DispatchQueue.main.async {
@@ -1052,9 +1052,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         DispatchQueue.global(qos:.userInitiated).async {
             let grid=axMode ? accessibilityGridReading(module:module):nil
             var proposal:AXTrialProposal?
-            let mapping=accessibilityMappingReport { host,windows in
+            let mapping=accessibilityMappingReport { host,windows,fullScreen in
                 // No fine adjustments: only classify the raw visible panel/label evidence.
-                proposal=axTrialProposal(host:host,windows:windows)
+                proposal=axTrialProposal(host:host,windows:windows,fullScreen:fullScreen)
             }
             DispatchQueue.main.async {
                 guard self.viewProbeID==id else { return }
@@ -1293,8 +1293,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let toolbar=accessibilityToolbarReading(fallback:settings.toolbarUnknownFallback,module:module)
             var adjusted=settings;adjusted.axToolbarState=toolbar.effectiveState
             var proposal:AXTrialProposal?,signature:String?
-            let mapping=accessibilityMappingReport { host,windows in
-                proposal=axTrialProposal(host:host,windows:windows,settings:adjusted,module:module)
+            let mapping=accessibilityMappingReport { host,windows,fullScreen in
+                proposal=axTrialProposal(host:host,windows:windows,settings:adjusted,module:module,fullScreen:fullScreen)
                 signature=AXScreenHints(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),toolbar:toolbar.effectiveState)?.signature
             }
             guard !Task.isCancelled,let owner=self else { return }

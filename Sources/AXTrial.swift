@@ -15,7 +15,7 @@ struct AXTrialProposal {
     let layout:String
     let summary:String
 }
-func axTrialProposal(host:CGRect, windows:[AXTrialWindow], settings:DetectionConfig = DetectionConfig(), module:String? = nil)->AXTrialProposal? {
+func axTrialProposal(host:CGRect, windows:[AXTrialWindow], settings:DetectionConfig = DetectionConfig(), module:String? = nil, fullScreen:Bool? = nil)->AXTrialProposal? {
     guard host.width>200,host.height>200 else { return nil }
     let visible=windows.filter(\.visible).map(\.frame).filter { host.contains($0) && $0 != host }
     // Panel widths stay roughly fixed as Lightroom shrinks. Require a tall
@@ -36,7 +36,11 @@ func axTrialProposal(host:CGRect, windows:[AXTrialWindow], settings:DetectionCon
     let bottomPanel=strips.filter { $0.midY>host.minY+host.height*0.75 }.map(\.minY).min()
     var left=leftPanel ?? host.minX+settings.axBaseHiddenLeftInsetPoints
     var right=rightPanel ?? host.maxX-settings.axBaseHiddenRightInsetPoints
-    var top=topPanel ?? host.minY+settings.axBaseHiddenTopInsetPoints
+    // The windowed hidden-top base includes 32 pt of title-bar space.
+    // Only positive native full-screen evidence removes it; unknown preserves
+    // existing windowed behaviour and explicit signed corrections still apply.
+    let titleBarAdjustment:CGFloat = fullScreen == true ? 32:0
+    var top=topPanel ?? host.minY+max(0,settings.axBaseHiddenTopInsetPoints-titleBarAdjustment)
     var bottom=bottomPanel ?? host.maxY-settings.axBaseHiddenBottomInsetPoints
     guard right-left>100,bottom-top>100 else { return nil }
     var area=CGRect(x:left,y:top,width:right-left,height:bottom-top)
@@ -53,6 +57,7 @@ func axTrialProposal(host:CGRect, windows:[AXTrialWindow], settings:DetectionCon
     if horizontal && vertical { notes.append("Conflicting label pairs; assumed single view.") }
     if !horizontal && !vertical { notes.append("No clear central label pair; assumed single view.") }
     if splitX != area.midX || splitY != area.midY { notes.append("50/50 midpoint adjusted into the central label gap; raw outer bounds need correction.") }
+    if topPanel == nil && fullScreen == true { notes.append("Hidden top: macOS full screen; removed 32 pt windowed title-bar allowance before view classification.") }
     let rawArea=area
     let leftShift=leftPanel == nil ? settings.axHiddenLeftOffsetPoints:settings.axShownLeftOffsetPoints
     let rightShift=rightPanel == nil ? settings.axHiddenRightOffsetPoints:settings.axShownRightOffsetPoints

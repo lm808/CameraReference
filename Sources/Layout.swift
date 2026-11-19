@@ -450,7 +450,7 @@ func displayMappingReport()->String {
     lines.append("Send the original full-display screenshot and its D-number/name. Screenshot pixel dimensions establish the final point-to-pixel scale.")
     return lines.joined(separator:"\n")
 }
-func accessibilityMappingReport(evidence: ((CGRect,[AXTrialWindow])->Void)? = nil)->String {
+func accessibilityMappingReport(evidence: ((CGRect,[AXTrialWindow],Bool?)->Void)? = nil)->String {
     let started=Date(),start=ProcessInfo.processInfo.systemUptime
     var lines=["AX WINDOW MAP", "Snapshot started: \(ISO8601DateFormatter().string(from:started))", "Read-only: no titles, filenames, control values or screenshots collected."]
     guard AXIsProcessTrusted() else { return (lines+["Accessibility permission unavailable."]).joined(separator:"\n") }
@@ -484,6 +484,8 @@ func accessibilityMappingReport(evidence: ((CGRect,[AXTrialWindow])->Void)? = ni
     }
     let main=element(read(application,kAXMainWindowAttribute).0),focused=element(read(application,kAXFocusedWindowAttribute).0)
     let mainBefore=main.flatMap { frame($0).0 }
+    let fullScreen=main.flatMap { read($0,"AXFullScreen").0 as? NSNumber }?.boolValue
+    lines.append("Main window AXFullScreen: \(fullScreen.map(String.init) ?? "unavailable")")
     lines.append("Main window rect: \(mainBefore.map(mappingRect) ?? "unavailable"); app hidden=\(field(application,kAXHiddenAttribute))")
     let (listed,listStatus)=read(application,kAXWindowsAttribute)
     guard let windows=listed as? [AXUIElement],listStatus == .success else {
@@ -530,7 +532,7 @@ func accessibilityMappingReport(evidence: ((CGRect,[AXTrialWindow])->Void)? = ni
             let visible=matches.contains { (($0[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 0)>0 && ($0[kCGWindowLayer as String] as? NSNumber)?.intValue==0 }
             return AXTrialWindow(frame:rect,visible:visible)
         }
-        evidence?(host,evidenceRows)
+        evidence?(host,evidenceRows,fullScreen)
     }
     lines.append("Main window after scan: \(mainAfter.map(mappingRect) ?? "unavailable"); unchanged=\(mainBefore != nil && mainBefore==mainAfter).")
     lines.append(String(format:"Snapshot elapsed: %.0f ms. AXVisible may be unsupported; unknown never means hidden.",(ProcessInfo.processInfo.systemUptime-start)*1000))

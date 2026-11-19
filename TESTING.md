@@ -8,3 +8,9 @@ Quit the previous app, then open this worktree’s `release/CameraReference Test
 - [ ] **Backup smoke check:** screenshot explicit view/pane selection still dismisses; inferred changes and panel checks retain their previous behaviour. Manual placement and floating display remain unchanged.
 
 Focus on differences from the accepted build; do not investigate unrelated edge cases. Automated checks do not replace native acceptance.
+
+## Build 62 — full-screen boundary fix only
+
+- [ ] In macOS full screen with top panel hidden, check Loupe and both Reference View orientations; verify placement and inferred view on built-in and external displays.
+- [ ] Show the top panel, then return to windowed mode: existing placement remains correct.
+- [ ] If still incorrect, save diagnostics; the window map now reports AXFullScreen and the proposal identifies whether the 32 pt correction was applied.

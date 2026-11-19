@@ -92,3 +92,7 @@ Raw evidence is retained because it supports these findings. No photographs, per
 ## Info-overlay strip false match — 1.1.3 candidate
 
 On 2026-11-18, a 1058 × 808 pt host exposed a visible 1022 × 167 pt info window inset by 18 pt. Both side panels hidden made it pass the former >90%-width strip filter, lowering raw top from 167 to 324. Showing either side narrowed the info rectangle and avoided the false match; showing both also worked. The authorised fix additionally requires both horizontal host edges to align within 4 pt. Regression fixtures cover all side combinations and top hidden; native candidate verification remains pending. Existing calibrated offsets and screenshot algorithms are unchanged.
+
+## Full-screen hidden top (2026-11-19)
+
+Reports at 2026-11-18 23:10:44 UTC (built-in display) and 2026-11-19 09:59:43 UTC (HP) exposed a fixed windowed hidden-top inset in native full screen. The 32 pt excess also rejected side-by-side labels outside the 25 pt top tolerance; top/bottom classification succeeded but upper geometry was shortened. Build 62 reads the main AX window AXFullScreen flag and removes 32 pt from the hidden-top base only on a positive result, before label classification. Signed user offsets still apply. Shown top, false/unknown state and screenshot geometry remain unchanged. The native flag and applied adjustment are reported; native acceptance remains pending. Synthetic fixtures cover both observed hosts and split orientations.

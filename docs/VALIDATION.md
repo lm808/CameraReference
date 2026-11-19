@@ -841,3 +841,9 @@ User reported missing icons in build 59. Native menu images were still assigned,
 The existing core/Lua/detection/viewport/reset/preview/capture/split suites passed, including new policy tests for unknown evidence, absent overlays and off-screen host translation. Config-editor encountered the known sandbox atomic-save error 512; the same executable passed outside the restriction. Seven migration harness groups passed separately, covering request/cache guards, report equivalence and menu state. Optional external crop fixtures were not supplied.
 
 The authorised Loupe appearance fix disables automatic validation only on the root menu, explicitly retains the disabled version heading and leaves child validation unchanged. Build/stage testing identity: 1.1.4, build 61, org.local.CameraReference.testing; strict deep signature and whitespace checks passed. No app launch or live Lightroom interaction. Main remains clean at a568c6e. Native appearance, behavioural acceptance and matched performance measurements remain pending in TESTING.md and MIGRATION.md.
+
+## 1.1.4 build 62 — full-screen hidden-top correction
+
+2026-11-19. Authorised separately from migration. Core regression tests passed, including synthetic reproductions of the built-in-display side-by-side label rejection and external HP top/bottom geometry. Confirmed full-screen hidden top removes 32 pt before classification; shown top, windowed/unknown, horizontal outer bounds and bottom remain unchanged. All seven migration harness groups passed. No screenshot detector or config values changed.
+
+Testing app build/staging and strict deep signature verification passed; version 1.1.4 build 62 retains the user's migration-stage numbering. Native AXFullScreen availability and actual placement remain for user acceptance; no live AX calls or app launches were performed by the agent. Diagnostics now expose this flag and the applied correction. Main remains untouched.

@@ -2,6 +2,8 @@
 
 ## 1.1.4 — migration stage 4 candidate
 
+- Build 62: correct the AX hidden-top boundary in confirmed macOS full screen, including split classification. Windowed offsets and screenshot placement calculations remain unchanged.
+
 - Consolidate existing overlay behaviour decisions in a pure policy, retaining caller guards, action order and mode distinctions. No intended overlay behaviour change.
 - Automatically detected Loupe View now appears normally without a submenu or action.
 

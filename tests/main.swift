@@ -695,3 +695,28 @@ for leftShown in [false,true] { for rightShown in [false,true] {
     assert(hiddenTopInfo.panes==hiddenTop.panes)
 } }
 print("PASS: AX info overlay cannot replace full-width top panel, all side visibility combinations and hidden top")
+
+// Full-screen hidden top: title-bar allowance must be removed before labels
+// classify split views. Windowed/unknown and shown-top geometry stay unchanged.
+let fsHost=CGRect(x:0,y:33,width:1512,height:949)
+let fsSides=[tw(0,51,324,913),tw(1177,51,335,913)]
+let fsLabels=[tw(666,51,83,25),tw(752,51,113,25)]
+let fsSingle=axTrialProposal(host:fsHost,windows:fsSides,fullScreen:true)!
+let windowSingle=axTrialProposal(host:fsHost,windows:fsSides,fullScreen:false)!
+assert(windowSingle.panes[0].minY-fsSingle.panes[0].minY == 32)
+assert(windowSingle.panes[0].maxY == fsSingle.panes[0].maxY)
+assert(windowSingle.panes[0].width == fsSingle.panes[0].width)
+assert(axTrialProposal(host:fsHost,windows:fsSides)!.panes == windowSingle.panes)
+let fsSplit=axTrialProposal(host:fsHost,windows:fsSides+fsLabels,fullScreen:true)!
+assert(fsSplit.layout == "Side-by-side" && fsSplit.panes.count == 2)
+assert(axTrialProposal(host:fsHost,windows:fsSides+fsLabels,fullScreen:false)!.layout == "Single view")
+let fsShown=fsSides+[tw(0,33,1512,70)]
+assert(axTrialProposal(host:fsHost,windows:fsShown,fullScreen:true)!.panes == axTrialProposal(host:fsHost,windows:fsShown,fullScreen:false)!.panes)
+let hpHost=CGRect(x:0,y:0,width:2560,height:1440)
+let hpWindows=[tw(0,18,324,1404),tw(2225,18,335,1404),tw(2128,672,113,25),tw(2128,700,113,25)]
+let hpSplit=axTrialProposal(host:hpHost,windows:hpWindows,fullScreen:true)!
+assert(hpSplit.layout == "Above-and-below")
+assert(hpSplit.panes[0].minY == 17 && hpSplit.panes[1].maxY == 1380)
+assert(hpSplit.panes[0].height == hpSplit.panes[1].height)
+assert(hpSplit.panes[0].maxY >= 697 && hpSplit.panes[0].maxY <= 700)
+print("PASS: native full-screen hidden top, Loupe/both splits, shown-top and windowed/unknown preservation")

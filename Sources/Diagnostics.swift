@@ -213,7 +213,7 @@ extension AppDelegate {
             var proposal:AXTrialProposal?
             let toolbar=accessibilityToolbarReading(fallback:settings.toolbarUnknownFallback,module:module)
             var previewSettings=settings;previewSettings.axToolbarState=toolbar.effectiveState
-            let mapping=accessibilityMappingReport { host,windows in proposal=axTrialProposal(host:host,windows:windows,settings:previewSettings,module:module) }
+            let mapping=accessibilityMappingReport { host,windows,fullScreen in proposal=axTrialProposal(host:host,windows:windows,settings:previewSettings,module:module,fullScreen:fullScreen) }
             DispatchQueue.main.async {
                 guard self.axTrialGeneration==generation,self.panel === actual else { return }
                 self.lastAXToolbar=toolbar.report
