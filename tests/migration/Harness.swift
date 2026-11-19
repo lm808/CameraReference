@@ -49,6 +49,43 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         }
         expect(UIPlacement(probe:ScreenProbeResult(candidate:nil,summary:"failure")) == nil,"Failed probe never invents UI geometry")
         print("PASS migration: placement adapters preserve AX pane/combined coordinates, manual translation and floating Fit")
+        // Exercise real transport via manually fired timers: no five-second wait,
+        // no application/Lightroom launch and no production bridge directory.
+        let transportFolder=MigrationEnvironment.root.appendingPathComponent("transport")
+        try fm.createDirectory(at:transportFolder,withIntermediateDirectories:true)
+        let transport=PhotoRequestPipeline(folder:transportFolder)
+        for target:Destination in [.overlay,.window,.check,.detect] {
+            try transport.writeRequest(token:"request",target:target)
+            let written=try String(contentsOf:transportFolder.appendingPathComponent("request.txt"),encoding:.utf8)
+            expect(written == "request\n"+(target == .detect ? "check":target.rawValue),"Bridge request bytes unchanged")
+        }
+        var responses=0,timeouts=0
+        func responseFile(_ text:String) throws { try text.write(to:transportFolder.appendingPathComponent("response.txt"),atomically:true,encoding:.utf8) }
+        transport.pending="poll"
+        transport.poll(token:"poll",deadline:Date().addingTimeInterval(5),onResponse:{ response in
+            responses += 1
+            expect(response.success && response.value=="x","Transport preserves decoded response")
+            expect(transport.timer==nil,"Timer cleared before callback")
+            expect(!fm.fileExists(atPath:transportFolder.appendingPathComponent("request.txt").path) && !fm.fileExists(atPath:transportFolder.appendingPathComponent("response.txt").path),"IPC removed before callback")
+        },onTimeout:{ timeouts += 1 })
+        expect(transport.timer!.timeInterval==0.05,"Polling cadence preserved")
+        try responseFile("poll\nOK\n78");transport.timer!.fire()
+        expect(responses==0 && timeouts==0,"Partial response ignored")
+        try responseFile("other\nOK\n78\nEND\n");transport.timer!.fire()
+        expect(responses==0 && timeouts==0,"Wrong token ignored")
+        try responseFile("poll\nOK\n78\nEND\n");transport.timer!.fire()
+        expect(responses==1 && timeouts==0,"Matching response delivered exactly once")
+        transport.poll(token:"poll",deadline:.distantPast,onResponse:{ _ in fatalError("Unexpected response") },onTimeout:{ timeouts += 1;transport.cancel() })
+        transport.timer!.fire()
+        expect(timeouts==1 && transport.timer==nil && transport.pending==nil,"Timeout cancellation clears transport")
+        transport.pending="old"
+        transport.poll(token:"old",deadline:.distantPast,onResponse:{ _ in responses += 1 },onTimeout:{ timeouts += 1 })
+        let oldTimer=transport.timer!;transport.pending="new";oldTimer.fire()
+        expect(!oldTimer.isValid && transport.pending=="new" && timeouts==1,"Old timer cannot consume replacement request")
+        let cancelledWork=Cancellation();transport.cancellation=cancelledWork;transport.destination = .overlay
+        transport.cancel()
+        expect(cancelledWork.isCancelled && transport.cancellation==nil && transport.destination==nil,"Cancellation reaches worker and clears state")
+        print("PASS migration: pipeline request bytes, polling cadence, partial/wrong-token response, cleanup, timeout and replacement")
         let app=AppDelegate() // no NSApplication.shared, launch callback, panels or timers started
         expect(app.axPlacementEnabled && app.automaticViewEnabled && app.axLiveUpdate,"Fresh defaults must remain AX, view inference and update enabled")
         for mode in AutomaticPlacementMode.allCases {

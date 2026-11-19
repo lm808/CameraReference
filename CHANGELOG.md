@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.6 — migration stage 6 candidate
+
+- Extract photo request, bridge polling, cancellation state and image-cache ownership. Preserve loading, timeout, late-result protection and existing behaviour.
+
 ## 1.1.5 — migration stage 5 candidate
 
 - Separate placement coordination and concrete manual/AX/screenshot adapters. Preserve calculations, request guards, caches, floating sizing and current behaviour. Reported stage 4 issues deferred until after migration.

@@ -1,6 +1,6 @@
 # Architecture and source map
 
-Current candidate implementation: 1.1.5 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
+Current candidate implementation: 1.1.6 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
 
 ## Source ownership
 
@@ -80,3 +80,5 @@ Calculation modules are reasonably isolated, especially original versus assisted
 Future structural work should extract diagnostics/menu ownership, centralise update policy, and add sequence tests for selection/view/module/dismiss races before changing orchestration. This documentation update performs no refactor. Preserve the original detector and keep new experiments independently selectable.
 
 Stage 5 source map: `Sources/PlacementCoordinator.swift` holds transitional AppDelegate placement orchestration (manual/cache/backend routing, async guards and result handling). `Sources/PlacementImplementations.swift` holds concrete calculation adapters and the AppKit UIPlacement result. Placement state remains on AppDelegate until later owner migration; detector algorithms are unchanged.
+
+Stage 6 source map: `Sources/PhotoRequestPipeline.swift` owns bridge transport/request state, immutable load context and SelectionImageCache; `Sources/PhotoRequestCoordinator.swift` holds transitional request qualification, existing completion guards and result dispatch. AppDelegate forwards existing request/cache access to this single owner.

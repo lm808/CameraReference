@@ -1,5 +1,5 @@
-# Camera Reference 1.1.5 — testing candidate
+# Camera Reference 1.1.6 — testing candidate
 
-Stage 5 separates placement coordination and concrete implementation adapters. Existing manual, Accessibility, original screenshot and assisted screenshot calculations, timing/order of guards, cache eligibility and floating sizing remain unchanged.
+Stage 6 moves photo request state, bridge transport, cancellation and image-cache ownership into PhotoRequestPipeline. Request qualification, reporting and late-result guards remain at the coordinator boundary. Polling, deadlines, extraction, cache validation, display routing and current user-facing behaviour are preserved.
 
-Full-screen stacking, AX diagnostic-border constraints and screenshot view-change policy are deferred until after migration. This build does not fix them. Main remains untouched. Native acceptance is pending; see TESTING.md. Quit the previous app before opening the testing app.
+The four logged bugs/policy items remain deferred until after migration. Main is untouched. Native acceptance is pending; see TESTING.md. Quit the previous app before opening the testing app.

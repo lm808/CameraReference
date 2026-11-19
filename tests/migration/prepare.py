@@ -20,7 +20,8 @@ main = once(main, 'let detectionSettings=DetectionConfigStore()', 'let detection
 diagnostics = (root / 'Sources/Diagnostics.swift').read_text()
 diagnostics = once(diagnostics, 'lastResult = text; detail.title = String(text.prefix(100)); status.button?.toolTip = text', 'lastResult = text')
 # Instrument arrival, without altering the completion guard or its body.
-main = once(main, 'guard self.pending == token, !work.isCancelled else { return }', 'MigrationEnvironment.loadCompletions += 1\n                guard self.pending == token, !work.isCancelled else { return }')
+photo = (root / 'Sources/PhotoRequestCoordinator.swift').read_text()
+photo = once(photo, 'guard self.pending == token, !work.isCancelled else { return }', 'MigrationEnvironment.loadCompletions += 1\n                guard self.pending == token, !work.isCancelled else { return }')
 (out / 'AppDelegate.swift').write_text(main)
 core = (root / 'Sources/Core.swift').read_text()
 start = core.index('    static let shared:UserDefaults =')
@@ -29,3 +30,5 @@ core = core[:start] + '    static let shared = MigrationEnvironment.preferences'
 (out / 'Core.swift').write_text(core)
 
 (out / 'Diagnostics.swift').write_text(diagnostics)
+
+(out / "PhotoRequestCoordinator.swift").write_text(photo)

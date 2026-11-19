@@ -42,7 +42,7 @@ Bridge 0.5.3 uses the unspaced CameraReference/Bridge folder. Quit the old compa
 
 ## Verify
 
-The menu should show the version you installed (candidate source: **1.1.5**). Developer tools → Diagnostics… should report bridge 0.5.3 and a recent heartbeat. Start with Loupe View, Lightroom Develop at Fit, and a known paired/embedded JPEG.
+The menu should show the version you installed (candidate source: **1.1.6**). Developer tools → Diagnostics… should report bridge 0.5.3 and a recent heartbeat. Start with Loupe View, Lightroom Develop at Fit, and a known paired/embedded JPEG.
 
 Use TESTING.md in the repository for staged-app acceptance; DMG installation is tested only when a package is requested. For checksum verification, compare `shasum -a 256 <downloaded.dmg>` with the adjacent `.sha256` download; this detects file corruption, not publisher identity.
 
