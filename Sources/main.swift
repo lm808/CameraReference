@@ -961,13 +961,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
               pending == nil,viewProbeID == nil,screenInspectionID == nil,calibration == nil else { return }
         nextLiveViewCheck=now+2;liveViewBusy=true
         let generation=liveViewGeneration,module=currentModule(),axMode=axPlacementEnabled,checkPanels=axPlacementEnabled && panel != nil
-        let fallback=reloadDetectionConfig().toolbarUnknownFallback
+        let detectionSettings=reloadDetectionConfig()
+        let fallback=detectionSettings.toolbarUnknownFallback
+        let viewSettings=detectionSettings.viewClassificationSettings
         DispatchQueue.global(qos:.utility).async {
             let grid=axMode ? accessibilityGridReading(module:module):nil
             let toolbar=checkPanels ? accessibilityToolbarReading(fallback:fallback,module:module).effectiveState:"unknown"
             var proposal:AXTrialProposal?,hints:AXScreenHints?
             _=accessibilityMappingReport { host,windows,fullScreen in
-                proposal=axTrialProposal(host:host,windows:windows,fullScreen:fullScreen)
+                proposal=axTrialProposal(host:host,windows:windows,settings:viewSettings,fullScreen:fullScreen)
                 if checkPanels { hints=AXScreenHints(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),toolbar:toolbar) }
             }
             DispatchQueue.main.async {
@@ -1049,12 +1051,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let id=UUID(),module=currentModule(),axMode=axPlacementEnabled,started=ProcessInfo.processInfo.systemUptime
         viewProbeID=id;updateToggleTitle()
         report("Reading Lightroom view through Accessibility…")
+        let viewSettings=reloadDetectionConfig().viewClassificationSettings
         DispatchQueue.global(qos:.userInitiated).async {
             let grid=axMode ? accessibilityGridReading(module:module):nil
             var proposal:AXTrialProposal?
             let mapping=accessibilityMappingReport { host,windows,fullScreen in
                 // No fine adjustments: only classify the raw visible panel/label evidence.
-                proposal=axTrialProposal(host:host,windows:windows,fullScreen:fullScreen)
+                proposal=axTrialProposal(host:host,windows:windows,settings:viewSettings,fullScreen:fullScreen)
             }
             DispatchQueue.main.async {
                 guard self.viewProbeID==id else { return }

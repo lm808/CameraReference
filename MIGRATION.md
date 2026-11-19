@@ -75,3 +75,5 @@ The separately requested presentation change enables known Loupe's actionless ro
 ### Stage 4 authorised follow-up — build 62
 
 User requested only the macOS full-screen hidden-top correction. AXFullScreen now qualifies removal of the windowed 32 pt allowance before shared AX classification/placement. This is separate from the policy extraction; no stage 5 work. Stage version remains 1.1.4, build 62. Existing checklist annotations are retained; focused full-screen checks appended. Native acceptance pending.
+
+Build 63 replaces the fixed full-screen allowance with `axFullScreenTitleBarAllowancePoints` (default 32, range 0...200 macOS points; 0 disables). It is a calibrated value supported by the recorded reports, not an AX boundary measurement. The file-driven advanced editor exposes it; config generation and missing-key upgrades preserve existing values. Both AX classification and placement use it, while screenshot geometry and windowed placement are unchanged.

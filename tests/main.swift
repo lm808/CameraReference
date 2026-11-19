@@ -720,3 +720,17 @@ assert(hpSplit.panes[0].minY == 17 && hpSplit.panes[1].maxY == 1380)
 assert(hpSplit.panes[0].height == hpSplit.panes[1].height)
 assert(hpSplit.panes[0].maxY >= 697 && hpSplit.panes[0].maxY <= 700)
 print("PASS: native full-screen hidden top, Loupe/both splits, shown-top and windowed/unknown preservation")
+
+let allowanceConfig=try DetectionConfig.parse("axFullScreenTitleBarAllowancePoints = 20")
+assert(allowanceConfig.axFullScreenTitleBarAllowancePoints == 20)
+assert(allowanceConfig.viewClassificationSettings.axFullScreenTitleBarAllowancePoints == 20)
+assert(axTrialProposal(host:fsHost,windows:fsSides,settings:allowanceConfig,fullScreen:true)!.panes[0].minY == 62)
+assert(axTrialProposal(host:fsHost,windows:fsSides,settings:allowanceConfig,fullScreen:false)!.panes == windowSingle.panes)
+var noAllowance=allowanceConfig;noAllowance.axFullScreenTitleBarAllowancePoints=0
+assert(axTrialProposal(host:fsHost,windows:fsSides,settings:noAllowance,fullScreen:true)!.panes == windowSingle.panes)
+let templateAllowance=try DetectionConfig.parse(DetectionConfig.template)
+assert(templateAllowance.axFullScreenTitleBarAllowancePoints == 32)
+for invalidAllowance in ["-1","201","nan"] {
+    do { _=try DetectionConfig.parse("axFullScreenTitleBarAllowancePoints = \(invalidAllowance)");assert(false) } catch {}
+}
+print("PASS: configurable full-screen allowance, default/custom/disabled/range and classification settings")

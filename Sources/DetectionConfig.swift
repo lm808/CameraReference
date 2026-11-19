@@ -19,6 +19,8 @@ struct DetectionConfig: Equatable {
     var axBaseHiddenLeftInsetPoints:CGFloat=18
     var axBaseHiddenRightInsetPoints:CGFloat=18
     var axBaseHiddenTopInsetPoints:CGFloat=50
+    // Observed title-bar difference in full-screen reports; configurable, not an AX measurement.
+    var axFullScreenTitleBarAllowancePoints:CGFloat=32
     var axBaseHiddenBottomInsetPoints:CGFloat=0
     static let axGeometryTemplate="""
     # Geometry corrections — macOS points, not pixels.
@@ -40,8 +42,16 @@ struct DetectionConfig: Equatable {
     axBaseHiddenLeftInsetPoints = 18
     axBaseHiddenRightInsetPoints = 18
     axBaseHiddenTopInsetPoints = 50
+    axFullScreenTitleBarAllowancePoints = 32 # calibrated allowance removed from hidden-top base in confirmed macOS full screen; 0 disables; range 0...200 pt
     axBaseHiddenBottomInsetPoints = 0
     """
+    // Classification uses raw geometry, not placement offsets. Carry only the
+    // configurable full-screen allowance into its otherwise unchanged defaults.
+    var viewClassificationSettings:DetectionConfig {
+        var result=DetectionConfig()
+        result.axFullScreenTitleBarAllowancePoints=axFullScreenTitleBarAllowancePoints
+        return result
+    }
     var left=Bound.ui,right=Bound.ui,top=Bound.ui,bottom=Bound.ui
     var panelCheckIntervalSeconds:Double=3
     var fitInsetPoints:CGFloat=18
@@ -111,6 +121,7 @@ struct DetectionConfig: Equatable {
             case "axBaseHiddenLeftInsetPoints" where (0...200).contains(n):c.axBaseHiddenLeftInsetPoints=n
             case "axBaseHiddenRightInsetPoints" where (0...200).contains(n):c.axBaseHiddenRightInsetPoints=n
             case "axBaseHiddenTopInsetPoints" where (0...200).contains(n):c.axBaseHiddenTopInsetPoints=n
+            case "axFullScreenTitleBarAllowancePoints" where (0...200).contains(n):c.axFullScreenTitleBarAllowancePoints=n
             case "axBaseHiddenBottomInsetPoints" where (0...200).contains(n):c.axBaseHiddenBottomInsetPoints=n
             case "panelCheckIntervalSeconds" where (0...3600).contains(n):c.panelCheckIntervalSeconds=n
             case "sideSearchPercent" where (5...50).contains(n):c.sideSearchPercent=n

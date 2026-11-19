@@ -14,3 +14,7 @@ Focus on differences from the accepted build; do not investigate unrelated edge 
 - [ ] In macOS full screen with top panel hidden, check Loupe and both Reference View orientations; verify placement and inferred view on built-in and external displays.
 - [ ] Show the top panel, then return to windowed mode: existing placement remains correct.
 - [ ] If still incorrect, save diagnostics; the window map now reports AXFullScreen and the proposal identifies whether the 32 pt correction was applied.
+
+## Build 63 — configurable allowance
+
+- [ ] Advanced settings exposes axFullScreenTitleBarAllowancePoints with its comment; default 32 retains build 62 placement. A custom value affects full-screen hidden-top placement and classification only; 0 disables the allowance.

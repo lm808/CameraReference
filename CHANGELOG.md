@@ -217,3 +217,5 @@ Advanced settings… is the final Settings menu item.
 ## 1.0.28
 
 - Recognise AX side panels in small Lightroom windows without the 30% panel-width cutoff. Screenshot detection is unchanged.
+
+Build 63 replaces the fixed full-screen allowance with `axFullScreenTitleBarAllowancePoints` (default 32, range 0...200 macOS points; 0 disables). It is a calibrated value supported by the recorded reports, not an AX boundary measurement. The file-driven advanced editor exposes it; config generation and missing-key upgrades preserve existing values. Both AX classification and placement use it, while screenshot geometry and windowed placement are unchanged.
