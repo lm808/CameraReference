@@ -9,7 +9,7 @@ esac
 app_executable=CameraReference
 if "$testing"; then app_executable=CameraReferenceTesting; fi
 mkdir -p build/CameraReference.app/Contents/MacOS build/module-cache
-xcrun swiftc -target "$(uname -m)-apple-macosx13.0" -swift-version 5 -O -module-cache-path build/module-cache Sources/Interaction.swift Sources/Calibration.swift Sources/Shortcut.swift Sources/DetectionConfig.swift Sources/ConfigEditor.swift Sources/SplitLayout.swift Sources/OverlayBehaviour.swift Sources/Snapping.swift Sources/ViewportDetector.swift Sources/PhotoDetector.swift Sources/ScreenProbe.swift Sources/AXAssisted.swift Sources/Permissions.swift Sources/Export.swift Sources/Core.swift Sources/ImageSource.swift Sources/AXTrial.swift Sources/Layout.swift Sources/Views.swift Sources/AppSettings.swift Sources/SettingsMenu.swift Sources/Diagnostics.swift Sources/main.swift -o "build/CameraReference.app/Contents/MacOS/$app_executable"
+xcrun swiftc -target "$(uname -m)-apple-macosx13.0" -swift-version 5 -O -module-cache-path build/module-cache Sources/Interaction.swift Sources/Calibration.swift Sources/Shortcut.swift Sources/DetectionConfig.swift Sources/ConfigEditor.swift Sources/SplitLayout.swift Sources/OverlayBehaviour.swift Sources/Snapping.swift Sources/ViewportDetector.swift Sources/PhotoDetector.swift Sources/ScreenProbe.swift Sources/AXAssisted.swift Sources/Permissions.swift Sources/Export.swift Sources/Core.swift Sources/ImageSource.swift Sources/AXTrial.swift Sources/Layout.swift Sources/Views.swift Sources/AppSettings.swift Sources/SettingsMenu.swift Sources/Diagnostics.swift Sources/PlacementImplementations.swift Sources/PlacementCoordinator.swift Sources/main.swift -o "build/CameraReference.app/Contents/MacOS/$app_executable"
 mkdir -p build/CameraReference.app/Contents/Resources
 cp Assets/AppIcon.icns build/CameraReference.app/Contents/Resources/AppIcon.icns
 cat > build/CameraReference.app/Contents/Info.plist <<'PLIST'
@@ -21,8 +21,8 @@ cat > build/CameraReference.app/Contents/Info.plist <<'PLIST'
 <key>CFBundleIconFile</key><string>AppIcon.icns</string>
 <key>CFBundleName</key><string>CameraReference</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>1.1.4</string>
-<key>CFBundleVersion</key><string>63</string>
+<key>CFBundleShortVersionString</key><string>1.1.5</string>
+<key>CFBundleVersion</key><string>64</string>
 <key>LSUIElement</key><true/>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>

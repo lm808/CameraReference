@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.5 — migration stage 5 candidate
+
+- Separate placement coordination and concrete manual/AX/screenshot adapters. Preserve calculations, request guards, caches, floating sizing and current behaviour. Reported stage 4 issues deferred until after migration.
+
 ## 1.1.4 — migration stage 4 candidate
 
 - Build 62: correct the AX hidden-top boundary in confirmed macOS full screen, including split classification. Windowed offsets and screenshot placement calculations remain unchanged.

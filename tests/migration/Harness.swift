@@ -30,6 +30,25 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
             prefs.removePersistentDomain(forName:MigrationEnvironment.suite)
             try? fm.removeItem(at:MigrationEnvironment.root)
         }
+        // Geometry adapters are read-free; test both target-pane and combined
+        // floating requests with translated and negative display coordinates.
+        for origin in [CGPoint.zero,CGPoint(x:-1080,y:-480),CGPoint(x:587,y:47)] {
+            let panes=[CGRect(x:origin.x+20,y:origin.y+40,width:400,height:600),CGRect(x:origin.x+420,y:origin.y+40,width:400,height:600)]
+            let proposal=AXTrialProposal(host:CGRect(origin:origin,size:CGSize(width:900,height:700)),panes:panes,layout:"Side-by-side",summary:"")
+            for mode:OverlayLayout in [.full,.left,.right,.upper] {
+                let original=axSelectedArea(proposal,layout:mode)
+                let adapted=AXPlacement.selectedArea(proposal,layout:mode,primaryHeight:1440)
+                expect(adapted?.topLeft == original,"AX selection retains exact top-left rectangle")
+                expect(adapted?.placement.areaAppKit == original.map { appKitRect($0,primaryHeight:1440) },"AX conversion identical for pane/combined/invalid selection")
+                if let ui=adapted?.placement.areaAppKit {
+                    expect(floatingPhotoSize(viewport:ui.size,image:CGSize(width:6000,height:4000),settings:DetectionConfig()) == floatingPhotoSize(viewport:original!.size,image:CGSize(width:6000,height:4000),settings:DetectionConfig()),"Floating combined-area Fit unchanged")
+                }
+            }
+            let saved=CGRect(x:0,y:0,width:900,height:700),current=CGRect(origin:origin,size:saved.size)
+            expect(ManualPlacement.translate(panes[0],from:saved,to:current)?.areaAppKit == translatedCalibration(panes[0],from:saved,to:current),"Manual translation forwards original geometry")
+        }
+        expect(UIPlacement(probe:ScreenProbeResult(candidate:nil,summary:"failure")) == nil,"Failed probe never invents UI geometry")
+        print("PASS migration: placement adapters preserve AX pane/combined coordinates, manual translation and floating Fit")
         let app=AppDelegate() // no NSApplication.shared, launch callback, panels or timers started
         expect(app.axPlacementEnabled && app.automaticViewEnabled && app.axLiveUpdate,"Fresh defaults must remain AX, view inference and update enabled")
         for mode in AutomaticPlacementMode.allCases {

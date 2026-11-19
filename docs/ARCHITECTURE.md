@@ -1,6 +1,6 @@
 # Architecture and source map
 
-Current candidate implementation: 1.1.4 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
+Current candidate implementation: 1.1.5 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
 
 ## Source ownership
 
@@ -78,3 +78,5 @@ Window movement translates known geometry. Suspension for minimise/overview/Spac
 Calculation modules are reasonably isolated, especially original versus assisted screenshot detection. Coordination is less separated: main.swift is roughly one third of the Swift source and combines menus, reporting, timers and lifecycle. Mode decisions and asynchronous guards occur in several paths rather than one state machine. Tests cover many pure helpers, but cannot prove native permission/menu/capture behaviour or every event sequence.
 
 Future structural work should extract diagnostics/menu ownership, centralise update policy, and add sequence tests for selection/view/module/dismiss races before changing orchestration. This documentation update performs no refactor. Preserve the original detector and keep new experiments independently selectable.
+
+Stage 5 source map: `Sources/PlacementCoordinator.swift` holds transitional AppDelegate placement orchestration (manual/cache/backend routing, async guards and result handling). `Sources/PlacementImplementations.swift` holds concrete calculation adapters and the AppKit UIPlacement result. Placement state remains on AppDelegate until later owner migration; detector algorithms are unchanged.

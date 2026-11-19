@@ -46,3 +46,9 @@ Stage 3 menu extraction retains the coordinator as action target and delegate; A
 The pure decisions can move mechanically: four method bodies match build 60 ignoring whitespace. Observation qualification must remain outside them for now. In particular, Grid evidence comes from a backend-qualified read with generation/module checks; do not introduce a differently timed second backend read while moving its positive-evidence branch. Host metadata uncertainty retains, overview/invisibility suspends, and movement is not restricted to full-display containment. No new product defect was established or fixed by this extraction.
 
 Known Loupe's actionless root row was automatically disabled by menu validation. Stage 4's separately requested presentation correction disables validation only at the root menu; its other commands previously always validated true, and child settings/pane menus retain their validation.
+
+## Stage 5 review
+
+The placement methods still depend on AppDelegate request and presentation state, so they move into a transitional extension rather than a second coordinator owning duplicate mutable state. Later stages can replace these dependencies locally. AX diagnostic text retains the original top-left rectangle, avoiding a conversion round trip during extraction. Screenshot probe metadata must be retained alongside UIPlacement because its candidate/photo geometry, background and failure flags are already calculated. Do not replace these with AX Fit calculations. No new confirmed functional defect found in this extraction.
+
+Three stage 4 native findings are deferred by user instruction until after migration; see docs/BACKLOG.md (stacking, preview constraints, screenshot view-change policy). Stage 4 user annotations are preserved verbatim.

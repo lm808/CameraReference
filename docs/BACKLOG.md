@@ -31,3 +31,9 @@ Current state: 1.0.32 on main. Daily use is accepted by the user; this does not 
 - Better screenshot placement across unusual panel widths without personal side-search tuning.
 
 AX placement, view inference, configurable corrections and assisted search are already implemented; they are not future feature proposals. Pinch was deliberately removed in favour of Command-scroll. Historical development tasks belong in HISTORICAL-NOTES.md, not here.
+
+## Deferred until after structure migration (2026-11-19)
+
+- **Bug — full-screen stacking:** overlay covers macOS menu/title bars when revealed at the screen top. Investigate ordering/window level; retain Lightroom-content visibility without moving placement. Native testing required.
+- **Bug — AX diagnostic border constraints:** report 2026-11-19 11:37:40 shows identical calculated preview/production bounds, but standard preview NSPanel requested AppKit y=183 and appeared at y=170. Production OverlayPanel accepted its requested frame. Preview must share production frame constraints; do not alter geometry to compensate.
+- **Policy — screenshot response to Lightroom view changes:** user means changing view inside Lightroom, not selecting a Camera Reference menu item. Consider dismissal (matching AX update-off) and blocking confirmed Library Grid. Current screenshot policy retains overlays, updates inferred menu state and invalidates caches. Decide evidence/behaviour with AX view detection both enabled and disabled; preserve screenshot placement algorithms. Not implemented during migration.

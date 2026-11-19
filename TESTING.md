@@ -1,20 +1,10 @@
-# Migration testing — 1.1.4 / stage 4
+# Migration testing — 1.1.5 / stage 5
 
-Quit the previous app, then open this worktree’s `release/CameraReference Testing.app`. Main remains unchanged. [Stage 3 menu acceptance](docs/migration/STAGE-3-MENU-ACCEPTANCE.md) is preserved separately.
+Quit the previous app, then open this worktree's `release/CameraReference Testing.app`. Main remains unchanged. Your stage 4 annotations are preserved verbatim in [STAGE-4-ACCEPTANCE.md](docs/migration/STAGE-4-ACCEPTANCE.md). Its three reported bugs/policy items are deferred until after migration in docs/BACKLOG.md.
 
-- [ ] **Loupe menu:** automatically detected Loupe appears normally, not greyed out, with its icon and no checkmark, submenu or action. Split pane choices still work.
-- [ ] **AX update option on:** an open overlay follows photo/view/pane/panel changes as before. View/panel changes retain zoom; photo selection resets Fit. An off overlay stays off.
-- [ ] **AX update option off:** those changes dismiss. Switching module or entering Library Grid still dismisses; returning to Loupe does not reopen it. Moving Lightroom still follows normally.
-- [ ] **Backup smoke check:** screenshot explicit view/pane selection still dismisses; inferred changes and panel checks retain their previous behaviour. Manual placement and floating display remain unchanged.
+- [ ] **Accessibility placement:** invoke in Loupe and both split orientations/panes. Placement and photo Fit match build 63, including full-screen hidden-top placement. Toggle off/on and change photo; update/dismiss behaviour stays the same.
+- [ ] **Floating display:** open a new floating display with Accessibility, then Screenshot selected. Initial sizing/position match the previous build. Refreshing an existing floating display retains the previous size/position behaviour.
+- [ ] **Manual:** use an existing calibrated region; placement and automatic/manual precedence are unchanged.
+- [ ] **Screenshot backup:** invoke with AX assistance off and on; placement, warm-cache reuse and failures behave as before. Changing view in Lightroom still leaves an open screenshot overlay in place; this policy is intentionally deferred. Selecting a different view/pane in Camera Reference's menu still dismisses it.
 
-Focus on differences from the accepted build; do not investigate unrelated edge cases. Automated checks do not replace native acceptance.
-
-## Build 62 — full-screen boundary fix only
-
-- [ ] In macOS full screen with top panel hidden, check Loupe and both Reference View orientations; verify placement and inferred view on built-in and external displays.
-- [ ] Show the top panel, then return to windowed mode: existing placement remains correct.
-- [ ] If still incorrect, save diagnostics; the window map now reports AXFullScreen and the proposal identifies whether the 32 pt correction was applied.
-
-## Build 63 — configurable allowance
-
-- [ ] Advanced settings exposes axFullScreenTitleBarAllowancePoints with its comment; default 32 retains build 62 placement. A custom value affects full-screen hidden-top placement and classification only; 0 disables the allowance.
+Do not retest the three deferred issues as stage 5 fixes. Native acceptance and timing comparisons remain separate from automated checks.

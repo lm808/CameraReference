@@ -103,3 +103,7 @@ AppSettings owns mode/default preference interpretation and original startup reg
 ## Stage 4 implementation note
 
 OverlayBehaviourPolicy now owns existing pure decisions in OverlayBehaviour.swift. AppDelegate calls the policy at the same branch points; compatibility helpers remain for established tests/callers. Qualifying observations and applying effects remain in the existing coordinator. This deliberately does not consolidate request freshness, native visibility or asynchronous completion guards into an eagerly populated context: doing so could alter short-circuit reads and execution timing. Presentation/controller and monitor ownership remain later stages.
+
+## Stage 5 implementation boundary
+
+The actual placement coordinator is currently an AppDelegate extension in PlacementCoordinator.swift, not a new state owner. This deliberate intermediate boundary keeps request, cancellation, cache and presentation state singular until stages 6–8. Twelve methods moved; eight bodies are byte-identical and four differ only by concrete adapter calls. PlacementImplementations.swift supplies ManualPlacement translation, AX selected/combined area conversion, and separate original/assisted screenshot adapters. UIPlacement names global AppKit UI geometry; screenshot probe metadata and precomputed candidate/photo geometry remain untouched. Calibration preparation, background screenshot validation and diagnostic capture actions retain their existing direct paths. No general event bus or new timer was added.

@@ -851,3 +851,11 @@ Testing app build/staging and strict deep signature verification passed; version
 ## 1.1.4 build 63 — configurable full-screen allowance
 
 2026-11-19. Replaced the placement literal with axFullScreenTitleBarAllowancePoints, documented in generated/example config and automatically included by existing missing-key upgrade logic. Classification snapshots carry this value without introducing calibrated placement offsets into view classification. Core regressions and all seven migration groups passed, including default template, custom allowance, zero, invalid range/nonfinite values, and unchanged windowed results. Build/staging, strict deep signature and whitespace checks passed. Main untouched; native appearance/placement acceptance remains pending. Personal config was not directly edited or replaced.
+
+## 1.1.5 build 64 — migration stage 5
+
+2026-11-19. Placement dispatch extracted to PlacementCoordinator.swift (transitional AppDelegate extension); concrete manual/AX/original screenshot/assisted screenshot adapters and global-AppKit UIPlacement introduced in PlacementImplementations.swift. Mechanical comparison to 9c9b231 confirmed eight moved bodies byte-identical and four equivalent after reversing only reviewed adapter substitutions. Original screenshot detector and split scanner, AX geometry, cache eligibility, permissions, completion/timeout guards and diagnostic preview constraints remain unchanged. AX diagnostic source rectangle is preserved without a coordinate round trip.
+
+All eight migration harness groups passed, including new synthetic AX pane/combined/invalid selection and negative-display-coordinate checks, manual translation and floating Fit equivalence. Existing core regression executable rerun passed (its input source files are unchanged by stage 5). Request guards/report-equivalence/menu tests compile the current extracted implementation. No native capture/AX calls or GUI app launch performed; native acceptance and matched latency measurements remain pending. Optional external screenshot fixtures not run.
+
+Testing build/staging succeeded: 1.1.5 build 64, strict deep signature and whitespace checks passed. Main untouched. Stage 4 annotations preserved verbatim in migration/STAGE-4-ACCEPTANCE.md; three bugs/policy questions explicitly deferred to after migration in BACKLOG.md. Stage 6 not started.
