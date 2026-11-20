@@ -1,0 +1,14 @@
+# Stage 7 user test responses
+
+2026-11-20: all four checks marked complete. Floating-window hover-text cleanup requested and logged in docs/BACKLOG.md. Test wording feedback: name the overlay or floating window explicitly; “display” is ambiguous with a physical monitor. Original annotations follow unchanged.
+
+# Migration testing — 1.1.7 / stage 7
+
+Quit the previous app, then open this worktree’s `release/CameraReference Testing.app`. Main is unchanged. Your completed stage 6 responses are preserved in [STAGE-6-ACCEPTANCE.md](docs/migration/STAGE-6-ACCEPTANCE.md). The five issues in [BACKLOG.md](docs/BACKLOG.md) remain deferred, including floating-display stacking and full-screen menu/titlebar stacking.
+
+- [x ] **Overlay presentation:** in Accessibility mode with “Update overlay with LrC view” enabled, invoke the overlay. Zoom/pan it, then hide/show a Lightroom side panel and change Lightroom from Loupe to Reference View. Placement follows the view/panel change without resetting zoom. Select another photo: it refreshes at Fit. With the option disabled, a view or photo change dismisses instead.
+- [x ] **Host following and restoration:** with an overlay visible, move the Lightroom window, minimise it, then restore it. The overlay follows movement, disappears while minimised and returns after restoration. Dismiss with the shortcut; subsequent Lightroom movement must not reopen it.
+- [x, log that hover text need some tidying up.] **Floating display:** open the floating display, zoom/pan it and refresh with a double-click. Title/zoom display, Fit reset, hover controls, resizing and closing work as before. Overlay dismissal must not close the floating display. The already logged problem where a later overlay covers it is not fixed here.
+- [x, you really need to be more careful with wording -  "verify the photo and destination offered still belong to that display" this could mean monitor or many other things.] **Backup paths:** invoke and dismiss an overlay once in Screenshot mode and once using an existing manual region. Placement, image interaction and dismissal match the previous build. If you normally export with Save, verify the photo and destination offered still belong to that display; saving is optional.
+
+Report any change in responsiveness. These checks confirm the migration, not fixes for the deferred issues. No permission changes or new calibration are required.
