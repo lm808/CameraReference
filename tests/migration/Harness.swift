@@ -146,7 +146,7 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         expect(app.currentModule()=="develop" && app.selectionEpoch()=="A","Valid bridge samples")
         try writeBridge("heartbeat.txt","partial")
         expect(app.currentModule()=="develop","Partial heartbeat keeps fresh previous complete sample")
-        app.lastModuleSample=("develop",Date(timeIntervalSinceNow:-10))
+        app.lightroomMonitor.lastModuleSample=("develop",Date(timeIntervalSinceNow:-10))
         expect(app.currentModule()==nil,"Expired previous heartbeat is uncertainty")
         try heartbeat("develop")
         try writeBridge("selection.txt","partial")
@@ -172,7 +172,7 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
             try heartbeat("develop");try selection("A")
             try writeBridge("response-selection.txt","\(token)\nA\nEND\n")
             let work=Cancellation()
-            app.pending=token;app.pendingModule="develop";app.cancellation=work;app.destination = .check
+            app.pending=token;app.photoRequests.pendingModule="develop";app.cancellation=work;app.destination = .check
             app.lastImageSize=nil;app.lastTiming="sentinel"
             app.load(raw.path,token:token,target:.check,work:work,invoked:ProcessInfo.processInfo.systemUptime)
             return work
@@ -195,7 +195,7 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
             case "module": try heartbeat("library")
             default:
                 try writeBridge("heartbeat.txt","partial")
-                app.lastModuleSample=nil
+                app.lightroomMonitor.lastModuleSample=nil
             }
             try await complete(after:old)
             expect(app.lastImageSize==nil && app.lastTiming=="sentinel","Stale completion applied after \(mutation)")
@@ -225,18 +225,17 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         // Presentation ownership must not couple dismissal to the independent float,
         // or leave a second copy of the host/selection state in the coordinator.
         app.floatingController.floatingTitle="Independent photo"
-        app.floatingZoom=125
+        app.floatingController.floatingZoom=125
         app.overlayController.overlayEpoch="displayed-selection"
-        app.livePanelSignature="displayed-panels"
-        app.displayedOverlayLayout = .right
-        app.overlaySuspended=true
-        expect(app.overlayEpoch=="displayed-selection" && app.overlayController.livePanelSignature=="displayed-panels","Presentation adapters share the sole controller state")
+        app.overlayController.livePanelSignature="displayed-panels"
+        app.overlayController.displayedOverlayLayout = .right
+        app.overlayController.overlaySuspended=true
         app.hide()
         expect(app.overlayController.overlayEpoch==nil && app.overlayController.livePanelSignature==nil && app.overlayController.displayedOverlayLayout==nil && !app.overlayController.overlaySuspended,"Dismissal clears owned displayed identity and suspension")
-        expect(app.floatingTitle=="Independent photo" && app.floatingController.floatingZoom==125,"Overlay dismissal leaves independent floating state intact")
+        expect(app.floatingController.floatingTitle=="Independent photo" && app.floatingController.floatingZoom==125,"Overlay dismissal leaves independent floating state intact")
         app.overlayController.lifecycleTrace=[];app.overlayController.lastLifecycleEvent=""
         for n in 0..<15 { app.recordLifecycle("event \(n)");app.recordLifecycle("event \(n)") }
-        expect(app.lifecycleTrace.count==12 && app.lifecycleTrace.first!.hasSuffix("event 3") && app.lifecycleTrace.last!.hasSuffix("event 14"),"Lifecycle history retains deduplication and bounded order")
+        expect(app.overlayController.lifecycleTrace.count==12 && app.overlayController.lifecycleTrace.first!.hasSuffix("event 3") && app.overlayController.lifecycleTrace.last!.hasSuffix("event 14"),"Lifecycle history retains deduplication and bounded order")
         expect(OverlayController().overlayEpoch==nil && FloatingDisplayController().floatingTitle=="Camera Reference","Presentation owners do not share instance state")
         print("PASS migration: presentation ownership, independent floating state, dismissal and lifecycle history")
 
@@ -245,7 +244,7 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         app.followLiveOverlayView(.left,module:"develop",panelChange:true)
         expect(app.panel==nil && app.pending==nil,"Monitoring must not open an absent overlay")
         app.hide();app.hide()
-        expect(app.panel==nil && app.overlayEpoch==nil && !app.overlaySuspended,"Repeated absent dismissal is safe")
+        expect(app.panel==nil && app.overlayController.overlayEpoch==nil && !app.overlayController.overlaySuspended,"Repeated absent dismissal is safe")
         print("PASS migration: off-overlay guards and repeated dismissal")
 
         // No live Lightroom reads: report permissions are non-prompting preflights.
@@ -314,7 +313,7 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
             expect(app.validateMenuItem(app.liveUpdateItem!) == (automatic && !screenshot),"Validation agrees with enabled state")
         } }
         prefs.set(true,forKey:app.regionKey("automaticBounds"));prefs.set(false,forKey:"useScreenshotDetection")
-        app.detectedLayoutModule="develop";app.detectedLayout = .left
+        app.lightroomMonitor.detectedLayoutModule="develop";app.lightroomMonitor.detectedLayout = .left
         app.updateLayoutMenu()
         expect(menu.items.first?.isEnabled == false,"Version heading remains disabled")
         let root=app.menus.layoutRoot!
@@ -324,12 +323,12 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         expect(visibleChoices()==["◧  Left","◨  Right"],"Auto side-by-side offers two panes")
         expect(app.layoutItems[.left]!.state == .on,"Detected pane checked in submenu")
         for mode in OverlayLayout.allCases {
-            app.detectedLayout=mode;app.updateLayoutMenu()
+            app.lightroomMonitor.detectedLayout=mode;app.updateLayoutMenu()
             expect(root.state == .off && root.image === app.layoutItems[mode]!.image,"Each root icon follows selection without a tick")
             if mode == .full { expect(root.title=="▣  Loupe View" && root.submenu==nil && root.action==nil && root.isEnabled && !menu.autoenablesItems,"Automatic Loupe is normal but has no submenu/action") }
             else { expect(visibleChoices().count==2,"Automatic split has two choices") }
         }
-        app.detectedLayoutModule="library";app.updateLayoutMenu()
+        app.lightroomMonitor.detectedLayoutModule="library";app.updateLayoutMenu()
         expect(root.title=="View detected on next invocation" && root.submenu==nil && root.image==nil,"Unknown view does not imply confirmed selection")
         prefs.set(true,forKey:"useScreenshotDetection");prefs.set(false,forKey:"experimentalAutomaticView")
         let expectedTitles=["▣  Loupe View","◧  Reference View (Left)","◨  Reference View (Right)","⬒  Reference View (Top)","⬓  Reference View (Bottom)"]

@@ -25,10 +25,14 @@ Use plain three-component versions in CFBundleShortVersionString (candidate `1.1
 
 | Source | Responsibility / relationship |
 |---|---|
-| `Sources/main.swift` | Menu/app lifecycle, shortcuts, bridge request pipeline, dispatch to display/capture, calibration, cache ownership, background/geometry timers, suspension and window ordering |
+| `Sources/main.swift` | Composition/startup/shutdown, shortcuts, invocation entry points, contextual region preferences and shared placement/calibration operation state |
+| `SettingsActions.swift`, `ViewCoordinator.swift` | Settings actions; explicit pane choices, invocation AX inference and guarded live view/photo geometry updates |
+| `CalibrationCoordinator.swift`, `ExportCoordinator.swift` | Calibration transaction/failure prompts and explicit photo-view export coordination |
+| `PlacementCoordinator.swift`, `PlacementImplementations.swift` | Manual/cache/backend routing and separate geometry adapters; original algorithms unchanged |
+| `PhotoRequestCoordinator.swift`, `PhotoRequestPipeline.swift` | Request qualification/dispatch versus transport, cancellation and image-cache ownership |
 | `OverlayBehaviour.swift` | Pure behaviour decisions; no reads, timers or window mutations. Callers preserve evidence guards and action order |
 | `AppSettings.swift`, `SettingsMenu.swift` | Mode/default preference interpretation and menu ownership; AppDelegate retains actions and existing triggers |
-| `Diagnostics.swift` | Diagnostic state, formatting, saving and preview ownership; transitional AppDelegate adapters preserve collection/capture coordination |
+| `Diagnostics.swift` | Diagnostic state, formatting, saving and preview ownership; App-facing AppDelegate adapters preserve collection/capture coordination |
 | `Core.swift` | Protocol/source primitives, cancellation, extraction helpers |
 | `ImageSource.swift` | Standalone/embedded selection, orientation/decode, file fingerprints, one-selection RAM cache |
 | `Export.swift` | View-specific JPEG snapshots and explicit safe export |
@@ -44,7 +48,7 @@ Use plain three-component versions in CFBundleShortVersionString (candidate `1.1
 | `Interaction.swift` | Image navigation, display geometry and placement checks |
 | `LightroomMonitor.swift`, `MonitoringCoordinator.swift` | Observation/timer/subscription ownership and separate existing policy execution; preserve cadence, synchronous notification delivery and stale-result guards |
 | `OverlayController.swift`, `FloatingDisplayController.swift` | Independent overlay lifecycle/displayed identity and floating display state owners |
-| `PresentationCoordinator.swift` | App-facing display/lifecycle coordination, forwarding to single presentation state owners; guards and order preserved |
+| `PresentationCoordinator.swift` | App-facing display/lifecycle coordination, using single presentation state owners; guards and order preserved |
 | `Views.swift` | Shared photo view, overlay/floating panels, floating chrome, previews/toasts/menu diagrams |
 | `Calibration.swift`, `Snapping.swift` | Drag-selection UI, Option edge snapping and region preference clearing |
 | `Shortcut.swift`, `Permissions.swift` | Shortcut recording and feature-triggered native permission prompts |
@@ -94,6 +98,4 @@ This branch follows MIGRATION.md and docs/migration/TARGET-STRUCTURE.md. Keep th
 
 For the current migration round, user-directed candidate versions are 1.1.<stage> (stage 3: 1.1.3). Preserve completed stage annotations separately when replacing the lean current checklist.
 
-Stage 5 source map: `Sources/PlacementCoordinator.swift` holds transitional AppDelegate placement orchestration (manual/cache/backend routing, async guards and result handling). `Sources/PlacementImplementations.swift` holds concrete calculation adapters and the AppKit UIPlacement result. Placement state remains on AppDelegate until later owner migration; detector algorithms are unchanged.
-
-Stage 6 source map: `Sources/PhotoRequestPipeline.swift` owns bridge transport/request state, immutable load context and SelectionImageCache; `Sources/PhotoRequestCoordinator.swift` holds transitional request qualification, existing completion guards and result dispatch. AppDelegate forwards existing request/cache access to this single owner.
+Current coordinator files are AppDelegate extensions sharing one composition surface. Native selectors and weak callbacks retain the same targets. Request/panel aliases and diagnostic/menu adapters remain intentionally; most state accesses name their owner. Shared placement/cache/calibration IDs remain on composition because their cancellation lifetimes overlap. See docs/ARCHITECTURE.md and docs/migration/FINAL-REVIEW.md before changing these boundaries. Stage 9 code consolidation does not imply native acceptance or permission to merge.

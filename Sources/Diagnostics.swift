@@ -3,8 +3,8 @@ import ApplicationServices
 
 /// Owns report state, diagnostic windows and preview lifetime. All mutation stays
 /// on the existing main-thread call sites; no new queue, timer or production read.
-/// Coordination adapters below deliberately retain AppDelegate guards until the
-/// request/monitor owners are extracted in later migration stages.
+/// Coordination adapters retain cross-component guards and post-display scheduling;
+/// the service owns report state, while readers/placement stay in their own modules.
 final class DiagnosticsService {
     var diagnosticsWindow:DiagnosticsController?
     var capturePreview:CapturePreviewController?
@@ -44,14 +44,14 @@ final class DiagnosticsService {
         let assistedPixelFailures=app.assistedPixelFailures
         let assistedEvidence=app.assistedEvidence
         let axLiveUpdate=app.axLiveUpdate
-        let overlayVisibilityStatus=app.overlayVisibilityStatus
-        let overlayGeometrySource=app.overlayGeometrySource
-        let overlayLifecycleStatus=app.overlayLifecycleStatus
-        let overlayMoveCount=app.overlayMoveCount
-        let overlayOrderCount=app.overlayOrderCount
-        let overlayLevelChangeCount=app.overlayLevelChangeCount
-        let lifecycleTrace=app.lifecycleTrace
-        let panelCheckStatus=app.panelCheckStatus
+        let overlayVisibilityStatus=app.overlayController.overlayVisibilityStatus
+        let overlayGeometrySource=app.overlayController.overlayGeometrySource
+        let overlayLifecycleStatus=app.overlayController.overlayLifecycleStatus
+        let overlayMoveCount=app.overlayController.overlayMoveCount
+        let overlayOrderCount=app.overlayController.overlayOrderCount
+        let overlayLevelChangeCount=app.overlayController.overlayLevelChangeCount
+        let lifecycleTrace=app.overlayController.lifecycleTrace
+        let panelCheckStatus=app.lightroomMonitor.panelCheckStatus
         let heartbeat=folder.appendingPathComponent("heartbeat.txt")
         let attributes=try? FileManager.default.attributesOfItem(atPath:heartbeat.path)
         let date=attributes?[.modificationDate] as? Date
@@ -93,7 +93,7 @@ final class DiagnosticsService {
     }
 }
 
-// Transitional adapters preserve the existing call graph, weak captures,
+// App-facing adapters preserve the existing call graph, weak captures,
 // generations, foreground gating and post-display scheduling verbatim.
 extension AppDelegate {
     var diagnosticsWindow:DiagnosticsController? {
@@ -220,7 +220,7 @@ extension AppDelegate {
                 self.lastAXMapping=displays+"\n\n"+mapping
                 self.lastAXTrial=(proposal?.summary ?? "AX proposal unavailable. See Accessibility map; normal overlay unaffected.")+"\nToolbar evidence used for this preview:\n"+toolbar.report+String(format:"\nTrial elapsed: %.0f ms (after normal panel shown).",(ProcessInfo.processInfo.systemUptime-started)*1000)
                 if !drawPreview { self.lastAXTrial += "\nDrawing disabled; collected for automatic diagnostics.";self.savingInvocation=false;self.collectCompleteDiagnostics();return }
-                if let proposal,let current=self.overlayHost, axTrialHostMatches(proposedTopLeft:proposal.host,actualAppKit:current.frame,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height) {
+                if let proposal,let current=self.overlayController.overlayHost, axTrialHostMatches(proposedTopLeft:proposal.host,actualAppKit:current.frame,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height) {
                     let displayHeight=CGDisplayBounds(CGMainDisplayID()).height
                     for (index,rect) in proposal.panes.enumerated() {
                         let frame=CGRect(x:rect.minX,y:displayHeight-rect.maxY,width:rect.width,height:rect.height)
@@ -232,13 +232,13 @@ extension AppDelegate {
                         let name=proposal.panes.count==1 ? "AX single":(proposal.layout=="Side-by-side" ? (index==0 ? "AX left":"AX right"):(index==0 ? "AX top":"AX bottom"))
                         border.contentView=AXTrialBorder(size:frame.size,tint:index==0 ? .systemGreen:.systemPurple,label:name)
                         actual.addChildWindow(border,ordered:.above)
-                        if !self.overlaySuspended && actual.isVisible {
+                        if !self.overlayController.overlaySuspended && actual.isVisible {
                             border.orderFront(nil)
                         } else { border.orderOut(nil) }
                         self.axTrialBorders.append(border)
-                        self.lastAXTrial += "\n\(name): requested AppKit \(frame); actual \(border.frame); visible \(border.isVisible); parent visible \(actual.isVisible); suspended \(self.overlaySuspended)."
+                        self.lastAXTrial += "\n\(name): requested AppKit \(frame); actual \(border.frame); visible \(border.isVisible); parent visible \(actual.isVisible); suspended \(self.overlayController.overlaySuspended)."
                     }
-                } else if proposal != nil { self.lastAXTrial += "\nPreview not drawn: host changed or does not match overlay host. AX top-left: \(proposal!.host); overlay AppKit: \(String(describing:self.overlayHost?.frame))." }
+                } else if proposal != nil { self.lastAXTrial += "\nPreview not drawn: host changed or does not match overlay host. AX top-left: \(proposal!.host); overlay AppKit: \(String(describing:self.overlayController.overlayHost?.frame))." }
                 self.savingInvocation=false;self.collectCompleteDiagnostics()
             }
         }

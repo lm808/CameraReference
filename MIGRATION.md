@@ -1,7 +1,7 @@
 # Structure migration — working checklist
 
 Branch: `codex/structure-migration` · worktree: `worktrees/structure-migration`
-Baseline: main at `a568c6e`, application 1.0.32. Main and its staged daily-use app remain untouched. Stage 8 delivers candidate 1.1.8; main and its accepted app stay at 1.0.32.
+Baseline: main at `a568c6e`, application 1.0.32. Main and its staged daily-use app remain untouched. Stage 9 delivers candidate 1.1.9; main and its accepted app stay at 1.0.32.
 
 ## Contract and priority
 
@@ -22,7 +22,7 @@ Target ownership and the mapping from existing symbols are in [TARGET-STRUCTURE.
 - [x] **6 — Photo request ownership (testing complete; stacking bug logged).** Move bridge/load/cancellation and image-cache ownership into a photo pipeline. Preserve tokens, epochs, 50ms response polling, timeout, cancellation order and refresh-once-per-epoch behaviour. Introduce explicit request context by wrapping existing identities first; do not replace all generation schemes at once.
 - [x] **7 — Presentation ownership (user testing complete; hover-text cleanup logged).** Move overlay panel/lifecycle state into OverlayController and floating state into FloatingDisplayController, retaining ReferenceView and geometry helpers. Separate view/panel geometry updates from photo replacement (preserve zoom versus reset Fit). Preserve export snapshot identity, hover behaviour, suspension, ordering and host following.
 - [x] **8 — Monitoring ownership (user testing complete).** Move observations into LightroomMonitor with explicit outputs and unknown states. Preserve the existing 0.2s tick order, eligible 2s AX poll, configurable screenshot checks, workspace notifications and foreground cancellation. Policy decides consequences; monitors do not manipulate windows. Avoid introducing queued event delivery or new timer cadence.
-- [ ] **9 — Consolidation and acceptance.** Remove replaced forwarding paths and redundant state only after coverage. Review component boundaries, all mode combinations, no extra AX/capture/extraction work, timing and source map. Update methods/agent guide/test list to actual implementation. Merge only after user acceptance; do not push/package automatically.
+- [ ] **9 — Consolidation and acceptance (code consolidated; final native acceptance pending).** Remove replaced forwarding paths and redundant state only after coverage. Review component boundaries, all mode combinations, no extra AX/capture/extraction work, timing and source map. Update methods/agent guide/test list to actual implementation. Merge only after user acceptance; do not push/package automatically.
 
 Each stage can take several small commits. Dependency reason: tests first; reporting/menu extraction reduces noise; policy precedes moving its execution; placement and request seams precede presentation; timer extraction comes last to avoid changing execution order while owners are moving. If inspection shows a boundary cannot move safely yet, record the dependency here before changing the sequence.
 
@@ -54,9 +54,11 @@ Each stage can take several small commits. Dependency reason: tests first; repor
 
 | 8 | Candidate 1.1.8 build 67 staged | Monitor owns observations, subscriptions and timing; coordinator retains existing policy/guards. Eleven migration groups passed; strict signature/plist checked. User completed all four checks on 2026-11-20 with no new issue annotations; responses preserved in STAGE-8-ACCEPTANCE.md. |
 
+| 9 | Candidate 1.1.9 build 68 staged | Removed 42 storage aliases; grouped 24 action methods; 85 method bodies equivalent after owner qualification. Full regression suites and eleven migration groups passed (config-editor required unrestricted temporary-save retry). Signature/plist checked. Final native acceptance and timings pending. |
+
 - [ ] Collect matched native before/after timing samples using the baseline protocol before accepting migrated performance. No timing samples have been collected by this stage.
 
-Stage 2 is accepted for migration continuation. Stage 3 user testing is complete; annotations are preserved in docs/migration/STAGE-3-ACCEPTANCE.md. Build 60 menu presentation was accepted except for the requested normal-appearance Loupe follow-up; see docs/migration/STAGE-3-MENU-ACCEPTANCE.md. Stage 4 is implemented; native acceptance is pending. Existing unresolved edge cases remain in the findings/backlog.
+Stages 2–8 user testing is complete; responses and exceptions are preserved in their acceptance files. Stage 9 code consolidation is complete, with final native acceptance and matched timing evidence pending. Existing unresolved issues remain in the findings/backlog. The sections below record each stage’s implementation at its handoff; the current source map is docs/ARCHITECTURE.md and the final boundary review is docs/migration/FINAL-REVIEW.md.
 
 ### Stage 2 ownership boundary
 
@@ -104,7 +106,7 @@ OverlayController owns the displayed panel, host binding, lifecycle/suspension s
 
 Fourteen presentation/lifecycle methods were relocated; lifecycle history and floating-title formatting now execute on their owners. Cross-component coordination stays in an AppDelegate extension until the monitoring/composition stages. Existing geometry-only updates and image replacement remain separate: view/panel updates preserve zoom, photo replacement resets Fit. ReferenceView, exports, placement algorithms, preview constraints and stacking policy are unchanged. The five deferred bugs/policy items are not fixed here.
 
-Candidate 1.1.7 build 66. Stage 6 annotations already preserved verbatim in STAGE-6-ACCEPTANCE.md. Stage 7 user testing is complete; annotations preserved in STAGE-7-ACCEPTANCE.md. Matched performance samples remain pending; stage 8 has not started.
+Candidate 1.1.7 build 66. Stage 6 annotations already preserved verbatim in STAGE-6-ACCEPTANCE.md. Stage 7 user testing is complete; annotations preserved in STAGE-7-ACCEPTANCE.md. Matched performance samples remain pending; stage 8 had not started at that handoff.
 
 ### Stage 8 ownership boundary
 
@@ -114,4 +116,12 @@ MonitoringCoordinator applies the existing OverlayBehaviourPolicy and executes a
 
 The timer remains 0.2 seconds, eligible AX polling 2 seconds, display-check debounce 0.6 seconds, and screenshot checking uses the existing config. Notification callbacks remain synchronous on the posting thread, with no extra queue. The two existing main/utility queue boundaries are not combined into a new event loop. Subscriptions and timers now have an explicit stop/replacement lifecycle. No placement, update/dismiss, preview, export or permission policy changes. Six deferred issues remain unfixed.
 
-Candidate 1.1.8 build 67; stage 8 user testing complete, with responses preserved in STAGE-8-ACCEPTANCE.md. Stage 7 annotations remain preserved in STAGE-7-ACCEPTANCE.md. Stage 9 has not started.
+Candidate 1.1.8 build 67; stage 8 user testing complete, with responses preserved in STAGE-8-ACCEPTANCE.md. Stage 7 annotations remain preserved in STAGE-7-ACCEPTANCE.md. Stage 9 had not started at that handoff.
+
+### Stage 9 consolidation and acceptance boundary
+
+Removed 42 temporary storage-forwarding properties; state reads/writes name their concrete owners. Retained request-handle and panel aliases for local optional bindings, and native menu/diagnostic adapters. Grouped 24 unchanged action methods into ViewCoordinator, CalibrationCoordinator, SettingsActions and ExportCoordinator. main.swift is now composition/startup/shortcuts/invocation/contextual region access and shared operation state (275 lines rather than 631 at stage 8). No new independent coordinator object, event bus, store or timing boundary.
+
+Source comparison against 25e4a2f verifies all 85 coordinator method bodies identical after reversing owner qualification. Shared capture/calibration/placement cancellation identities deliberately remain on composition; final boundaries and rationale are documented in docs/migration/FINAL-REVIEW.md. All six deferred issues stay open. Stage 8 responses remain preserved in STAGE-8-ACCEPTANCE.md.
+
+Candidate 1.1.9 build 68. Final native acceptance and matched timing evidence remain pending. No merge authorised by starting this stage; main and its accepted app remain untouched.

@@ -4,6 +4,15 @@ import AppKit
 import ApplicationServices
 extension AppDelegate {
     func baselineDiagnosticSections()->[DiagnosticSection] {
+        // State-owner aliases only; the frozen formatter below is unchanged.
+        let overlayVisibilityStatus=overlayController.overlayVisibilityStatus
+        let overlayGeometrySource=overlayController.overlayGeometrySource
+        let overlayLifecycleStatus=overlayController.overlayLifecycleStatus
+        let overlayMoveCount=overlayController.overlayMoveCount
+        let overlayOrderCount=overlayController.overlayOrderCount
+        let overlayLevelChangeCount=overlayController.overlayLevelChangeCount
+        let lifecycleTrace=overlayController.lifecycleTrace
+        let panelCheckStatus=lightroomMonitor.panelCheckStatus
         let heartbeat=folder.appendingPathComponent("heartbeat.txt")
         let attributes=try? FileManager.default.attributesOfItem(atPath:heartbeat.path)
         let date=attributes?[.modificationDate] as? Date

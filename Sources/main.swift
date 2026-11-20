@@ -4,6 +4,7 @@ import ImageIO
 import ApplicationServices
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemValidation, NSMenuDelegate {
+    // MARK: - Composition and shared operation state
     lazy var lightroomMonitor=LightroomMonitor(folder:folder)
     let overlayController=OverlayController()
     let floatingController=FloatingDisplayController()
@@ -61,25 +62,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     var viewProbeID:UUID?
     var pendingAXPanelSignature:String?
-    @objc func toggleAXLiveUpdate(_ item:NSMenuItem) {
-        guard axPlacementEnabled else { return }
-        CameraPreferences.shared.set(!axLiveUpdate,forKey:"axLiveUpdate")
-        liveViewGeneration += 1;nextLiveViewCheck=0
-        item.state=axLiveUpdate ? .on:.off
-    }
-    func dismissForGrid() {
-        cancelScreenInspection();cancelRequest();hide()
-        lastViewDetection="Grid View selected; overlay off. Returning to Loupe does not reopen it."
-        report(lastViewDetection);saveInvocationDiagnostics()
-    }
-    var manualOverlayLayout:OverlayLayout { savedOverlayLayout(CameraPreferences.shared,module:currentModule() ?? observedModule) }
+    var manualOverlayLayout:OverlayLayout { savedOverlayLayout(CameraPreferences.shared,module:currentModule() ?? lightroomMonitor.observedModule) }
     var overlayLayout:OverlayLayout {
         get {
-            if automaticViewEnabled,detectedLayoutModule == currentModule(),let mode=detectedLayout,
+            if automaticViewEnabled,lightroomMonitor.detectedLayoutModule == currentModule(),let mode=lightroomMonitor.detectedLayout,
                CameraPreferences.shared.bool(forKey:regionKey("automaticBounds",layout:manualOverlayLayout)) { return mode }
             return manualOverlayLayout
         }
-        set { CameraPreferences.shared.set(newValue.rawValue,forKey:overlayLayoutPreferenceKey(module:currentModule() ?? observedModule)) }
+        set { CameraPreferences.shared.set(newValue.rawValue,forKey:overlayLayoutPreferenceKey(module:currentModule() ?? lightroomMonitor.observedModule)) }
     }
     var placementMemory:PlacementMemory?
     func regionKey(_ key:String,layout:OverlayLayout? = nil)->String {
@@ -122,27 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
     }
 
-    @objc func selectLayout(_ sender:NSMenuItem) {
-        guard let raw=sender.representedObject as? String,let mode=OverlayLayout(rawValue:raw),mode != overlayLayout else { return }
-        if automaticViewEnabled && (mode.group==0 || mode.group != overlayLayout.group) { return }
-        cancelScreenInspection();cancelRequest();calibration?.finish(nil)
-        if OverlayBehaviourPolicy.dismissForExplicitSelection(screenshot:screenshotDetectionEnabled) { hide() }
-        if automaticViewEnabled {
-            CameraPreferences.shared.set(mode.rawValue,forKey:"axPreferredPane.\(currentModule() ?? "develop").\(mode.group)")
-            detectedLayout=mode
-        } else { overlayLayout=mode }
-        CameraPreferences.shared.set(true,forKey:regionKey("automaticBounds"))
-        invalidateAutomaticGeometry();updateLayoutMenu()
-        autoItem.state=CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) ? .on:.off
-        report(mode == .full ? "Loupe View selected.":"\(mode.label) pane selected.")
-        followLiveOverlayView(mode,module:currentModule(),requiresViewDetection:false)
-    }
-
-
-
-
-
-
+    // MARK: - Startup and native action wiring
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         if NSWorkspace.shared.runningApplications.contains(where:{
@@ -209,6 +179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         updateToggleTitle()
     }
 
+    // MARK: - Shared geometry invalidation and invocation entry points
     func invalidateAutomaticGeometry() {
         cancelPanelCheck()
         lastProbe=nil;placementMemory=nil
@@ -231,313 +202,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     @objc func checkPhoto() { request(.check) }
 
-
-    func refreshAXSelection(_ image:CGImage,snapshot:ExportSnapshot?,epoch:String,panel existing:OverlayPanel,generation:Int) {
-        let module=currentModule(),host=overlayHost?.id,settings=reloadDetectionConfig()
-        let height=CGDisplayBounds(CGMainDisplayID()).height
-        startAXPlacement(epoch:epoch,full:false) { [weak self] ui in
-            guard let self,self.panel === existing,self.axPlacementEnabled,self.axLiveUpdate,
-                  self.liveViewGeneration==generation,self.selectionEpoch()==epoch,
-                  self.currentModule()==module,self.overlayHost?.id==host,
-                  self.isLightroom(),existing.isVisible,!self.overlaySuspended,
-                  CameraPreferences.shared.bool(forKey:self.regionKey("automaticBounds")),
-                  let view=existing.contentView as? ReferenceView else { return }
-            guard let ui,let placed=settings.placement(ui:appKitRect(ui,primaryHeight:height),image:CGSize(width:image.width,height:image.height)) else {
-                self.report("Photo refresh placement unavailable; previous overlay retained.");return
-            }
-            let area=appKitRect(placed.region,primaryHeight:height),photo=appKitRect(placed.photo,primaryHeight:height)
-            guard NSScreen.screens.contains(where:{$0.frame.intersects(area)}) else { return }
-            existing.setFrame(area.insetBy(dx:-1,dy:-1),display:false)
-            view.imageViewport=view.convert(existing.convertFromScreen(photo),from:nil)
-            view.image=NSImage(cgImage:image,size:NSSize(width:image.width,height:image.height))
-            view.exportSnapshot=snapshot
-            self.overlayEpoch=epoch;self.livePanelSignature=self.pendingAXPanelSignature
-            self.displayedOverlayLayout=self.overlayLayout
-            self.recordLifecycle("photo selection refreshed; Fit reset")
-            self.clearAXTrialBorders();self.runAXTrial(after:existing);self.saveInvocationDiagnostics()
-        }
-    }
-
-
-
-    func saveExtracted(_ snapshot:ExportSnapshot, from view:ReferenceView) {
-        guard !saving else { return }
-        let url=snapshot.destination
-        let overlayRegion=view.showIndicator ? view.window?.frame : nil
-        do {
-            let existing = try exportIdentity(url)
-            if existing != nil {
-                let alert = NSAlert();alert.icon=NSApp.applicationIconImage; alert.messageText = "Replace existing extracted JPEG?"
-                alert.informativeText = "The _JpgFromRaw.jpg export beside this RAW already exists."
-                alert.addButton(withTitle: "Cancel"); alert.addButton(withTitle: "Replace")
-                NSApp.activate(ignoringOtherApps: true)
-                guard alert.runModal() == .alertSecondButtonReturn else { return }
-            }
-            saving = true
-            DispatchQueue.global(qos: .userInitiated).async {
-                let result = Result { try writeExport(exportJPEG(snapshot.bytes, orientation: snapshot.orientation), to: url, replacing: existing) }
-                DispatchQueue.main.async {
-                    self.saving = false
-                    switch result {
-                    case .success:
-                        self.report("Saved _JpgFromRaw.jpg beside the displayed RAW.")
-                        let message="Saved " + url.lastPathComponent
-                        if view.window?.isVisible == true, view.image != nil { view.showToast(message) }
-                        else if let overlayRegion, self.isLightroom() { self.saveToast.show(message,in:overlayRegion) }
-                    case .failure(let error): self.report(error.localizedDescription); self.showResult()
-                    }
-                }
-            }
-        } catch { report(error.localizedDescription); showResult() }
-    }
-    @objc func changePreference() {
-        imageCache.clear()
-        let enabled = !CameraPreferences.shared.bool(forKey: "preferEmbedded")
-        CameraPreferences.shared.set(enabled, forKey: "preferEmbedded"); preferItem.state = enabled ? .on : .off
-        report("Source priority changed; applies on the next load or double-click refresh.")
-    }
-    @objc func chooseExifTool() {
-        imageCache.clear()
-        let picker = NSOpenPanel(); picker.title = "Choose the ExifTool executable"; picker.canChooseDirectories = false
-        NSApp.activate(ignoringOtherApps: true)
-        if picker.runModal() == .OK, let url = picker.url, FileManager.default.isExecutableFile(atPath: url.path) {
-            CameraPreferences.shared.set(url.path, forKey: "exiftool"); report("ExifTool location saved.")
-        }
-    }
-    @objc func changeAutomatic() {
-        let enabled = !CameraPreferences.shared.bool(forKey: regionKey("automaticBounds"))
-        CameraPreferences.shared.set(enabled, forKey: regionKey("automaticBounds")); autoItem.state = enabled ? .on : .off
-        cancelScreenInspection();cancelRequest();hide();invalidateAutomaticGeometry()
-        if enabled { _ = axPlacementEnabled ? FeaturePermission.accessibility.ensure():FeaturePermission.screenCapture.granted }
-        report(enabled ? "Automatic detection enabled. Manual calibration is the fallback." : "Using manual calibration.")
-    }
-    @objc func toggleAutomaticView(_ item:NSMenuItem) {
-        guard screenshotDetectionEnabled else { return }
-        if !automaticViewEnabled && !FeaturePermission.accessibility.ensure() { return }
-        cancelRequest();cancelScreenInspection()
-        CameraPreferences.shared.set(!automaticViewEnabled,forKey:"experimentalAutomaticView")
-        liveViewGeneration += 1;nextLiveViewCheck=0
-        detectedLayout=nil;detectedLayoutModule=nil
-        item.state=automaticViewEnabled ? .on:.off
-        lastViewDetection=automaticViewEnabled ? "Enabled; AX view checked every 2 seconds while Lightroom is active.":"Disabled; using saved menu selection."
-        invalidateAutomaticGeometry();updateLayoutMenu();report(lastViewDetection)
-    }
-    func followLiveOverlayView(_ mode:OverlayLayout,module:String?,requiresViewDetection:Bool=true,panelChange:Bool=false,panelSignature:String?=nil) {
-        guard axPlacementEnabled,(!requiresViewDetection || automaticViewEnabled),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
-              let module,module==displayedOverlayModule,(displayedOverlayLayout != mode || panelChange),
-              let existing=panel else { return }
-        if OverlayBehaviourPolicy.geometryChange(accessibility:true,automatic:true,displayed:displayedOverlayLayout,selected:mode,panelsChanged:panelChange,live:axLiveUpdate) == .dismiss {
-            cancelScreenInspection();cancelRequest();hide()
-            report("View, pane or panels changed; overlay dismissed.");return
-        }
-        guard existing.isVisible,!overlaySuspended,
-              let view=existing.contentView as? ReferenceView,let image=view.image,
-              let host=overlayHost else { return }
-        let backend=automaticPlacementMode,epoch=selectionEpoch(),generation=liveViewGeneration
-        let settings=reloadDetectionConfig(),height=CGDisplayBounds(CGMainDisplayID()).height
-        func stillCurrent()->Bool {
-            self.panel === existing && existing.isVisible && !self.overlaySuspended &&
-            (!requiresViewDetection || self.automaticViewEnabled) && self.automaticPlacementMode==backend &&
-            CameraPreferences.shared.bool(forKey:self.regionKey("automaticBounds")) &&
-            self.currentModule()==module && self.displayedOverlayModule==module &&
-            self.overlayLayout==mode && self.liveViewGeneration==generation &&
-            self.selectionEpoch()==epoch && self.overlayHost?.id==host.id && self.isLightroom() &&
-            self.axLiveUpdate
-        }
-        func apply(_ area:CGRect,_ photo:CGRect,_ background:NSColor?) {
-            guard stillCurrent(),NSScreen.screens.contains(where:{$0.frame.intersects(area)}) else { return }
-            // Keep the same panel, image and export snapshot. No hide/order/reload.
-            let frame=area.insetBy(dx:-1,dy:-1)
-            if existing.frame != frame { existing.setFrame(frame,display:false) }
-            view.imageViewport=view.convert(existing.convertFromScreen(photo),from:nil)
-            if let background { view.backgroundColour=background }
-            view.needsDisplay=true
-            self.displayedOverlayLayout=mode;self.lastImageSize=image.size
-            self.livePanelSignature=self.pendingAXPanelSignature ?? panelSignature
-            self.lastLayout += "\nVisible overlay updated (panel change: \(panelChange)): \(mode.viewName), \(mode.label). Same image and zoom retained."
-            self.recordLifecycle("view changed: \(mode.viewName), \(mode.label)")
-            self.clearAXTrialBorders();self.runAXTrial(after:existing)
-            self.saveInvocationDiagnostics()
-        }
-        if axPlacementEnabled {
-            startAXPlacement(epoch:epoch,full:false) { ui in
-                guard stillCurrent(),let ui,
-                      let placed=settings.placement(ui:appKitRect(ui,primaryHeight:height),image:image.size) else { return }
-                apply(appKitRect(placed.region,primaryHeight:height),appKitRect(placed.photo,primaryHeight:height),nil)
-            }
-        }
-    }
-
-    func detectInvocationView() {
-        cancelRequest();cancelScreenInspection()
-        let id=UUID(),module=currentModule(),axMode=axPlacementEnabled,started=ProcessInfo.processInfo.systemUptime
-        viewProbeID=id;updateToggleTitle()
-        report("Reading Lightroom view through Accessibility…")
-        let viewSettings=reloadDetectionConfig().viewClassificationSettings
-        DispatchQueue.global(qos:.userInitiated).async {
-            let grid=axMode ? accessibilityGridReading(module:module):nil
-            var proposal:AXTrialProposal?
-            let mapping=accessibilityMappingReport { host,windows,fullScreen in
-                // No fine adjustments: only classify the raw visible panel/label evidence.
-                proposal=axTrialProposal(host:host,windows:windows,settings:viewSettings,fullScreen:fullScreen)
-            }
-            DispatchQueue.main.async {
-                guard self.viewProbeID==id else { return }
-                self.viewProbeID=nil;self.updateToggleTitle()
-                self.lastAXMapping=mapping
-                if let grid { self.lastGridStatus=grid.report }
-                if module==self.currentModule(),OverlayBehaviourPolicy.isGridSelected(grid?.selected) { self.dismissForGrid();return }
-                guard module==self.currentModule(),let proposal else {
-                    self.lastViewDetection="AX view unavailable or module changed; no overlay requested. Disable automatic view detection to use the saved menu selection."
-                    self.report(self.lastViewDetection);self.saveInvocationDiagnostics();return
-                }
-                let group=proposal.layout == "Side-by-side" ? 1:proposal.layout == "Above-and-below" ? 2:0
-                let preferred=CameraPreferences.shared.string(forKey:"axPreferredPane.\(module ?? "develop").\(group)").flatMap(OverlayLayout.init(rawValue:))
-                let mode:OverlayLayout=group==0 ? .full:(preferred?.group==group ? preferred!:(group==1 ? .left:.upper))
-                self.detectedLayout=mode;self.detectedLayoutModule=module
-                self.lastViewDetection="\(proposal.layout); selected pane: \(mode.label). No clear pair means single view.\nClassification took \(Int((ProcessInfo.processInfo.systemUptime-started)*1000)) ms (before bridge request)."
-                self.updateLayoutMenu()
-                self.request(.overlay,viewChecked:true)
-            }
-        }
-    }
     var diagnosticSaveURL:URL { folder.deletingLastPathComponent().appendingPathComponent("Diagnostics/latest.txt") }
-    func placementOptionsChanged() {
-        cancelScreenInspection();cancelPanelCheck();cancelRequest()
-        assistedSignature=nil;liveViewGeneration += 1;nextLiveViewCheck=0
-        detectedLayout=nil;detectedLayoutModule=nil
-        invalidateAutomaticGeometry();updateDetectionMenu();updateLayoutMenu()
-        report("Placement: \(automaticPlacementMode.title). AX view detection \(automaticViewEnabled ? "on":"off"). Manual calibration takes precedence.")
-    }
-    @objc func selectDetectionMethod(_ item:NSMenuItem) {
-        guard CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
-              let screenshot=item.representedObject as? Bool,screenshot != screenshotDetectionEnabled else { return }
-        if !screenshot && !FeaturePermission.accessibility.ensure() { return }
-        CameraPreferences.shared.set(screenshot,forKey:"useScreenshotDetection")
-        placementOptionsChanged()
-    }
-    @objc func toggleScreenshotAssistance() {
-        guard screenshotDetectionEnabled else { return }
-        if !screenshotAssistanceEnabled && !FeaturePermission.accessibility.ensure() { return }
-        CameraPreferences.shared.set(!screenshotAssistanceEnabled,forKey:"screenshotAXAssistance")
-        placementOptionsChanged()
-    }
-    @objc func toggleAXTrial(_ item:NSMenuItem) {
-        if !axTrialEnabled && !FeaturePermission.accessibility.ensure() { return }
-        CameraPreferences.shared.set(!axTrialEnabled,forKey:"developerAXTrial")
-        item.state=axTrialEnabled ? .on:.off
-        if !axTrialEnabled { clearAXTrialBorders() }
-    }
-    @objc func toggleAutoDiagnostics(_ item:NSMenuItem) {
-        CameraPreferences.shared.set(!autoDiagnostics,forKey:"developerAutoSaveDiagnostics")
-        item.state=autoDiagnostics ? .on:.off
-    }
-    @objc func editAdvancedSettings() {
-        if let editor=configEditor,editor.window?.isVisible == true { editor.showWindow(nil);NSApp.activate(ignoringOtherApps:true);return }
-        do {
-            try detectionSettings.ensureFile()
-            configEditor=try ConfigEditorController(url:detectionSettings.url,onSave:{ [weak self] in _ = self?.reloadDetectionConfig() },openFile:{ [weak self] in self?.openDetectionConfig() })
-            configEditor?.showWindow(nil);NSApp.activate(ignoringOtherApps:true)
-        } catch { report("Could not read config.conf: \(error.localizedDescription)");showResult() }
-    }
-    @objc func openDetectionConfig() {
-        do {
-            try detectionSettings.ensureFile()
-            guard let editor=NSWorkspace.shared.urlForApplication(withBundleIdentifier:"com.apple.TextEdit") else {
-                NSWorkspace.shared.activateFileViewerSelecting([detectionSettings.url]);return
-            }
-            NSWorkspace.shared.open([detectionSettings.url],withApplicationAt:editor,configuration:NSWorkspace.OpenConfiguration()) { [weak self] _,error in
-                if error != nil { DispatchQueue.main.async { self?.report("Could not open TextEdit. Edit config.conf as plain text in Application Support/CameraReference.");self?.showResult() } }
-            }
-        }
-        catch { report("Could not open config.conf: \(error.localizedDescription)");showResult() }
-    }
-    func reloadDetectionConfig()->DetectionConfig {
-        do {
-            let old=detectionSettings.current
-            let next=try detectionSettings.reload()
-            if old.key != next.key { invalidateAutomaticGeometry() }
-            return next
-        }
-        catch {
-            let alert=NSAlert();alert.icon=NSApp.applicationIconImage;alert.messageText="Detection configuration was not applied"
-            alert.informativeText=error.localizedDescription+" The last valid settings will be used."
-            alert.runModal();return detectionSettings.current
-        }
-    }
-    @objc func calibrate() { beginCalibration() }
-    func beginCalibration(proposal requestedProposal:CGRect? = nil, useManualOnAccept:Bool = false) {
-        guard requireSupportedModule() else { return }
-        guard !regionResetting else { return }
-        cancelPanelCheck()
-        cancelScreenInspection(); hide(); cancelRequest(); calibration?.finish(nil)
-        let settings=reloadDetectionConfig()
-        let proposal=requestedProposal == nil ? nil:lastProbe?.uiFrame
-        let selectionKind="ui"
-        let calibrationModule=currentModule()
-        let controller=CalibrationController();controller.snapRadius=settings.snapDistancePoints; calibration=controller
-        if overlayLayout != .full { controller.instruction="Select the entire \(overlayLayout.label.lowercased()) pane backdrop between panels and divider, including photo margins. Esc cancels." }
-        controller.completed = { [weak self] result in
-            guard let self else { return }
-            self.calibrationTask?.cancel(); self.calibrationTask=nil
-            self.calibrationTimer?.invalidate();self.calibrationTimer=nil
-            self.calibration=nil
-            if let result {
-                guard self.currentModule()==calibrationModule else { self.report("Module changed; calibration was not saved.");return }
-                guard let window=lightroomWindowFrame(),window.contains(result) else {
-                    self.report("Select the UI backdrop inside the Lightroom window. Previous calibration retained.");return
-                }
-                // Accepting calibration makes this selected pane the manual region too.
-                if self.automaticViewEnabled { let selected=self.overlayLayout;self.overlayLayout=selected }
-                self.region=result; self.manualLayoutKey=self.lastProbe?.layoutKey
-                CameraPreferences.shared.set(selectionKind,forKey:self.regionKey("regionKind"))
-                CameraPreferences.shared.set(false,forKey:self.regionKey("automaticBounds")); self.autoItem.state = .off
-                self.invalidateAutomaticGeometry()
-                self.report("Image region saved. Shortcut toggles the reference.")
-            }
-            else { self.report("Calibration cancelled. Previous region retained.") }
-        }
-        guard #available(macOS 14.0,*),FeaturePermission.screenCapture.granted else {
-            if calibration === controller { controller.start(proposal:proposal,snapAvailable:false,permissionUnavailable:!FeaturePermission.screenCapture.granted) }; return
-        }
-        guard calibration === controller else { return }
-        report("Preparing calibration edges…")
-        // Timeout enters free calibration; a late capture cannot replace it.
-        calibrationTimer=Timer(timeInterval:3,repeats:false) { [weak self,weak controller] _ in
-            guard let self,let controller,self.calibration === controller else { return }
-            self.calibrationTask?.cancel();self.calibrationTask=nil;self.calibrationTimer=nil
-            controller.start(proposal:proposal,snapAvailable:false)
-        }
-        RunLoop.main.add(calibrationTimer!,forMode:.common)
-        calibrationTask=Task.detached(priority:.userInitiated) { [weak self,weak controller] in
-            let result=await inspectScreenLayout(imageSize:.zero,forCalibration:true,settings:settings)
-            guard !Task.isCancelled,let controller else { return }
-            await self?.finishCalibrationPreparation(result,controller:controller,proposal:proposal)
-        }
-    }
-    @MainActor func finishCalibrationPreparation(_ result:ScreenProbeResult,controller:CalibrationController,proposal:CGRect?) {
-        guard calibration === controller,calibrationTimer != nil else { return }
-        calibrationTimer?.invalidate();calibrationTimer=nil;calibrationTask=nil
-        lastLayout=result.summary
-        controller.start(proposal:proposal,edges:result.snapEdges,snapAvailable:!result.snapEdges.isEmpty,permissionUnavailable:result.summary.hasPrefix("Screen Recording permission unavailable"))
-    }
-    @objc func clearAllRegionData() {
-        guard !regionResetting else { return };regionResetting=true
-        calibration?.finish(nil);calibrationTask?.cancel();calibrationTask=nil
-        calibrationTimer?.invalidate();calibrationTimer=nil
-        cancelPanelCheck()
-        cancelScreenInspection();cancelRequest();hide();saveToast.close();capturePreview?.close();capturePreview=nil
-        clearRegionPreferences(CameraPreferences.shared,layout:overlayLayout,modulePrefix:currentModule() == "library" ? "library.":"")
-        placementMemory=nil
-        acceptedSplitKey=nil;lastProbe=nil;lastImageSize=nil
-        lastLayout="No region data. Detection/calibration starts fresh."
-        report("Clearing region data…")
-        Task { @MainActor [weak self] in
-            await ScreenGeometryCache.shared.reset()
-            guard let self else { return };self.regionResetting=false
-            self.report("Region cleared for this layout/pane. Automatic detection preference unchanged.")
-        }
-    }
     func requireSupportedModule()->Bool {
         guard !supportedLightroomModule(currentModule()) else { return true }
         let alert=NSAlert();alert.icon=NSApp.applicationIconImage
@@ -546,33 +211,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         NSApp.activate(ignoringOtherApps:true);alert.runModal();return false
     }
 
-
-    func askForCalibration(workingAreaTooNarrow:Bool = false,reason:String? = nil) {
-        let alert=NSAlert();alert.icon=NSApp.applicationIconImage
-        alert.messageText="Cannot reliably identify viewing area."
-        let automatic=CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
-        alert.informativeText=(reason.map { $0 + "\n\n" } ?? "") + (workingAreaTooNarrow ? "Working area too narrow—enlarge it or calibrate manually.\n\n":"") + calibrationInstructions(layout:overlayLayout,automatic:automatic)
-        if automatic { alert.informativeText += "\n\nIf detection keeps failing with Lightroom partly off-screen, try restarting Lightroom Classic." }
-        lastPlacementFailure="Recorded: \(Date()). Module: \(currentModule() ?? "unknown"); view: \(overlayLayout.viewName); pane: \(overlayLayout.label); method: \(automaticPlacementMode.title); automatic: \(automatic).\n" + alert.informativeText + "\n\nCalculation at failure:\n" + (automatic ? lastLayout:"Manual region missing or no longer valid; automatic detection was not attempted.") + "\n\nTiming at failure: " + lastTiming
-        lastResult="Placement unavailable; manual calibration offered."
-        // Save synchronously before entering the modal loop. Keep this failure
-        // snapshot separate from subsequent successful placements and AX refreshes.
-        saveInvocationDiagnostics()
-        alert.addButton(withTitle:"Calibrate manually…"); alert.addButton(withTitle:"Cancel")
-        NSApp.activate(ignoringOtherApps:true)
-        if alert.runModal() == .alertFirstButtonReturn {
-            beginCalibration(useManualOnAccept:true)
-        } else { report("Overlay cancelled; calibration was not changed.") }
-    }
-
-
-
-
-
     @objc func showResult() {
         hide(); NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert();alert.icon=NSApp.applicationIconImage; alert.messageText = "Camera Reference"; alert.informativeText = lastResult + "\n\n" + lastTiming; alert.runModal()
     }
+    // MARK: - Shortcut recording
     @objc func changeShortcut() {
         hide();calibration?.finish(nil);recording=true
         let oldOverlay=currentShortcut,oldFloating=floatingShortcut
@@ -621,6 +264,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             help.stringValue="A shortcut is unavailable. Choose another combination or Cancel."
         }
     }
+    // MARK: - Cancellation and shutdown
     @objc func cancel() { calibration?.finish(nil); hide(); report("Ready.") }
     @objc func quit() { cancelPanelCheck();imageCache.clear(); calibration?.finish(nil); cancelScreenInspection(); hide(); cancelRequest(); diagnosticsWindow?.close(); captureBaseline?.close(); capturePreview?.close(); floating?.close(); NSApp.terminate(nil) }
 

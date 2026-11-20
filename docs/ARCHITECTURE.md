@@ -1,6 +1,6 @@
 # Architecture and source map
 
-Current candidate implementation: 1.1.8 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
+Current candidate implementation: 1.1.9 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
 
 ## Source ownership
 
@@ -9,12 +9,18 @@ Current candidate implementation: 1.1.8 (structure-migration; main remains 1.0.3
 | OverlayBehaviour.swift | Pure per-event decisions for geometry/photo changes, host movement/suspension, modules, Grid evidence and explicit selection. Original guards and action execution remain at callers. |
 | AppSettings.swift | Existing preference-domain access for mode interpretation and startup defaults/legacy registration; no second store. |
 | SettingsMenu.swift | Menu construction, references, refresh and validation; one current-view root with manual five-choice or inferred two-pane submenu (automatic Loupe has none). AppDelegate adapters retain action targets and event triggers. |
-| Diagnostics.swift | DiagnosticsService owns report state/formatting/saving and diagnostic windows/previews. Transitional AppDelegate adapters retain existing collection/capture guards and scheduling; production AX observation and shared capture tasks remain outside the service. |
-| main.swift | AppDelegate composition, menu action routing/contextual preferences, mode dispatch and calibration. Coordinates extracted owners through transitional adapters. |
+| Diagnostics.swift | DiagnosticsService owns report state/formatting/saving and diagnostic windows/previews. App-facing AppDelegate adapters retain existing collection/capture guards and scheduling; production AX observation and shared capture tasks remain outside the service. |
+| main.swift | Composition/startup/shutdown, hotkeys, invocation entry points and contextual region preferences. Owns shared placement/cache/calibration operation state; keeps native selector/delegate identity. |
+| SettingsActions.swift | Preference, backend, diagnostic-option and config-editor actions; no changes to settings storage or action policy. |
+| ViewCoordinator.swift | Explicit pane choices, invocation-time AX inference and live view/photo geometry updates, including existing identity/generation guards. |
+| CalibrationCoordinator.swift | Manual calibration preparation/accept/cancel/reset and failure prompts; uses existing CalibrationController and optional snapping. |
+| ExportCoordinator.swift | Save eligibility, confirmation and asynchronous export completion for the invoking overlay/floating photo view. |
+| PlacementCoordinator.swift / PlacementImplementations.swift | Manual/cache/backend routing and async completion guards; separate Manual/AX/original screenshot/assisted adapters with global-AppKit UIPlacement. |
+| PhotoRequestCoordinator.swift / PhotoRequestPipeline.swift | Qualification/dispatch versus request transport, polling, cancellation, immutable load context and RAM image cache ownership. |
 | LightroomMonitor.swift | Read-only observations, heartbeat/display timers, notification subscriptions, module freshness and monitoring state. Synchronous event signals and optional live AX evidence; no window mutations. |
-| MonitoringCoordinator.swift | Existing eligibility/freshness guards and policy execution in tick order; background screenshot checks retain their original route. Forwards state to the monitor. |
+| MonitoringCoordinator.swift | Existing eligibility/freshness guards and policy execution in tick order; background screenshot checks retain their original route. Addresses observation state on the monitor. |
 | OverlayController.swift / FloatingDisplayController.swift | Independent displayed-window state owners: overlay host/lifecycle/identity versus floating panel/view/title/zoom. No timers or placement calculations. |
-| PresentationCoordinator.swift | App-facing presentation and lifecycle coordination; existing guards, callbacks and ordering retained. Forwarding properties address the sole display owners. |
+| PresentationCoordinator.swift | App-facing presentation and lifecycle coordination; existing guards, callbacks and ordering retained. Lifecycle/identity state is addressed directly on its owner; three panel/view aliases support existing optional bindings. |
 | Core.swift | Protocol/source primitives, cancellation and extraction helpers. |
 | ImageSource.swift | JPEG selection/extraction/orientation/decode, fingerprints and the one-selection RAM cache. |
 | Export.swift | Display-specific JPEG snapshots and explicit safe export. |
@@ -52,7 +58,7 @@ AX correction values do not enter screenshot search geometry/cache keys. Assiste
 
 ## Display and update ownership
 
-AppDelegate owns the active overlay, request state, image/placement caches and work generations. A floating display owns its image independently. Export uses the displayed photo’s retained snapshot, not whichever file is currently selected in Lightroom.
+OverlayController owns the active panel and displayed host/layout/module/selection identity. FloatingDisplayController owns its independent panel/view. PhotoRequestPipeline owns transport/request state and the image cache; LightroomMonitor owns observation state and scheduling. AppDelegate remains the composition/coordinator surface for shared placement memory, calibration and operation IDs. Export uses the invoking overlay or floating window’s retained photo snapshot, not whichever file is currently selected in Lightroom.
 
 | Event | Automatic Accessibility | Screenshot / manual |
 |---|---|---|
@@ -79,16 +85,16 @@ Window movement translates known geometry. Suspension for minimise/overview/Spac
 
 ## Maintenance boundaries and risks
 
-Calculation modules are reasonably isolated, especially original versus assisted screenshot detection. Coordination is less separated: main.swift is roughly one third of the Swift source and combines menus, reporting, timers and lifecycle. Mode decisions and asynchronous guards occur in several paths rather than one state machine. Tests cover many pure helpers, but cannot prove native permission/menu/capture behaviour or every event sequence.
+The coordinator files are extensions of the same AppDelegate. This is an intentional shared composition surface, not independent services with duplicate state. Native menu selectors/delegates and weak callback targets retain their identities. Concrete owners hold request, observation, presentation, menu and diagnostic state. Forty-two storage aliases were removed in stage 9; reads/writes now name their owner directly. Panel/request-handle aliases and diagnostic/menu adapters remain where they preserve local bindings or integrate native action targets.
 
-Future structural work should extract diagnostics/menu ownership, centralise update policy, and add sequence tests for selection/view/module/dismiss races before changing orchestration. This documentation update performs no refactor. Preserve the original detector and keep new experiments independently selectable.
+Shared placement memory, capture/calibration tasks and invocation-view IDs remain on composition because foreground placement, explicit capture preview and calibration share cancellation rules. Splitting them into separate owners without a replacement lifetime contract could accept stale results or change cancellation order. These are explicit remaining dependencies, not a claim that every target component became an independent object. Do not introduce a second authoritative store.
 
-Stage 5 source map: `Sources/PlacementCoordinator.swift` holds transitional AppDelegate placement orchestration (manual/cache/backend routing, async guards and result handling). `Sources/PlacementImplementations.swift` holds concrete calculation adapters and the AppKit UIPlacement result. Placement state remains on AppDelegate until later owner migration; detector algorithms are unchanged.
+To change update/dismiss policy, start in OverlayBehaviourPolicy, then check evidence qualification in MonitoringCoordinator and ViewCoordinator. To change calculations, use the specific placement implementation; preserve original screenshot versus assisted separation. Calibration prompts belong in CalibrationCoordinator; floating/overlay ordering belongs in PresentationCoordinator; extraction/format support belongs in ImageSource/Core. This keeps likely follow-up work local without unifying unrelated modes.
 
-Stage 6 source map: `Sources/PhotoRequestPipeline.swift` owns bridge transport/request state, immutable load context and SelectionImageCache; `Sources/PhotoRequestCoordinator.swift` holds transitional request qualification, existing completion guards and result dispatch. AppDelegate forwards existing request/cache access to this single owner.
+## Monitoring and performance boundary
 
-### Monitoring boundary (stage 8)
+The monitor emits tick, foreground, Space, display-change and delayed display-check events synchronously. MonitoringCoordinator reads selection/module/overview/geometry and applies effects in their original order rather than eagerly assembling a snapshot. Live AX workers return optional Grid/proposal/hint evidence on the existing main-queue handoff. Missing evidence is unknown; invocation-time AX inference remains on its separate ViewCoordinator request path.
 
-The monitor emits tick, foreground, Space, display-change and delayed display-check events synchronously. MonitoringCoordinator reads selection/module/overview/geometry and applies existing effects in their original order rather than eagerly assembling a snapshot. OverlayBehaviourPolicy owns the pure update/dismiss/retain/suspend decisions; the coordinator qualifies evidence and executes them. Live AX workers return optional Grid/proposal/hint evidence on the existing main-queue handoff. Missing evidence is retained as unknown. Invocation-time AX classification remains on its separate request path.
+Cadence remains 0.2 seconds for maintenance, 2 seconds for eligible live AX polls, 0.6 seconds for display-check debounce, 50 ms for bridge response polling, with a five-second request deadline. Background capture starts only after its original guards. No new capture, AX read, extraction, dispatch queue or display prerequisite was introduced by consolidation. Native ordering and latency cannot be certified by source equivalence or synthetic tests. Matched native timing samples remain pending; see [baseline protocol](migration/BASELINE.md).
 
-Timer cadence is unchanged: 0.2-second tick, 2-second eligible live AX poll, 0.6-second display-check debounce, configured background screenshot interval. Background capture still starts only after its original coordinator guards. No monitor starts or dismisses an overlay. Notification subscriptions have explicit replacement/teardown without queued delivery. AppDelegate forwarding remains transitional until stage 9.
+The six known bugs/policy items remain in [BACKLOG.md](BACKLOG.md), not silently fixed by migration. Current validation and limitations are in [VALIDATION.md](VALIDATION.md); migration history and target deviations are in [final review](migration/FINAL-REVIEW.md) and [MIGRATION.md](../MIGRATION.md).

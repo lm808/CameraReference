@@ -1,7 +1,7 @@
 import AppKit
 
-// Coordinator keeps UI/policy qualification and completion order. Transitional
-// accessors expose one pipeline-owned state store to existing callers.
+// Coordinator keeps UI/policy qualification and completion order. Request-handle
+// aliases retain existing bindings; other state is addressed on PhotoRequestPipeline.
 extension AppDelegate {
     var cancellation:Cancellation? {
         get { photoRequests.cancellation }
@@ -11,25 +11,9 @@ extension AppDelegate {
         get { photoRequests.destination }
         set { photoRequests.destination=newValue }
     }
-    var pendingModule:String? {
-        get { photoRequests.pendingModule }
-        set { photoRequests.pendingModule=newValue }
-    }
-    var selectionRefreshPanel:OverlayPanel? {
-        get { photoRequests.selectionRefreshPanel }
-        set { photoRequests.selectionRefreshPanel=newValue }
-    }
     var pending:String? {
         get { photoRequests.pending }
         set { photoRequests.pending=newValue }
-    }
-    var timer:Timer? {
-        get { photoRequests.timer }
-        set { photoRequests.timer=newValue }
-    }
-    var invocationStart:TimeInterval? {
-        get { photoRequests.invocationStart }
-        set { photoRequests.invocationStart=newValue }
     }
     var imageCache:SelectionImageCache { photoRequests.imageCache }
     func cancelRequest() {
@@ -41,21 +25,21 @@ extension AppDelegate {
         diagnosticGeneration += 1
         savingInvocation = target == .overlay || target == .window
         guard !regionResetting,requireSupportedModule() else { return }
-        if target == .overlay && automaticViewEnabled && !viewChecked && ((axPlacementEnabled && currentModule()=="library") || detectedLayout == nil || detectedLayoutModule != currentModule()) && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) {
+        if target == .overlay && automaticViewEnabled && !viewChecked && ((axPlacementEnabled && currentModule()=="library") || lightroomMonitor.detectedLayout == nil || lightroomMonitor.detectedLayoutModule != currentModule()) && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) {
             detectInvocationView();return
         }
-        cancelPanelCheck();nextPanelCheck=ProcessInfo.processInfo.systemUptime+reloadDetectionConfig().panelCheckIntervalSeconds
+        cancelPanelCheck();lightroomMonitor.nextPanelCheck=ProcessInfo.processInfo.systemUptime+reloadDetectionConfig().panelCheckIntervalSeconds
         cancelScreenInspection(); cancelRequest()
         let token = UUID().uuidString, work = Cancellation()
-        pending = token; destination = target; cancellation = work; pendingModule=currentModule();selectionRefreshPanel=existing
+        pending = token; destination = target; cancellation = work; photoRequests.pendingModule=currentModule();photoRequests.selectionRefreshPanel=existing
         updateToggleTitle()
         let invoked = ProcessInfo.processInfo.systemUptime
-        invocationStart=invoked
+        photoRequests.invocationStart=invoked
         do { try photoRequests.writeRequest(token:token,target:target) }
         catch { cancelRequest(); report("Cannot write the bridge request."); return }
         let deadline = Date().addingTimeInterval(5)
         report("Waiting for Lightroom…")
-        if target == .window { floating?.title = floatingTitle + " — refreshing…" }
+        if target == .window { floating?.title = floatingController.floatingTitle + " — refreshing…" }
         photoRequests.poll(token:token,deadline:deadline,onResponse:{ [weak self] response in
             guard let self else { return }
             guard response.success else { self.failed(response.value, target: target); return }
@@ -67,12 +51,12 @@ extension AppDelegate {
     func failed(_ text: String, target: Destination) {
         cancelRequest(); report(text)
         collectCompleteDiagnostics()
-        if target == .window { floating?.title = floatingTitle + " — unchanged; refresh failed" }
+        if target == .window { floating?.title = floatingController.floatingTitle + " — unchanged; refresh failed" }
     }
     func selectionEpoch()->String? { photoRequests.selectionEpoch() }
     func responseEpoch(_ token:String)->String? { photoRequests.responseEpoch(token) }
     func load(_ path: String, token: String, target: Destination, work: Cancellation, invoked: TimeInterval) {
-        let requestedModule=pendingModule,refreshingPanel=selectionRefreshPanel,refreshGeneration=liveViewGeneration
+        let requestedModule=photoRequests.pendingModule,refreshingPanel=photoRequests.selectionRefreshPanel,refreshGeneration=lightroomMonitor.liveViewGeneration
         let loadStarted=ProcessInfo.processInfo.systemUptime
         let bridgeMS=(loadStarted-invoked)*1000
         let prefer = CameraPreferences.shared.bool(forKey: "preferEmbedded")
@@ -96,16 +80,16 @@ extension AppDelegate {
             }
             if let refreshingPanel {
                 guard let epoch,self.panel === refreshingPanel,self.axPlacementEnabled,self.axLiveUpdate,
-                      self.liveViewGeneration==refreshGeneration,
+                      self.lightroomMonitor.liveViewGeneration==refreshGeneration,
                       CameraPreferences.shared.bool(forKey:self.regionKey("automaticBounds")) else { self.cancelRequest();return }
                 guard self.selectionEpoch()==epoch else { self.cancelRequest();return }
             }
-            self.pending = nil; self.destination = nil; self.cancellation = nil;self.selectionRefreshPanel=nil
+            self.pending = nil; self.destination = nil; self.cancellation = nil;self.photoRequests.selectionRefreshPanel=nil
             self.updateToggleTitle()
             switch result {
             case .failure(let error):
                 self.report(error.localizedDescription)
-                if target == .window { self.floating?.title = self.floatingTitle + " — unchanged; refresh failed" }
+                if target == .window { self.floating?.title = self.floatingController.floatingTitle + " — unchanged; refresh failed" }
             case .success(let (loaded, layout)):
                 self.lastTiming=String(format:"Bridge %.0f ms; JPEG load/decode %.0f ms",bridgeMS,loaded.elapsed*1000) + (loaded.extraction.map { String(format:" (extraction %.0f ms, included)",$0*1000) } ?? "")
                 self.lastTiming += "; " + loaded.stages

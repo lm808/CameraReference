@@ -28,8 +28,8 @@ final class SettingsMenuController {
     var automaticViewEnabled:Bool { owner.automaticViewEnabled }
     var autoDiagnostics:Bool { owner.autoDiagnostics }
     var axTrialEnabled:Bool { owner.axTrialEnabled }
-    var detectedLayoutModule:String? { owner.detectedLayoutModule }
-    var detectedLayout:OverlayLayout? { owner.detectedLayout }
+    var detectedLayoutModule:String? { owner.lightroomMonitor.detectedLayoutModule }
+    var detectedLayout:OverlayLayout? { owner.lightroomMonitor.detectedLayout }
     var overlayLayout:OverlayLayout { owner.overlayLayout }
     var floating:NSPanel? { owner.floating }
     var floatingKeyLabel:String { owner.floatingKeyLabel }

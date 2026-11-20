@@ -1,8 +1,8 @@
 import AppKit
 import ApplicationServices
 
-// Stage 5 coordination seam: methods remain on the existing owner until request
-// and presentation ownership migrate. No second state store or event queue.
+// Placement orchestration shares composition-owned operation/cancellation state.
+// Request and presentation state have independent owners; no second event queue.
 // Manual precedence, cache eligibility, permissions and completion guards stay
 // here; concrete implementations below own only their calculation/read boundary.
 extension AppDelegate {
@@ -153,8 +153,8 @@ extension AppDelegate {
                     let group=proposal.layout == "Side-by-side" ? 1:proposal.layout == "Above-and-below" ? 2:0
                     let preference=CameraPreferences.shared.string(forKey:"axPreferredPane.\(module ?? "develop").\(group)").flatMap(OverlayLayout.init(rawValue:))
                     selected=group==0 ? .full:(preference?.group==group ? preference!:(group==1 ? .left:.upper))
-                    if owner.detectedLayout != selected || owner.detectedLayoutModule != module {
-                        owner.detectedLayout=selected;owner.detectedLayoutModule=module;owner.updateLayoutMenu()
+                    if owner.lightroomMonitor.detectedLayout != selected || owner.lightroomMonitor.detectedLayoutModule != module {
+                        owner.lightroomMonitor.detectedLayout=selected;owner.lightroomMonitor.detectedLayoutModule=module;owner.updateLayoutMenu()
                     }
                 }
                 guard let placement=AXPlacement.selectedArea(proposal,layout:full ? .full:selected,primaryHeight:height) else {

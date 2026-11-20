@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.9 — migration stage 9 candidate
+
+- Consolidate coordinator boundaries, remove temporary storage forwarding and refresh the source map. No intended changes to placement, permissions, menus, monitoring or overlay behaviour. Known deferred issues remain open.
+
 ## 1.1.8 — migration stage 8 candidate
 
 - Separate Lightroom observation/timer ownership from policy execution. Preserve polling cadence, notification order, background checks and existing overlay behaviour.

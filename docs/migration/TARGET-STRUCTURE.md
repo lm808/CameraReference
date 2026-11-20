@@ -26,7 +26,7 @@ The application coordinator owns the components and connects them. Avoid bidirec
 
 ## Component contracts and current symbols
 
-All AppDelegate symbols below are in Sources/main.swift. Symbol names are navigation anchors; line numbers will drift.
+At the pre-migration baseline, all AppDelegate symbols below were in Sources/main.swift. Symbol names are navigation anchors; line numbers will drift.
 
 | Target | Existing code to move/wrap | Owned state and boundary |
 |---|---|---|
@@ -121,3 +121,7 @@ Fourteen existing methods moved without changing their bodies. Window constructi
 ## Stage 8 implementation boundary
 
 LightroomMonitor owns observation state, timers/subscriptions and read-only heartbeat/foreground/live AX readers. It emits small synchronous events and an AXEvidence value with optional fields; it has no reference to AppDelegate or presentation controllers. MonitoringCoordinator is the transitional app-facing extension applying existing guards/policy/effects. Background screenshot scheduling and completion remain adjacent there to preserve their shared placement/cache/request guards; task identity is owned by the monitor. Invocation-time view probing and calibration timers are deliberately outside continuous monitoring. Stage 9 reviews the remaining adapters and composition boundaries.
+
+## Stage 9 disposition
+
+The current implemented source/ownership map is docs/ARCHITECTURE.md; this table remains the original migration design. Forty-two temporary storage aliases are removed, and the remaining view/calibration/settings/export actions have dedicated coordinator files. The concrete owners are implemented, while cross-component action coordination stays in AppDelegate extensions. A new AppCoordinator object and separate placement/calibration state stores were not introduced: they would duplicate or rewire shared selector/callback/cancellation lifetimes without a behaviour benefit in this migration. Retained boundaries and risks are explicit in FINAL-REVIEW.md. Final native acceptance and merge remain separate from code consolidation.
