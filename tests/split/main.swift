@@ -165,3 +165,17 @@ assert(OverlayBehaviourPolicy.hostChange(saved:policyHost,current:nil,onScreen:f
 assert(OverlayBehaviourPolicy.hostChange(saved:policyHost,current:nil,onScreen:false,overview:true) == .suspend)
 assert(OverlayBehaviourPolicy.hostChange(saved:policyHost,current:policyHost.offsetBy(dx:-500,dy:0),onScreen:true,overview:false) == .translate(CGPoint(x:-500,y:0)))
 print("PASS: pure policy module/Grid unknowns, explicit selection, absent overlay and off-screen translation")
+
+// Screenshot AX inference is a dismiss-only fallback, independent of stored AX live preference.
+for enabled in [false,true] { for auto in [false,true] { for live in [false,true] {
+    for panels in [false,true] { for from in OverlayLayout.allCases { for to in OverlayLayout.allCases {
+        let expected:AXOverlayChangeAction=enabled && auto && (from != to || panels) ? .dismiss:.retain
+        assert(OverlayBehaviourPolicy.geometryChange(accessibility:false,automatic:auto,displayed:from,selected:to,panelsChanged:panels,live:live,screenshotAXDetection:enabled)==expected)
+    } } }
+    assert(OverlayBehaviourPolicy.geometryChange(accessibility:false,automatic:auto,displayed:nil,selected:.left,panelsChanged:true,live:live,screenshotAXDetection:enabled) == .retain)
+    for open in [false,true] { for previous in [nil,"A"] as [String?] { for current in [nil,"A","B"] as [String?] {
+        let changed=enabled && auto && open && previous != nil && current != nil && previous != current
+        assert(OverlayBehaviourPolicy.photoSelectionChange(accessibility:false,automatic:auto,overlayOpen:open,previous:previous,current:current,live:live,screenshotAXDetection:enabled)==(changed ? .dismiss:.retain))
+    } } }
+} } }
+print("PASS: screenshot AX detection dismisses confirmed changes only; manual/off/unknown and inference-off retain")

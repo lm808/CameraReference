@@ -139,18 +139,25 @@ extension AppDelegate {
               isLightroom(),supportedLightroomModule(currentModule()),AXIsProcessTrusted(),
               pending == nil,viewProbeID == nil,screenInspectionID == nil,calibration == nil else { return }
         lightroomMonitor.nextLiveViewCheck=now+2;lightroomMonitor.liveViewBusy=true
-        let generation=lightroomMonitor.liveViewGeneration,module=currentModule(),axMode=axPlacementEnabled,checkPanels=axPlacementEnabled && panel != nil
+        let screenshotPolicy=screenshotAXDismissEnabled && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
+        let observedPanel=panel,observedHost=overlayController.overlayHost?.id,backend=automaticPlacementMode
+        let generation=lightroomMonitor.liveViewGeneration,module=currentModule(),axMode=axPlacementEnabled,checkPanels=(axPlacementEnabled || screenshotPolicy) && panel != nil
         let detectionSettings=reloadDetectionConfig()
         let fallback=detectionSettings.toolbarUnknownFallback
         let viewSettings=detectionSettings.viewClassificationSettings
-        lightroomMonitor.readLiveAX(module:module,axMode:axMode,checkPanels:checkPanels,fallback:fallback,viewSettings:viewSettings) { evidence in
+        lightroomMonitor.readLiveAX(module:module,axMode:axMode,checkPanels:checkPanels,checkGrid:screenshotPolicy,fallback:fallback,viewSettings:viewSettings) { evidence in
                 let grid=evidence.grid,proposal=evidence.proposal,hints=evidence.hints
                 self.lightroomMonitor.liveViewBusy=false
                 guard self.automaticViewEnabled,self.lightroomMonitor.liveViewGeneration==generation,module==self.currentModule(),
                       self.isLightroom(),self.pending == nil,self.viewProbeID == nil,self.screenInspectionID == nil,self.calibration == nil else { return }
+                // A read started for an old overlay must not dismiss a replacement.
+                let currentScreenshotObservation=screenshotPolicy && self.screenshotAXDismissEnabled &&
+                    self.automaticPlacementMode==backend && observedPanel != nil && self.panel === observedPanel &&
+                    self.overlayController.overlayHost?.id==observedHost &&
+                    CameraPreferences.shared.bool(forKey:self.regionKey("automaticBounds"))
                 if let grid { self.lastGridStatus=grid.report }
                 if OverlayBehaviourPolicy.isGridSelected(grid?.selected) {
-                    if self.panel != nil { self.dismissForGrid() }
+                    if self.panel != nil && (axMode || currentScreenshotObservation) { self.dismissForGrid() }
                     return
                 }
                 guard let proposal else { self.lastViewDetection="Live AX read unavailable; retaining previous inferred view.";return }
@@ -164,7 +171,11 @@ extension AppDelegate {
                 }
                 // Compare with displayed geometry as well as the menu. A failed or
                 // suspended update can retry on the next poll without rebuilding menus.
-                guard axMode,self.axPlacementEnabled else { return }
+                if !axMode {
+                    guard currentScreenshotObservation,
+                          let host=self.overlayController.overlayHost,
+                          axTrialHostMatches(proposedTopLeft:proposal.host,actualAppKit:host.frame,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height) else { return }
+                } else { guard self.axPlacementEnabled else { return } }
                 let signature=hints?.signature
                 let panelsChanged=signature != nil && self.overlayController.livePanelSignature != nil && self.overlayController.livePanelSignature != signature
                 if self.overlayController.livePanelSignature == nil { self.overlayController.livePanelSignature=signature }
@@ -172,11 +183,11 @@ extension AppDelegate {
         }
     }
     func checkOverlaySelection(_ epoch:String?) {
-        guard axPlacementEnabled,CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
+        guard (axPlacementEnabled || screenshotAXDismissEnabled),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
               let existing=panel,isLightroom(),supportedLightroomModule(currentModule()),
               overlayController.displayedOverlayModule==currentModule(),let epoch else { return }
         guard let previous=overlayController.overlayEpoch else { overlayController.overlayEpoch=epoch;return }
-        let action=OverlayBehaviourPolicy.photoSelectionChange(accessibility:true,automatic:true,overlayOpen:true,previous:previous,current:epoch,live:axLiveUpdate)
+        let action=OverlayBehaviourPolicy.photoSelectionChange(accessibility:axPlacementEnabled,automatic:true,overlayOpen:true,previous:previous,current:epoch,live:axLiveUpdate,screenshotAXDetection:screenshotAXDismissEnabled)
         if action == .dismiss {
             cancelScreenInspection();hide();report("Photo selection changed; overlay dismissed.");return
         }

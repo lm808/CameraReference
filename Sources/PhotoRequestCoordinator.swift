@@ -25,7 +25,7 @@ extension AppDelegate {
         diagnosticGeneration += 1
         savingInvocation = target == .overlay || target == .window
         guard !regionResetting,requireSupportedModule() else { return }
-        if target == .overlay && automaticViewEnabled && !viewChecked && ((axPlacementEnabled && currentModule()=="library") || lightroomMonitor.detectedLayout == nil || lightroomMonitor.detectedLayoutModule != currentModule()) && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) {
+        if target == .overlay && automaticViewEnabled && !viewChecked && (screenshotAXDismissEnabled || (axPlacementEnabled && currentModule()=="library") || lightroomMonitor.detectedLayout == nil || lightroomMonitor.detectedLayoutModule != currentModule()) && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) {
             detectInvocationView();return
         }
         cancelPanelCheck();lightroomMonitor.nextPanelCheck=ProcessInfo.processInfo.systemUptime+reloadDetectionConfig().panelCheckIntervalSeconds

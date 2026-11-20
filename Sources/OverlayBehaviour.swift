@@ -16,14 +16,14 @@ enum OverlayBehaviourPolicy {
         lightroomActive && !overview && !dialog && fullScreen != true
     }
 
-    static func geometryChange(accessibility:Bool,automatic:Bool,displayed:OverlayLayout?,selected:OverlayLayout,panelsChanged:Bool,live:Bool)->AXOverlayChangeAction {
-        guard accessibility,automatic,let displayed,displayed != selected || panelsChanged else { return .retain }
-        return live ? .adjust:.dismiss
+    static func geometryChange(accessibility:Bool,automatic:Bool,displayed:OverlayLayout?,selected:OverlayLayout,panelsChanged:Bool,live:Bool,screenshotAXDetection:Bool=false)->AXOverlayChangeAction {
+        guard (accessibility || screenshotAXDetection),automatic,let displayed,displayed != selected || panelsChanged else { return .retain }
+        return accessibility && live ? .adjust:.dismiss
     }
 
-    static func photoSelectionChange(accessibility:Bool,automatic:Bool,overlayOpen:Bool,previous:String?,current:String?,live:Bool)->AXOverlayChangeAction {
-        guard accessibility,automatic,overlayOpen,let previous,let current,previous != current else { return .retain }
-        return live ? .adjust:.dismiss
+    static func photoSelectionChange(accessibility:Bool,automatic:Bool,overlayOpen:Bool,previous:String?,current:String?,live:Bool,screenshotAXDetection:Bool=false)->AXOverlayChangeAction {
+        guard (accessibility || screenshotAXDetection),automatic,overlayOpen,let previous,let current,previous != current else { return .retain }
+        return accessibility && live ? .adjust:.dismiss
     }
 
     static func hostChange(saved:CGRect,current:CGRect?,onScreen:Bool,overview:Bool)->OverlayHostAction {

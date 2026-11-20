@@ -4,6 +4,8 @@ import ApplicationServices
 // App-facing actions grouped by responsibility. Existing guard, callback and
 // effect order is preserved; shared operation identities belong to composition.
 extension AppDelegate {
+    var screenshotAXDismissEnabled:Bool { screenshotDetectionEnabled && automaticViewEnabled }
+
     @objc func toggleAXLiveUpdate(_ item:NSMenuItem) {
         guard axPlacementEnabled else { return }
         CameraPreferences.shared.set(!axLiveUpdate,forKey:"axLiveUpdate")
@@ -62,15 +64,16 @@ extension AppDelegate {
         CameraPreferences.shared.set(!automaticViewEnabled,forKey:"experimentalAutomaticView")
         lightroomMonitor.liveViewGeneration += 1;lightroomMonitor.nextLiveViewCheck=0
         lightroomMonitor.detectedLayout=nil;lightroomMonitor.detectedLayoutModule=nil
+        overlayController.livePanelSignature=nil;lightroomMonitor.invocationPanelHints=nil
         item.state=automaticViewEnabled ? .on:.off
         lastViewDetection=automaticViewEnabled ? "Enabled; AX view checked every 2 seconds while Lightroom is active.":"Disabled; using saved menu selection."
         invalidateAutomaticGeometry();updateLayoutMenu();report(lastViewDetection)
     }
     func followLiveOverlayView(_ mode:OverlayLayout,module:String?,requiresViewDetection:Bool=true,panelChange:Bool=false,panelSignature:String?=nil) {
-        guard axPlacementEnabled,(!requiresViewDetection || automaticViewEnabled),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
+        guard (axPlacementEnabled || screenshotAXDismissEnabled),(!requiresViewDetection || automaticViewEnabled),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
               let module,module==overlayController.displayedOverlayModule,(overlayController.displayedOverlayLayout != mode || panelChange),
               let existing=panel else { return }
-        if OverlayBehaviourPolicy.geometryChange(accessibility:true,automatic:true,displayed:overlayController.displayedOverlayLayout,selected:mode,panelsChanged:panelChange,live:axLiveUpdate) == .dismiss {
+        if OverlayBehaviourPolicy.geometryChange(accessibility:axPlacementEnabled,automatic:true,displayed:overlayController.displayedOverlayLayout,selected:mode,panelsChanged:panelChange,live:axLiveUpdate,screenshotAXDetection:screenshotAXDismissEnabled) == .dismiss {
             cancelScreenInspection();cancelRequest();hide()
             report("View, pane or panels changed; overlay dismissed.");return
         }
@@ -116,20 +119,22 @@ extension AppDelegate {
         let id=UUID(),module=currentModule(),axMode=axPlacementEnabled,started=ProcessInfo.processInfo.systemUptime
         viewProbeID=id;updateToggleTitle()
         report("Reading Lightroom view through Accessibility…")
-        let viewSettings=reloadDetectionConfig().viewClassificationSettings
+        let settings=reloadDetectionConfig(),viewSettings=settings.viewClassificationSettings
         DispatchQueue.global(qos:.userInitiated).async {
-            let grid=axMode ? accessibilityGridReading(module:module):nil
-            var proposal:AXTrialProposal?
+            let grid=accessibilityGridReading(module:module)
+            let toolbar=axMode ? nil:accessibilityToolbarReading(fallback:settings.toolbarUnknownFallback,module:module).shown
+            var proposal:AXTrialProposal?,panelHints:AXScreenHints?
             let mapping=accessibilityMappingReport { host,windows,fullScreen in
                 // No fine adjustments: only classify the raw visible panel/label evidence.
                 proposal=axTrialProposal(host:host,windows:windows,settings:viewSettings,fullScreen:fullScreen)
+                if let toolbar { panelHints=AXScreenHints(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),toolbar:toolbar ? "shown":"hidden") }
             }
             DispatchQueue.main.async {
                 guard self.viewProbeID==id else { return }
                 self.viewProbeID=nil;self.updateToggleTitle()
                 self.lastAXMapping=mapping
-                if let grid { self.lastGridStatus=grid.report }
-                if module==self.currentModule(),OverlayBehaviourPolicy.isGridSelected(grid?.selected) { self.dismissForGrid();return }
+                self.lastGridStatus=grid.report
+                if module==self.currentModule(),OverlayBehaviourPolicy.isGridSelected(grid.selected) { self.dismissForGrid();return }
                 guard module==self.currentModule(),let proposal else {
                     self.lastViewDetection="AX view unavailable or module changed; no overlay requested. Disable automatic view detection to use the saved menu selection."
                     self.report(self.lastViewDetection);self.saveInvocationDiagnostics();return
@@ -137,6 +142,7 @@ extension AppDelegate {
                 let group=proposal.layout == "Side-by-side" ? 1:proposal.layout == "Above-and-below" ? 2:0
                 let preferred=CameraPreferences.shared.string(forKey:"axPreferredPane.\(module ?? "develop").\(group)").flatMap(OverlayLayout.init(rawValue:))
                 let mode:OverlayLayout=group==0 ? .full:(preferred?.group==group ? preferred!:(group==1 ? .left:.upper))
+                self.lightroomMonitor.invocationPanelHints=panelHints
                 self.lightroomMonitor.detectedLayout=mode;self.lightroomMonitor.detectedLayoutModule=module
                 self.lastViewDetection="\(proposal.layout); selected pane: \(mode.label). No clear pair means single view.\nClassification took \(Int((ProcessInfo.processInfo.systemUptime-started)*1000)) ms (before bridge request)."
                 self.updateLayoutMenu()

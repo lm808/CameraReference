@@ -190,6 +190,10 @@ extension AppDelegate {
         view.needsDisplay = true
         lastLayout += "\nOverlay content bounds: \(view.bounds). Photo viewport (view): \(view.imageViewport!). Panel visible: \(p.isVisible). Display scale: \(p.backingScaleFactor)."
         guard p.isVisible else { hide();report("Overlay panel did not become visible; see geometry diagnostics.");return nil }
+        if screenshotAXDismissEnabled,let hints=lightroomMonitor.invocationPanelHints,let host=overlayController.overlayHost,
+           axTrialHostMatches(proposedTopLeft:hints.host,actualAppKit:host.frame,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height) {
+            overlayController.livePanelSignature=hints.signature
+        }
         updateIcon()
         if let started=photoRequests.invocationStart { lastTiming += String(format:"; total to panel shown %.0f ms",(ProcessInfo.processInfo.systemUptime-started)*1000) }
         runAXTrial(after:p)

@@ -60,15 +60,15 @@ AX correction values do not enter screenshot search geometry/cache keys. Assiste
 
 OverlayController owns the active panel and displayed host/layout/module/selection identity. FloatingDisplayController owns its independent panel/view. PhotoRequestPipeline owns transport/request state and the image cache; LightroomMonitor owns observation state and scheduling. AppDelegate remains the composition/coordinator surface for shared placement memory, calibration and operation IDs. Export uses the invoking overlay or floating window’s retained photo snapshot, not whichever file is currently selected in Lightroom.
 
-| Event | Automatic Accessibility | Screenshot / manual |
-|---|---|---|
-| Photo selection | Update option on: load into existing panel at Fit; off: dismiss | Keep previous displayed photo |
-| Inferred view / panel change | On: recalculate geometry, preserve photo/zoom; off: dismiss | Screenshot inference updates menus; pixel checks invalidate future placement only |
-| Explicit view/pane selection | On: reposition; off: dismiss | Dismiss |
-| Confirmed module change | Dismiss | Dismiss |
-| Positive direct Library Grid mark | Dismiss/block invocation | No added AX Grid policy |
-| Placement/read uncertainty | Retain existing reference | Retain existing reference |
-| Off overlay | Never opened by monitoring | Never opened by monitoring |
+| Event | Automatic Accessibility | Automatic Screenshot + AX view detection | Screenshot without inference / manual |
+|---|---|---|---|
+| Photo selection | Update on: reload at Fit; off: dismiss | Dismiss | Keep previous photo |
+| Inferred view / panel change | On: reposition preserving zoom; off: dismiss | Dismiss on confirmed change | Retain; screenshot checks invalidate cache |
+| Explicit view/pane selection | On: reposition; off: dismiss | Dismiss | Existing dismissal behaviour |
+| Confirmed module change | Dismiss | Dismiss | Dismiss |
+| Positive direct Library Grid mark | Dismiss/block invocation | Dismiss/block invocation | No added Grid policy |
+| Placement/read uncertainty | Retain | Retain | Retain |
+| Off overlay | Never opened by monitoring | Never opened by monitoring | Never opened by monitoring |
 
 The Grid policy is implemented but native selection-mark reliability remains an outstanding check. Missing marks/read errors are not proof of Grid. Manual geometry is not subject to AX live following.
 

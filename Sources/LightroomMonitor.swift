@@ -22,6 +22,7 @@ final class LightroomMonitor {
     var lastModuleSample: (String, Date)?
     var observedModule:String?
     var workspaceOverview=false
+    var invocationPanelHints:AXScreenHints?
     var detectedLayout:OverlayLayout?
     var detectedLayoutModule:String?
     var liveViewBusy=false
@@ -75,14 +76,17 @@ final class LightroomMonitor {
         return app?.bundleIdentifier?.hasPrefix("com.adobe.LightroomClassic") == true || app?.localizedName == "Adobe Lightroom Classic"
     }
 
-    func readLiveAX(module:String?,axMode:Bool,checkPanels:Bool,fallback:String,viewSettings:DetectionConfig,completion:@escaping (AXEvidence)->Void) {
+    func readLiveAX(module:String?,axMode:Bool,checkPanels:Bool,checkGrid:Bool=false,fallback:String,viewSettings:DetectionConfig,completion:@escaping (AXEvidence)->Void) {
         DispatchQueue.global(qos:.utility).async {
-            let grid=axMode ? accessibilityGridReading(module:module):nil
-            let toolbar=checkPanels ? accessibilityToolbarReading(fallback:fallback,module:module).effectiveState:"unknown"
+            let grid=(axMode || checkGrid) ? accessibilityGridReading(module:module):nil
+            let toolbarReading=checkPanels ? accessibilityToolbarReading(fallback:fallback,module:module):nil
+            // AX placement retains its configured fallback. Screenshot dismissal
+            // requires actual toolbar evidence; unavailable is not a panel change.
+            let toolbar=axMode ? (toolbarReading?.effectiveState ?? "unknown"):toolbarReading?.shown.map { $0 ? "shown":"hidden" }
             var proposal:AXTrialProposal?,hints:AXScreenHints?
             _=accessibilityMappingReport { host,windows,fullScreen in
                 proposal=axTrialProposal(host:host,windows:windows,settings:viewSettings,fullScreen:fullScreen)
-                if checkPanels { hints=AXScreenHints(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),toolbar:toolbar) }
+                if checkPanels,let toolbar { hints=AXScreenHints(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),toolbar:toolbar) }
             }
             let evidence=AXEvidence(grid:grid,proposal:proposal,hints:hints)
             DispatchQueue.main.async { completion(evidence) }

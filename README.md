@@ -41,7 +41,7 @@ In automatic Accessibility mode, **Update overlay with LrC view** defaults on:
 
 Confirmed module changes dismiss in every mode. Accessibility mode also checks the direct **View → Grid** menu selection to dismiss/block overlays in Library Grid; selection-mark reliability still needs native confirmation. Missing menu evidence is treated as unknown.
 
-Screenshot backup modes keep their earlier behaviour: AX view inference updates the menu, panel checks invalidate cached placement for the next invocation, and explicit menu view/pane changes dismiss. Photo-selection changes do not refresh the displayed reference in screenshot or manual mode.
+Screenshot with AX view detection now matches Accessibility with updating off: confirmed photo/view/pane/panel changes dismiss; positive Library Grid dismisses and blocks invocation. Missing evidence retains the overlay. Screenshot with inference off, manual and floating behaviour are unchanged. AX-assisted placement remains independent; no placement algorithms or calibrated offsets change. Background screenshot checks still invalidate cached placement only. Nothing automatically opens a dismissed overlay.
 
 The overlay follows Lightroom movement and can be covered by other apps. Overview, minimise and Space transitions temporarily suspend it; a brief linger during minimise is a known limitation. Intermittent off-screen capture failures remain under investigation.
 

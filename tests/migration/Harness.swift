@@ -133,9 +133,11 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         for assist in [false,true] { for infer in [false,true] {
             prefs.set(assist,forKey:"screenshotAXAssistance");prefs.set(infer,forKey:"experimentalAutomaticView")
             expect(app.assistedPlacementEnabled == assist && app.automaticViewEnabled == infer,"Independent screenshot choices")
+            expect(app.screenshotAXDismissEnabled == infer,"Screenshot dismiss policy depends on inference, not assistance")
         } }
         prefs.set(false,forKey:"useScreenshotDetection")
         expect(app.automaticViewEnabled,"AX inference cannot be disabled by saved screenshot option")
+        expect(!app.screenshotAXDismissEnabled,"Screenshot fallback policy never replaces Accessibility live policy")
         prefs.set(false,forKey:"axLiveUpdate")
         expect(!app.axLiveUpdate,"Explicit update-off survives")
         prefs.removeObject(forKey:"axLiveUpdate")
@@ -255,7 +257,7 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         app.assistedChecks=3;app.assistedAXSeconds=0.02;app.assistedCheckSeconds=0.05
         for mode in [false,true] {
             prefs.set(mode,forKey:"useScreenshotDetection")
-            expect(diagnosticReport(app.diagnosticSections()) == diagnosticReport(app.baselineDiagnosticSections()),"Report must match frozen 1.0.32 formatter")
+            expect(diagnosticReport(app.diagnosticSections()) == diagnosticReport(app.baselineDiagnosticSections()).replacingOccurrences(of:"Screenshot modes retain cache-invalidation behaviour.",with:"Screenshot with AX view detection dismisses on confirmed photo/view/pane/panel changes and Grid. Without AX view detection, existing cache-invalidation behaviour is retained."),"Report matches frozen formatter except the approved screenshot policy description")
         }
         let reportURL=MigrationEnvironment.root.appendingPathComponent("Diagnostics/latest.txt")
         var generated=0,failures=0

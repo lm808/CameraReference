@@ -2,6 +2,7 @@
 
 ## 1.1.10 — post-migration backlog candidate
 
+- Screenshot with AX view detection dismisses on confirmed photo/view/pane/panel changes and Grid, matching Accessibility with updating off. Screenshot placement algorithms remain unchanged.
 - Use production frame constraints for AX preview borders.
 - Remove stale pane names from manual calibration prompts; clarify overlay/floating gesture tooltips.
 - Candidate stacking fixes: normal-level ordering for confirmed macOS full-screen hosts, and relative ordering beneath an existing floating window. Native verification pending.
