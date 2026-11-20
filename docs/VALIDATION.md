@@ -877,3 +877,13 @@ All ten migration groups passed. Added checks exercise the actual forwarding sta
 Testing build/staging completed for 1.1.7 build 66; strict deep signature, plist identity/version and whitespace checks passed. Main remains untouched at a568c6e. Native stage 7 acceptance is pending.
 
 2026-11-20 stage 7 user follow-up: all four native checklist items marked complete. Floating-window hover-text cleanup requested; logged for after migration. Original responses, including feedback about ambiguous test wording, preserved verbatim in migration/STAGE-7-ACCEPTANCE.md. Optional Save was part of a grouped check, so no separate export execution claim is made. No rebuild or version change; stage 8 not started.
+
+## 1.1.8 build 67 — migration stage 8
+
+2026-11-20. LightroomMonitor owns monitoring state, heartbeat/display timers, notification subscriptions and read-only module/foreground/live AX observation. MonitoringCoordinator retains existing eligibility/staleness guards and policy execution in original tick order. No window mutation in the monitor; no additional queued event delivery. Invocation-time view probing, placement, photo requests and calibration timers retain their separate paths.
+
+Mechanical comparison against b9c71cc confirms nine reader/handler bodies and the heartbeat tick body byte-identical. Live AX qualification and completion bodies match exactly around the new optional evidence handoff. The display-change handler retains invalidation, calibration cancellation and the 0.6-second delayed report; only timer ownership changes. OverlayBehaviourPolicy, PresentationCoordinator, placement/photo coordinators, Views and placement algorithms are unchanged.
+
+All eleven migration groups passed. New checks use isolated notification centers and fire actual timer callbacks: 0.2-second heartbeat, synchronous signal order, 0.6-second display debounce, replacement invalidation, no duplicate subscriptions and stop cleanup. The one-shot timer check measures its fire date (its timeInterval does not represent the delay). Existing module freshness/partial-write, stale load/selection/module, cache, placement, presentation, menu and diagnostics tests continue to pass. No live AX/capture calls or GUI app launches were used in these checks. Native ordering, host visibility and responsiveness still require user acceptance; no performance improvement claimed. Six deferred issues remain unfixed. Stage 7 responses remain preserved verbatim; stage 9 not started.
+
+Candidate build/staging completed for 1.1.8 build 67; strict deep signature, version/testing identity and whitespace checks passed. Main remains clean at a568c6e and its staged app was not rebuilt. Native stage 8 acceptance pending.

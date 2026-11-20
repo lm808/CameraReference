@@ -1,6 +1,6 @@
 # Architecture and source map
 
-Current candidate implementation: 1.1.7 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
+Current candidate implementation: 1.1.8 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
 
 ## Source ownership
 
@@ -10,7 +10,9 @@ Current candidate implementation: 1.1.7 (structure-migration; main remains 1.0.3
 | AppSettings.swift | Existing preference-domain access for mode interpretation and startup defaults/legacy registration; no second store. |
 | SettingsMenu.swift | Menu construction, references, refresh and validation; one current-view root with manual five-choice or inferred two-pane submenu (automatic Loupe has none). AppDelegate adapters retain action targets and event triggers. |
 | Diagnostics.swift | DiagnosticsService owns report state/formatting/saving and diagnostic windows/previews. Transitional AppDelegate adapters retain existing collection/capture guards and scheduling; production AX observation and shared capture tasks remain outside the service. |
-| main.swift | AppDelegate composition, menu action routing/contextual preferences, mode dispatch, calibration and monitoring/timers. Coordinates extracted owners through transitional adapters. |
+| main.swift | AppDelegate composition, menu action routing/contextual preferences, mode dispatch and calibration. Coordinates extracted owners through transitional adapters. |
+| LightroomMonitor.swift | Read-only observations, heartbeat/display timers, notification subscriptions, module freshness and monitoring state. Synchronous event signals and optional live AX evidence; no window mutations. |
+| MonitoringCoordinator.swift | Existing eligibility/freshness guards and policy execution in tick order; background screenshot checks retain their original route. Forwards state to the monitor. |
 | OverlayController.swift / FloatingDisplayController.swift | Independent displayed-window state owners: overlay host/lifecycle/identity versus floating panel/view/title/zoom. No timers or placement calculations. |
 | PresentationCoordinator.swift | App-facing presentation and lifecycle coordination; existing guards, callbacks and ordering retained. Forwarding properties address the sole display owners. |
 | Core.swift | Protocol/source primitives, cancellation and extraction helpers. |
@@ -84,3 +86,9 @@ Future structural work should extract diagnostics/menu ownership, centralise upd
 Stage 5 source map: `Sources/PlacementCoordinator.swift` holds transitional AppDelegate placement orchestration (manual/cache/backend routing, async guards and result handling). `Sources/PlacementImplementations.swift` holds concrete calculation adapters and the AppKit UIPlacement result. Placement state remains on AppDelegate until later owner migration; detector algorithms are unchanged.
 
 Stage 6 source map: `Sources/PhotoRequestPipeline.swift` owns bridge transport/request state, immutable load context and SelectionImageCache; `Sources/PhotoRequestCoordinator.swift` holds transitional request qualification, existing completion guards and result dispatch. AppDelegate forwards existing request/cache access to this single owner.
+
+### Monitoring boundary (stage 8)
+
+The monitor emits tick, foreground, Space, display-change and delayed display-check events synchronously. MonitoringCoordinator reads selection/module/overview/geometry and applies existing effects in their original order rather than eagerly assembling a snapshot. OverlayBehaviourPolicy owns the pure update/dismiss/retain/suspend decisions; the coordinator qualifies evidence and executes them. Live AX workers return optional Grid/proposal/hint evidence on the existing main-queue handoff. Missing evidence is retained as unknown. Invocation-time AX classification remains on its separate request path.
+
+Timer cadence is unchanged: 0.2-second tick, 2-second eligible live AX poll, 0.6-second display-check debounce, configured background screenshot interval. Background capture still starts only after its original coordinator guards. No monitor starts or dismisses an overlay. Notification subscriptions have explicit replacement/teardown without queued delivery. AppDelegate forwarding remains transitional until stage 9.

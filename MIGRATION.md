@@ -1,7 +1,7 @@
 # Structure migration — working checklist
 
 Branch: `codex/structure-migration` · worktree: `worktrees/structure-migration`
-Baseline: main at `a568c6e`, application 1.0.32. Main and its staged daily-use app remain untouched. Stage 7 delivers candidate 1.1.7; main and its accepted app stay at 1.0.32.
+Baseline: main at `a568c6e`, application 1.0.32. Main and its staged daily-use app remain untouched. Stage 8 delivers candidate 1.1.8; main and its accepted app stay at 1.0.32.
 
 ## Contract and priority
 
@@ -21,7 +21,7 @@ Target ownership and the mapping from existing symbols are in [TARGET-STRUCTURE.
 - [x] **5 — Placement dispatch (user testing complete).** Introduce manual, AX, original screenshot and assisted screenshot adapters with a common UI-placement result. Delegate to existing calculations, not rewrites. Keep original detector/split scanner untouched, AX offsets out of screenshot routes, manual first and no AX capture fallback. Preserve cache and calibration decisions at the coordinator boundary. Confirm float combined-area sizing remains identical.
 - [x] **6 — Photo request ownership (testing complete; stacking bug logged).** Move bridge/load/cancellation and image-cache ownership into a photo pipeline. Preserve tokens, epochs, 50ms response polling, timeout, cancellation order and refresh-once-per-epoch behaviour. Introduce explicit request context by wrapping existing identities first; do not replace all generation schemes at once.
 - [x] **7 — Presentation ownership (user testing complete; hover-text cleanup logged).** Move overlay panel/lifecycle state into OverlayController and floating state into FloatingDisplayController, retaining ReferenceView and geometry helpers. Separate view/panel geometry updates from photo replacement (preserve zoom versus reset Fit). Preserve export snapshot identity, hover behaviour, suspension, ordering and host following.
-- [ ] **8 — Monitoring ownership.** Move observations into LightroomMonitor with explicit outputs and unknown states. Preserve the existing 0.2s tick order, eligible 2s AX poll, configurable screenshot checks, workspace notifications and foreground cancellation. Policy decides consequences; monitors do not manipulate windows. Avoid introducing queued event delivery or new timer cadence.
+- [ ] **8 — Monitoring ownership (implemented; user testing pending).** Move observations into LightroomMonitor with explicit outputs and unknown states. Preserve the existing 0.2s tick order, eligible 2s AX poll, configurable screenshot checks, workspace notifications and foreground cancellation. Policy decides consequences; monitors do not manipulate windows. Avoid introducing queued event delivery or new timer cadence.
 - [ ] **9 — Consolidation and acceptance.** Remove replaced forwarding paths and redundant state only after coverage. Review component boundaries, all mode combinations, no extra AX/capture/extraction work, timing and source map. Update methods/agent guide/test list to actual implementation. Merge only after user acceptance; do not push/package automatically.
 
 Each stage can take several small commits. Dependency reason: tests first; reporting/menu extraction reduces noise; policy precedes moving its execution; placement and request seams precede presentation; timer extraction comes last to avoid changing execution order while owners are moving. If inspection shows a boundary cannot move safely yet, record the dependency here before changing the sequence.
@@ -51,6 +51,8 @@ Each stage can take several small commits. Dependency reason: tests first; repor
 | 6 | Candidate 1.1.6 build 65 staged | Pipeline owns request state/transport/cache; immutable load context preserves existing identities. Nine migration groups passed, including real transport timer cases and stale-load guards. User completed all four checks on 2026-11-20; floating-display stacking bug logged. Responses preserved in STAGE-6-ACCEPTANCE.md. |
 
 | 7 | Candidate 1.1.7 build 66 staged | Independent presentation owners and transitional coordinator; fourteen relocated bodies byte-identical. Ten migration groups passed; staged signature/plist checked. User completed all four checks on 2026-11-20; hover-text cleanup logged. Annotations preserved in STAGE-7-ACCEPTANCE.md. |
+
+| 8 | Candidate 1.1.8 build 67 staged | Monitor owns observations, subscriptions and timing; coordinator retains existing policy/guards. Eleven migration groups passed; strict signature/plist checked. Native testing pending. |
 
 - [ ] Collect matched native before/after timing samples using the baseline protocol before accepting migrated performance. No timing samples have been collected by this stage.
 
@@ -103,3 +105,13 @@ OverlayController owns the displayed panel, host binding, lifecycle/suspension s
 Fourteen presentation/lifecycle methods were relocated; lifecycle history and floating-title formatting now execute on their owners. Cross-component coordination stays in an AppDelegate extension until the monitoring/composition stages. Existing geometry-only updates and image replacement remain separate: view/panel updates preserve zoom, photo replacement resets Fit. ReferenceView, exports, placement algorithms, preview constraints and stacking policy are unchanged. The five deferred bugs/policy items are not fixed here.
 
 Candidate 1.1.7 build 66. Stage 6 annotations already preserved verbatim in STAGE-6-ACCEPTANCE.md. Stage 7 user testing is complete; annotations preserved in STAGE-7-ACCEPTANCE.md. Matched performance samples remain pending; stage 8 has not started.
+
+### Stage 8 ownership boundary
+
+LightroomMonitor owns heartbeat/display timers, workspace/application subscriptions, module freshness/window observation state, live AX polling state and background-check task identity. It delivers synchronous tick/foreground/Space/display-change events, and optional AX evidence on the original utility-to-main queue handoff. A missing module/proposal/Grid mark remains unknown, not a confirmed view change. No native window mutation occurs in the monitor.
+
+MonitoringCoordinator applies the existing OverlayBehaviourPolicy and executes actions with the original eligibility/staleness guards. Policy decisions were migrated in stage 4; evidence qualification and effects remain coordinator responsibilities. Nine reader/handler bodies and the heartbeat tick body are byte-identical to stage 7; live AX qualification/completion are unchanged around the explicit evidence handoff. Screenshot background eligibility, capture, result guards and invalidation stay together in this transitional coordinator. The monitor owns their task identity; it does not start capture independently.
+
+The timer remains 0.2 seconds, eligible AX polling 2 seconds, display-check debounce 0.6 seconds, and screenshot checking uses the existing config. Notification callbacks remain synchronous on the posting thread, with no extra queue. The two existing main/utility queue boundaries are not combined into a new event loop. Subscriptions and timers now have an explicit stop/replacement lifecycle. No placement, update/dismiss, preview, export or permission policy changes. Six deferred issues remain unfixed.
+
+Candidate 1.1.8 build 67; native testing pending. Stage 7 annotations preserved in STAGE-7-ACCEPTANCE.md. Stage 9 has not started.

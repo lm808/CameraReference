@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.8 — migration stage 8 candidate
+
+- Separate Lightroom observation/timer ownership from policy execution. Preserve polling cadence, notification order, background checks and existing overlay behaviour.
+
 ## 1.1.7 — migration stage 7 candidate
 
 - Separate overlay and floating-display state ownership and presentation coordination. Preserve existing placement, interaction, refresh, suspension and ordering behaviour. Deferred issues remain unchanged.

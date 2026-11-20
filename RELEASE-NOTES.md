@@ -1,5 +1,5 @@
-# Camera Reference 1.1.7 — testing candidate
+# Camera Reference 1.1.8 — testing candidate
 
-Stage 7 separates overlay and floating-display ownership. Existing display creation, refresh, host following, suspension, ordering and interaction are preserved. No intended user-facing behaviour changes.
+Stage 8 separates Lightroom monitoring from the coordinator that applies existing behaviour decisions. Polling intervals, notification order, stale-result checks and placement algorithms are preserved. No intended user-facing behaviour changes.
 
-The five logged bugs/policy items remain deferred, including floating-display stacking. Main is untouched. Native acceptance is pending; see TESTING.md. Quit the previous app before opening the testing app.
+Six logged issues remain deferred until after migration, including floating-window hover-text cleanup. Main is untouched. Native acceptance is pending; see TESTING.md. Quit the previous app before opening the testing app.

@@ -86,6 +86,39 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         transport.cancel()
         expect(cancelledWork.isCancelled && transport.cancellation==nil && transport.destination==nil,"Cancellation reaches worker and clears state")
         print("PASS migration: pipeline request bytes, polling cadence, partial/wrong-token response, cleanup, timeout and replacement")
+        // Isolated centers exercise actual subscription delivery and timers without
+        // subscribing to the live workspace or invoking any native AX/capture calls.
+        let monitor=LightroomMonitor(folder:MigrationEnvironment.bridge)
+        let workspaceCenter=NotificationCenter(),applicationCenter=NotificationCenter()
+        var events:[LightroomMonitor.Event]=[]
+        monitor.start(workspaceCenter:workspaceCenter,applicationCenter:applicationCenter) { events.append($0) }
+        expect(monitor.moduleTimer?.timeInterval==0.2,"Heartbeat cadence remains 0.2 seconds")
+        monitor.moduleTimer?.fire()
+        workspaceCenter.post(name:NSWorkspace.didActivateApplicationNotification,object:nil)
+        workspaceCenter.post(name:NSWorkspace.activeSpaceDidChangeNotification,object:nil)
+        applicationCenter.post(name:NSApplication.didChangeScreenParametersNotification,object:nil)
+        expect(events == [.tick,.foregroundChanged,.spaceChanged,.displaysChanged],"Monitor signals arrive synchronously in source order")
+        monitor.scheduleDisplayCheck()
+        let oldDisplayTimer=monitor.displayTimer!
+        expect(abs(oldDisplayTimer.fireDate.timeIntervalSinceNow-0.6)<0.1,"Display check debounce remains 0.6 seconds")
+        monitor.scheduleDisplayCheck()
+        expect(!oldDisplayTimer.isValid,"Repeated display change replaces the pending check")
+        monitor.displayTimer?.fire()
+        expect(events.last == .displayCheckSettled,"Display settle timer emits evidence rather than manipulating windows")
+        let oldTick=monitor.moduleTimer!
+        monitor.start(workspaceCenter:workspaceCenter,applicationCenter:applicationCenter) { events.append($0) }
+        expect(!oldTick.isValid,"Restart replaces the heartbeat timer")
+        events=[]
+        workspaceCenter.post(name:NSWorkspace.didActivateApplicationNotification,object:nil)
+        expect(events == [.foregroundChanged],"Restart does not duplicate subscriptions")
+        monitor.stop();events=[]
+        workspaceCenter.post(name:NSWorkspace.activeSpaceDidChangeNotification,object:nil)
+        applicationCenter.post(name:NSApplication.didChangeScreenParametersNotification,object:nil)
+        expect(events.isEmpty && monitor.moduleTimer==nil && monitor.displayTimer==nil,"Stopped monitor removes timers and subscriptions")
+        let unknown=LightroomMonitor.AXEvidence(grid:nil,proposal:nil,hints:nil)
+        expect(unknown.grid==nil && unknown.proposal==nil && unknown.hints==nil,"Unavailable evidence stays unknown")
+        print("PASS migration: monitor event order, timer cadence, display debounce, restart and teardown")
+
         let app=AppDelegate() // no NSApplication.shared, launch callback, panels or timers started
         expect(app.axPlacementEnabled && app.automaticViewEnabled && app.axLiveUpdate,"Fresh defaults must remain AX, view inference and update enabled")
         for mode in AutomaticPlacementMode.allCases {
