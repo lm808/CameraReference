@@ -75,17 +75,8 @@ func overlayNeedsOrdering(order:[Int],overlay:Int,lightroom:Int,lightroomWindows
 }
 
 func calibrationInstructions(layout:OverlayLayout,automatic:Bool)->String {
-    let expected:String
-    switch layout {
-    case .full:expected="Loupe View ▣"
-    case .left:expected="Reference View (Left/Right), overlay on left ◧"
-    case .right:expected="Reference View (Left/Right), overlay on right ◨"
-    case .upper:expected="Reference View (Top/Bottom), overlay on top pane ⬒"
-    case .lower:expected="Reference View (Top/Bottom), overlay on bottom pane ⬓"
-    }
     let mode=automatic ? "auto-detection":"manual mode"
-    let guidance=automatic ? "• Auto-detection expects \(expected).\n• If different, change the layout in the menu.\n\n":""
-    return guidance + "To calibrate manually, select the photo backdrop for the overlay, including the inset margins.\n\n• Selecting a region switches to manual mode.\n• Cancelling keeps \(mode) and the saved region."
+    return "Select the region where you want the overlay to appear.\n\n• Selecting a region switches to manual mode.\n• Cancelling keeps \(mode) and the saved region."
 }
 
 // Keep the historical Develop key; Library starts at Full without overwriting it.

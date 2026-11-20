@@ -10,6 +10,12 @@ enum OverlayHostAction:Equatable { case retain,suspend,translate(CGPoint) }
 /// guards, and execute actions in the original order. Do not fold suspension into
 /// dismissal, or screenshot cache invalidation into AX live placement.
 enum OverlayBehaviourPolicy {
+    // Confirmed native full-screen keeps app overlays below system/titlebar UI.
+    // Unknown evidence retains the windowed policy; no geometry inference.
+    static func useFloatingOverlayLevel(lightroomActive:Bool,overview:Bool,dialog:Bool,fullScreen:Bool?)->Bool {
+        lightroomActive && !overview && !dialog && fullScreen != true
+    }
+
     static func geometryChange(accessibility:Bool,automatic:Bool,displayed:OverlayLayout?,selected:OverlayLayout,panelsChanged:Bool,live:Bool)->AXOverlayChangeAction {
         guard accessibility,automatic,let displayed,displayed != selected || panelsChanged else { return .retain }
         return live ? .adjust:.dismiss

@@ -1,5 +1,5 @@
-# Camera Reference 1.1.9 — testing candidate
+# Camera Reference 1.1.10 — testing candidate
 
-Stage 9 consolidates the migrated structure: direct access to state owners, separate view/calibration/settings/export coordination, and an updated source map. Current behaviour is preserved; the six deferred issues are not fixed here.
+Post-migration fixes address AX preview frame constraints, generic calibration guidance and clearer hover instructions. Candidate window-ordering changes keep overlays below full-screen system controls and below an existing floating window. These require native verification; placement calculations and config offsets are unchanged.
 
-Automated checks and native acceptance are recorded separately. Main remains untouched, and no merge has occurred. Quit the previous app before opening the testing app and use TESTING.md for the final migration checks.
+Screenshot view-change policy remains unchanged pending the separate decision. Main is untouched. Use TESTING.md for the focused checks and quit the previous app before starting this candidate.

@@ -244,6 +244,8 @@ final class LightroomHostAccessibility {
     private let application:AXUIElement
     private let host:AXUIElement
     private var observer:AXObserver?
+    private var lastFullScreen:Bool?
+    private var fullScreenStatus="not read"
     private var notifiedMinimized:Bool?
     private var notificationTime:TimeInterval=0
     var onMinimized:(()->Void)?
@@ -253,7 +255,7 @@ final class LightroomHostAccessibility {
     private var miniCount=0,restoreCount=0
     private var eventHistory:[String]=[]
     var diagnostic:String {
-        "\(observerStatus); AXMinimized: \(minimizeAttributeStatus); events mini/restore \(miniCount)/\(restoreCount)" + (eventHistory.isEmpty ? "":"\nAX event history (uptime seconds): " + eventHistory.joined(separator:"; "))
+        "\(observerStatus); AXMinimized: \(minimizeAttributeStatus); AXFullScreen: \(fullScreenStatus); events mini/restore \(miniCount)/\(restoreCount)" + (eventHistory.isEmpty ? "":"\nAX event history (uptime seconds): " + eventHistory.joined(separator:"; "))
     }
     deinit {
         if let observer { CFRunLoopRemoveSource(CFRunLoopGetMain(),AXObserverGetRunLoopSource(observer),.commonModes) }
@@ -355,6 +357,12 @@ final class LightroomHostAccessibility {
         application=app;host=match;AXUIElementSetMessagingTimeout(host,0.03)
         diagnostic="AX host bound via \(source), geometry verified (\(examined) examined; \(windows.count) listed)."
         watchMinimize(pid:pid)
+    }
+    var fullScreen:Bool? {
+        if let value=Self.read(host,"AXFullScreen") as? NSNumber {
+            lastFullScreen=value.boolValue;fullScreenStatus="\(value.boolValue)"
+        } else { fullScreenStatus="unavailable; retained \(lastFullScreen.map(String.init) ?? "unknown")" }
+        return lastFullScreen // A temporary read failure must not raise a known full-screen overlay.
     }
     var layoutFrame:CGRect? {
         guard let rect=Self.frame(host),rect.width>0,rect.height>0 else { return nil }

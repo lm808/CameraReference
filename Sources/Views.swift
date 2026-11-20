@@ -7,6 +7,16 @@ class OverlayPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 }
+// Diagnostic borders use the production frame constraint without accepting focus.
+final class AXTrialPanel:OverlayPanel {
+    override var canBecomeKey:Bool { false }
+}
+
+func referenceInteractionHint(floating:Bool)->String {
+    let drag=floating ? "Drag at Fit: move window. Drag when zoomed: pan.":"Drag: pan."
+    return "Scroll: pan. Command-scroll: zoom.\n" + drag + "\nDouble-click: reload photo and Fit. Right-click: image options."
+}
+
 // The same image view handles gestures, drawing, refresh and export for both windows.
 final class ReferenceView: NSView, NSMenuItemValidation {
     override init(frame:NSRect) {

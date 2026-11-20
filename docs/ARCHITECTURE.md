@@ -1,6 +1,6 @@
 # Architecture and source map
 
-Current candidate implementation: 1.1.9 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
+Current candidate implementation: 1.1.10 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
 
 ## Source ownership
 
@@ -98,3 +98,7 @@ The monitor emits tick, foreground, Space, display-change and delayed display-ch
 Cadence remains 0.2 seconds for maintenance, 2 seconds for eligible live AX polls, 0.6 seconds for display-check debounce, 50 ms for bridge response polling, with a five-second request deadline. Background capture starts only after its original guards. No new capture, AX read, extraction, dispatch queue or display prerequisite was introduced by consolidation. Native ordering and latency cannot be certified by source equivalence or synthetic tests. Matched native timing samples remain pending; see [baseline protocol](migration/BASELINE.md).
 
 The six known bugs/policy items remain in [BACKLOG.md](BACKLOG.md), not silently fixed by migration. Current validation and limitations are in [VALIDATION.md](VALIDATION.md); migration history and target deviations are in [final review](migration/FINAL-REVIEW.md) and [MIGRATION.md](../MIGRATION.md).
+
+## Post-migration presentation corrections
+
+Confirmed native full-screen hosts use normal-level relative ordering above Lightroom; windowed/unknown hosts retain the active floating-level policy. LightroomHostAccessibility retains its last explicit AXFullScreen reading for the bound host through transient failures. No geometry inference or extra timer is introduced. Overlay and diagnostic preview front-order requests go below a visible same-level floating window. AXTrialPanel shares production frame constraints but cannot become key. Native ordering acceptance remains required.

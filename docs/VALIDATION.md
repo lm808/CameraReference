@@ -897,3 +897,13 @@ Candidate build/staging completed for 1.1.8 build 67; strict deep signature, ver
 Full test.sh suites passed through core/source/export/cache, Lua, detection, viewport, reset, preview, capture and split checks. Config-editor hit the known restricted temporary atomic-save error 512; rerunning the same executable outside that restriction passed both groups. The final migration harness was run separately and passed all eleven groups. Optional external crop fixtures were not provided. No native app launch or live AX/capture performed; final native acceptance and matched timing measurements remain pending. Six deferred issues remain open; no new behaviour fix included.
 
 Testing build/staging completed for 1.1.9 build 68; strict deep signature, testing identity/version and diff checks passed. Main remains clean at a568c6e; its accepted staged app was not rebuilt. Final native acceptance/merge remain pending. The obsolete assertion that only tested deleted forwarding aliases was removed; dismissal/state-isolation coverage remains.
+
+## 1.1.9 user acceptance and post-migration follow-up
+
+2026-11-20: all four final migration checks marked complete without new annotations, preserved verbatim in migration/STAGE-9-ACCEPTANCE.md. Optional actions/matched timing samples were not separately confirmed. User authorised targeting backlog fixes next; no merge authorised.
+
+## 1.1.10 build 69 — backlog candidate
+
+Calibration guidance no longer names a saved layout/pane; acceptance/cancellation semantics remain unchanged. Floating and overlay tooltips distinguish their drag behaviours. AX preview panels inherit production frame constraints while retaining non-key behaviour. Candidate stacking policy uses normal-level relative ordering for explicit AX full-screen hosts, retaining the last reading on temporary failure. Overlay/preview front-order requests stay below a visible same-level floating window. No geometry calculations/config offsets changed. Native system/titlebar, floating order and preview-frame behaviour require user verification; no claim of native success from automated checks.
+
+Core/Lua/detection/viewport/reset/preview/capture/split suites passed, including generic calibration wording across all panes, confirmed-full-screen level policy and mode-specific tooltip checks. Config-editor temporary save was blocked by filesystem restrictions; rerun outside that restriction passed. All eleven migration groups passed. Candidate 1.1.10 build 69 staged; strict deep signature/plist checked. No live window testing, no main changes. Screenshot view-change policy is unchanged pending the user choice.

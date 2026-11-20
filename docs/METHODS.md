@@ -1,6 +1,6 @@
 # Current implementation methods
 
-Current candidate implementation: 1.1.9; accepted main remains 1.0.32. This file describes operative methods. [Research findings](AX-ASSISTANCE.md) distinguishes observations from assumptions; [historical notes](HISTORICAL-NOTES.md) preserves superseded implementations and experiments. [Architecture](ARCHITECTURE.md) maps source ownership and update routing.
+Current candidate implementation: 1.1.10; accepted main remains 1.0.32. This file describes operative methods. [Research findings](AX-ASSISTANCE.md) distinguishes observations from assumptions; [historical notes](HISTORICAL-NOTES.md) preserves superseded implementations and experiments. [Architecture](ARCHITECTURE.md) maps source ownership and update routing.
 
 ## Selection, extraction and Fit
 
@@ -12,7 +12,7 @@ Fit is calculated from JPEG aspect ratio inside the UI region with fitInsetPoint
 
 ## Manual and automatic routing
 
-Manual placement wins. Accepting a selected backdrop stores region/window/display association and turns automatic placement off; cancelling changes nothing. Clearing region preserves auto/manual preference. Option snapping requires existing Screen Recording permission; otherwise calibration stays free-drag.
+Manual placement wins. Accepting a selected backdrop stores region/window/display association and turns automatic placement off; cancelling changes nothing. Clearing region preserves auto/manual preference. Option snapping requires existing Screen Recording permission; otherwise calibration stays free-drag. Calibration guidance asks for the desired overlay region and does not derive instructions from a saved view/pane.
 
 Automatic placement chooses AX or Screenshot. AX branches before screenshot cache/capture paths, reads fresh geometry and never falls back to capture. Screenshot independently chooses original or assisted search; AX view inference is a separate option. See the architecture routing diagram.
 
@@ -70,7 +70,7 @@ Live AX polling is approximately two seconds, separate from the 0.2-second bridg
 
 ## Window ordering and suspension
 
-The overlay is nonactivating and floating only while Lightroom is active, avoiding click-induced flicker. Other app activation lowers it to normal level above its host so other windows can cover it. Avoid redundant ordering/frame updates. Movement follows known host geometry, including partial off-screen clipping; do not constrain the overlay back onto a display.
+The overlay is nonactivating. For windowed or unknown full-screen state it floats while Lightroom is active, avoiding click-induced flicker. Confirmed AXFullScreen uses normal-level relative ordering above its host so native system/titlebar controls can remain above it; the last explicit reading is retained through temporary read failures for the same bound host. This full-screen ordering correction is a candidate awaiting native verification. Other app activation lowers the overlay to normal level above its host so other windows can cover it. Overlay/AX-preview front-order requests go below an already visible same-level floating window, without raising that window. Avoid redundant ordering/frame updates. Movement follows known host geometry, including partial off-screen clipping; do not constrain the overlay back onto a display.
 
 Minimise/overview/Space suspension retains content for restoration after settling. Confirmed closure, module change or explicit dismissal releases it; AX update policy additionally handles view/panel/selection changes. Public window-list heuristics and transient flags cannot guarantee perfect overview animation tracking. Brief minimise linger is accepted; native lifecycle tests remain essential.
 

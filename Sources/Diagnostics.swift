@@ -224,7 +224,7 @@ extension AppDelegate {
                     let displayHeight=CGDisplayBounds(CGMainDisplayID()).height
                     for (index,rect) in proposal.panes.enumerated() {
                         let frame=CGRect(x:rect.minX,y:displayHeight-rect.maxY,width:rect.width,height:rect.height)
-                        let border=NSPanel(contentRect:frame,styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
+                        let border=AXTrialPanel(contentRect:frame,styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
                         border.isOpaque=false;border.backgroundColor = .clear;border.hasShadow=false;border.ignoresMouseEvents=true
                         border.level=actual.level
                         border.animationBehavior = .none;border.isReleasedWhenClosed=false;border.hidesOnDeactivate=false
@@ -233,7 +233,7 @@ extension AppDelegate {
                         border.contentView=AXTrialBorder(size:frame.size,tint:index==0 ? .systemGreen:.systemPurple,label:name)
                         actual.addChildWindow(border,ordered:.above)
                         if !self.overlayController.overlaySuspended && actual.isVisible {
-                            border.orderFront(nil)
+                            self.orderReferencePanelFront(border)
                         } else { border.orderOut(nil) }
                         self.axTrialBorders.append(border)
                         self.lastAXTrial += "\n\(name): requested AppKit \(frame); actual \(border.frame); visible \(border.isVisible); parent visible \(actual.isVisible); suspended \(self.overlayController.overlaySuspended)."

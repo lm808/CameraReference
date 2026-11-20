@@ -14,7 +14,7 @@ private final class CalibrationView: NSView {
     var finish: ((CGRect) -> Void)?
     var cancel: (() -> Void)?
     var track: NSTrackingArea?
-    var hint = "Select the entire photo backdrop between the panels, including margins around the photo. ⌥ snaps to edges; Esc cancels."
+    var hint = "Select the region where you want the overlay to appear. Hold ⌥ Option to snap to edges. Esc cancels."
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func resetCursorRects() { addCursorRect(bounds, cursor: .crosshair) }
@@ -98,7 +98,6 @@ final class CalibrationController {
     private var panels=[NSPanel]()
     private var escapeMonitor: Any?
     var completed: ((CGRect?) -> Void)?
-    var instruction:String?
     var snapRadius:CGFloat=8
     func start(proposal: CGRect? = nil,edges:[SnapEdge]=[],snapAvailable:Bool=true,permissionUnavailable:Bool=false) {
         for screen in NSScreen.screens {
@@ -113,12 +112,11 @@ final class CalibrationController {
             }.map { edge in
                 SnapEdge(vertical:edge.vertical,coordinate:edge.coordinate-(edge.vertical ? screen.frame.minX:screen.frame.minY),start:edge.start-(edge.vertical ? screen.frame.minY:screen.frame.minX),end:edge.end-(edge.vertical ? screen.frame.minY:screen.frame.minX))
             }
-            if !snapAvailable { v.hint="Select the entire photo backdrop between the panels, including margins. Snapping unavailable; Esc cancels." }
+            if !snapAvailable { v.hint="Select the region where you want the overlay to appear. Snapping unavailable. Esc cancels." }
             if let proposal, screen.frame.contains(proposal) {
                 v.selection=proposal.offsetBy(dx:-screen.frame.minX,dy:-screen.frame.minY)
-                v.hint=snapAvailable ? "Proposed UI working area — Return accepts; drag to adjust the full backdrop. Hold ⌥ Option to snap. Esc cancels." : "Proposed UI working area — Return accepts; drag to adjust the full backdrop. Snapping unavailable. Esc cancels."
+                v.hint=snapAvailable ? "Proposed overlay region — Return accepts; drag to select the region you want. Hold ⌥ Option to snap. Esc cancels." : "Proposed overlay region — Return accepts; drag to select the region you want. Snapping unavailable. Esc cancels."
             }
-            if let instruction { v.hint=instruction + (snapAvailable ? "":" Snapping unavailable.") }
             if !snapAvailable && permissionUnavailable {
                 v.hint += "\nFor edge snapping, enable Screen Recording in macOS System Settings."
             }

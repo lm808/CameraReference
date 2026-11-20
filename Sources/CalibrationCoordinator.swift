@@ -15,7 +15,6 @@ extension AppDelegate {
         let selectionKind="ui"
         let calibrationModule=currentModule()
         let controller=CalibrationController();controller.snapRadius=settings.snapDistancePoints; calibration=controller
-        if overlayLayout != .full { controller.instruction="Select the entire \(overlayLayout.label.lowercased()) pane backdrop between panels and divider, including photo margins. Esc cancels." }
         controller.completed = { [weak self] result in
             guard let self else { return }
             self.calibrationTask?.cancel(); self.calibrationTask=nil

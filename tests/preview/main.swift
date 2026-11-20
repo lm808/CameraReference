@@ -60,3 +60,7 @@ precondition(fitRender.colorAt(x:20,y:150)!.redComponent<0.1)
 precondition(fitRender.colorAt(x:200,y:150)!.redComponent>0.9)
 precondition(zoomRender.colorAt(x:20,y:150)!.redComponent>0.9)
 print("PASS: zoom draws across the full region while Fit retains its original rectangle")
+
+precondition(referenceInteractionHint(floating:true).contains("Drag at Fit: move window."))
+precondition(!referenceInteractionHint(floating:false).contains("move window"))
+print("PASS: floating and overlay hover instructions describe their own drag behaviour")

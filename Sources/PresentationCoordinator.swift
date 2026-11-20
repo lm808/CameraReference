@@ -84,14 +84,20 @@ extension AppDelegate {
             if overlayController.overlaySuspended {
                 recordLifecycle("restore: host visible and settled")
                 overlayController.overlaySuspended=false;_ = orderOverlayAboveLightroom(initial:true)
-                for border in axTrialBorders { border.orderFront(nil) }
+                for border in axTrialBorders { orderReferencePanelFront(border) }
             }
         }
+    }
+    func orderReferencePanelFront(_ overlay:NSPanel) {
+        if let floating,floating.isVisible,floating.level == overlay.level {
+            overlay.order(.below,relativeTo:floating.windowNumber)
+        } else { overlay.orderFront(nil) }
     }
     @discardableResult func orderOverlayAboveLightroom(initial:Bool=false)->Bool {
         guard let panel else { return false }
         updateOverlayLifecycle()
-        let floating=isLightroom() && !lightroomMonitor.workspaceOverview && !overlayController.overlayDialogVisible
+        let fullScreen=overlayController.overlayAccessibility?.fullScreen
+        let floating=OverlayBehaviourPolicy.useFloatingOverlayLevel(lightroomActive:isLightroom(),overview:lightroomMonitor.workspaceOverview,dialog:overlayController.overlayDialogVisible,fullScreen:fullScreen)
         let desiredLevel:NSWindow.Level=floating ? .floating:.normal
         let levelChanged=panel.level != desiredLevel
         // Lower immediately on app deactivation, even if host metadata is
@@ -103,7 +109,7 @@ extension AppDelegate {
         if floating,!initial,overlayController.overlayHost != nil {
             // Lightroom clicks cannot cover this level. No 5Hz reordering.
             // Do not reinsert a window suppressed by native overview handling.
-            if levelChanged,panel.isVisible { panel.orderFront(nil);overlayController.overlayOrderCount += 1 }
+            if levelChanged,panel.isVisible { orderReferencePanelFront(panel);overlayController.overlayOrderCount += 1 }
             overlayController.overlayVisibilityStatus="Overlay floating while Lightroom is active.";return true
         }
         guard let owner=NSWorkspace.shared.runningApplications.first(where:isLightroomApp),
@@ -124,10 +130,13 @@ extension AppDelegate {
             overlayController.overlayHost=hostWindowSnapshot(CGWindowID(number));overlayController.overlayEpoch=selectionEpoch()
             overlayController.overlayBaselineWindows=Set(lightroomWindowMetadata(pid:owner.processIdentifier)?.map(\.id) ?? [])
             if let host=overlayController.overlayHost { bindOverlayAccessibility(pid:owner.processIdentifier,frame:host.frame) }
+            // The first pass had no AX host yet; apply its confirmed full-screen
+            // level before showing the overlay. The bound host prevents recursion.
+            if overlayController.overlayAccessibility?.fullScreen == true { return orderOverlayAboveLightroom(initial:true) }
         }
         guard overlayController.overlayHost?.id==CGWindowID(number) else { return false }
         if floating {
-            panel.orderFront(nil);overlayController.overlayOrderCount += 1
+            orderReferencePanelFront(panel);overlayController.overlayOrderCount += 1
             overlayController.overlayVisibilityStatus="Overlay floating while Lightroom is active.";return true
         }
         let order=windows.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.intValue }
@@ -140,7 +149,7 @@ extension AppDelegate {
         if levelChanged || overlayNeedsOrdering(order:order,overlay:panel.windowNumber,lightroom:number,lightroomWindows:lightroomWindows) {
             panel.order(.above,relativeTo:number);overlayController.overlayOrderCount += 1
         }
-        overlayController.overlayVisibilityStatus=overlayController.overlayDialogVisible ? "Overlay lowered for a Lightroom dialog.":"Overlay at normal level while another app is active."
+        overlayController.overlayVisibilityStatus=overlayController.overlayDialogVisible ? "Overlay lowered for a Lightroom dialog.":(fullScreen == true ? "Overlay at normal level above full-screen Lightroom; system controls retain precedence.":"Overlay at normal level while another app is active.")
         return true
     }
     func hide() {
@@ -213,6 +222,7 @@ extension AppDelegate {
             let view = ReferenceView(frame: NSRect(origin: .zero, size: size))
             configureImageView(view)
             view.movesWindowAtFit=true
+            view.toolTip=referenceInteractionHint(floating:true)
             p.acceptsMouseMovedEvents=true
             view.zoomChanged = { [weak self] percentage in
                 self?.floatingController.floatingZoom=percentage
@@ -252,7 +262,7 @@ extension AppDelegate {
             guard let view else { return }; self?.saveExtracted(snapshot, from:view)
         }
         view.canSave = { [weak self] in self?.saving == false }
-        view.toolTip="Two-finger scroll: pan. Command-scroll: zoom. Drag: pan (floating at Fit: move window). Double-click: reload and Fit. Right-click: Fit / 100% / Save."
+        view.toolTip=referenceInteractionHint(floating:false)
     }
     func reloadOverlay() {
         guard panel != nil, supportedLightroomModule(currentModule()) else { return }

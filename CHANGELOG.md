@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.10 — post-migration backlog candidate
+
+- Use production frame constraints for AX preview borders.
+- Remove stale pane names from manual calibration prompts; clarify overlay/floating gesture tooltips.
+- Candidate stacking fixes: normal-level ordering for confirmed macOS full-screen hosts, and relative ordering beneath an existing floating window. Native verification pending.
+
 ## 1.1.9 — migration stage 9 candidate
 
 - Consolidate coordinator boundaries, remove temporary storage forwarding and refresh the source map. No intended changes to placement, permissions, menus, monitoring or overlay behaviour. Known deferred issues remain open.

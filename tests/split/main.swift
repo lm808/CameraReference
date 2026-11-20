@@ -107,13 +107,22 @@ assert(fresh.sideSearchPercent == 40)
 try FileManager.default.removeItem(at:freshDirectory)
 print("PASS: Lightroom child windows do not cause reordering; foreign windows retain precedence; new installs default to 40")
 
-for (layout,expected) in [(OverlayLayout.full,"Loupe View ▣"),(.left,"left ◧"),(.right,"right ◨"),(.upper,"top pane ⬒"),(.lower,"bottom pane ⬓")] {
+for layout in OverlayLayout.allCases {
     let text=calibrationInstructions(layout:layout,automatic:true)
-    assert(text.contains(expected) && text.contains("Cancelling keeps auto-detection and the saved region."))
+    assert(text==calibrationInstructions(layout:.full,automatic:true))
+    assert(text.contains("Select the region where you want the overlay to appear.") && text.contains("Cancelling keeps auto-detection and the saved region."))
 }
 let manualInstructions=calibrationInstructions(layout:.left,automatic:false)
-assert(!manualInstructions.contains("Auto-detection expects") && manualInstructions.contains("Cancelling keeps manual mode and the saved region."))
-print("PASS: calibration guidance reflects selected layout/pane and preserves mode wording")
+assert(!manualInstructions.contains("Reference View") && manualInstructions.contains("Cancelling keeps manual mode and the saved region."))
+print("PASS: calibration guidance ignores stale view/pane and preserves cancellation mode wording")
+
+assert(!OverlayBehaviourPolicy.useFloatingOverlayLevel(lightroomActive:true,overview:false,dialog:false,fullScreen:true))
+assert(OverlayBehaviourPolicy.useFloatingOverlayLevel(lightroomActive:true,overview:false,dialog:false,fullScreen:false))
+assert(OverlayBehaviourPolicy.useFloatingOverlayLevel(lightroomActive:true,overview:false,dialog:false,fullScreen:nil))
+assert(!OverlayBehaviourPolicy.useFloatingOverlayLevel(lightroomActive:false,overview:false,dialog:false,fullScreen:false))
+assert(!OverlayBehaviourPolicy.useFloatingOverlayLevel(lightroomActive:true,overview:true,dialog:false,fullScreen:false))
+assert(!OverlayBehaviourPolicy.useFloatingOverlayLevel(lightroomActive:true,overview:false,dialog:true,fullScreen:false))
+print("PASS: confirmed full-screen never raises overlay level; unknown, inactive, overview and dialog policies")
 
 for ax in [false,true] { for auto in [false,true] { for live in [false,true] {
     for panels in [false,true] { for from in OverlayLayout.allCases { for to in OverlayLayout.allCases {
