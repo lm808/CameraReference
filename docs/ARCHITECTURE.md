@@ -1,6 +1,6 @@
 # Architecture and source map
 
-Current candidate implementation: 1.1.6 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
+Current candidate implementation: 1.1.7 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
 
 ## Source ownership
 
@@ -10,7 +10,9 @@ Current candidate implementation: 1.1.6 (structure-migration; main remains 1.0.3
 | AppSettings.swift | Existing preference-domain access for mode interpretation and startup defaults/legacy registration; no second store. |
 | SettingsMenu.swift | Menu construction, references, refresh and validation; one current-view root with manual five-choice or inferred two-pane submenu (automatic Loupe has none). AppDelegate adapters retain action targets and event triggers. |
 | Diagnostics.swift | DiagnosticsService owns report state/formatting/saving and diagnostic windows/previews. Transitional AppDelegate adapters retain existing collection/capture guards and scheduling; production AX observation and shared capture tasks remain outside the service. |
-| main.swift | AppDelegate: menu action routing/contextual preferences, bridge request pipeline, cache ownership, mode dispatch, calibration, timers and overlay lifecycle; forwards diagnostic state to DiagnosticsService. Coordinates all paths below. |
+| main.swift | AppDelegate composition, menu action routing/contextual preferences, mode dispatch, calibration and monitoring/timers. Coordinates extracted owners through transitional adapters. |
+| OverlayController.swift / FloatingDisplayController.swift | Independent displayed-window state owners: overlay host/lifecycle/identity versus floating panel/view/title/zoom. No timers or placement calculations. |
+| PresentationCoordinator.swift | App-facing presentation and lifecycle coordination; existing guards, callbacks and ordering retained. Forwarding properties address the sole display owners. |
 | Core.swift | Protocol/source primitives, cancellation and extraction helpers. |
 | ImageSource.swift | JPEG selection/extraction/orientation/decode, fingerprints and the one-selection RAM cache. |
 | Export.swift | Display-specific JPEG snapshots and explicit safe export. |

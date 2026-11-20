@@ -189,6 +189,24 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         expect(app.lastTiming.contains("RAM cache hit"),"Cancellation must not flush selection image cache")
         print("PASS migration: actual load/decode and warm-cache path; no latency claim")
 
+        // Presentation ownership must not couple dismissal to the independent float,
+        // or leave a second copy of the host/selection state in the coordinator.
+        app.floatingController.floatingTitle="Independent photo"
+        app.floatingZoom=125
+        app.overlayController.overlayEpoch="displayed-selection"
+        app.livePanelSignature="displayed-panels"
+        app.displayedOverlayLayout = .right
+        app.overlaySuspended=true
+        expect(app.overlayEpoch=="displayed-selection" && app.overlayController.livePanelSignature=="displayed-panels","Presentation adapters share the sole controller state")
+        app.hide()
+        expect(app.overlayController.overlayEpoch==nil && app.overlayController.livePanelSignature==nil && app.overlayController.displayedOverlayLayout==nil && !app.overlayController.overlaySuspended,"Dismissal clears owned displayed identity and suspension")
+        expect(app.floatingTitle=="Independent photo" && app.floatingController.floatingZoom==125,"Overlay dismissal leaves independent floating state intact")
+        app.overlayController.lifecycleTrace=[];app.overlayController.lastLifecycleEvent=""
+        for n in 0..<15 { app.recordLifecycle("event \(n)");app.recordLifecycle("event \(n)") }
+        expect(app.lifecycleTrace.count==12 && app.lifecycleTrace.first!.hasSuffix("event 3") && app.lifecycleTrace.last!.hasSuffix("event 14"),"Lifecycle history retains deduplication and bounded order")
+        expect(OverlayController().overlayEpoch==nil && FloatingDisplayController().floatingTitle=="Camera Reference","Presentation owners do not share instance state")
+        print("PASS migration: presentation ownership, independent floating state, dismissal and lifecycle history")
+
         // Calls exercise early absent-overlay guards, not a duplicated policy model.
         app.checkOverlaySelection("B")
         app.followLiveOverlayView(.left,module:"develop",panelChange:true)

@@ -1,7 +1,7 @@
 # Structure migration — working checklist
 
 Branch: `codex/structure-migration` · worktree: `worktrees/structure-migration`
-Baseline: main at `a568c6e`, application 1.0.32. Main and its staged daily-use app remain untouched. Stage 6 delivers candidate 1.1.6; main and its accepted app stay at 1.0.32.
+Baseline: main at `a568c6e`, application 1.0.32. Main and its staged daily-use app remain untouched. Stage 7 delivers candidate 1.1.7; main and its accepted app stay at 1.0.32.
 
 ## Contract and priority
 
@@ -20,7 +20,7 @@ Target ownership and the mapping from existing symbols are in [TARGET-STRUCTURE.
 - [x] **4 — Behaviour decisions (testing complete; reported issues deferred).** Consolidate existing action helpers and branches into a tested policy. Initially callers execute the decisions exactly as before. Preserve distinctions between manual, pure AX and both screenshot options; do not make the modes more alike. Preserve timer/handler order and evidence freshness rules.
 - [x] **5 — Placement dispatch (user testing complete).** Introduce manual, AX, original screenshot and assisted screenshot adapters with a common UI-placement result. Delegate to existing calculations, not rewrites. Keep original detector/split scanner untouched, AX offsets out of screenshot routes, manual first and no AX capture fallback. Preserve cache and calibration decisions at the coordinator boundary. Confirm float combined-area sizing remains identical.
 - [x] **6 — Photo request ownership (testing complete; stacking bug logged).** Move bridge/load/cancellation and image-cache ownership into a photo pipeline. Preserve tokens, epochs, 50ms response polling, timeout, cancellation order and refresh-once-per-epoch behaviour. Introduce explicit request context by wrapping existing identities first; do not replace all generation schemes at once.
-- [ ] **7 — Presentation ownership.** Move overlay panel/lifecycle state into OverlayController and floating state into FloatingDisplayController, retaining ReferenceView and geometry helpers. Separate view/panel geometry updates from photo replacement (preserve zoom versus reset Fit). Preserve export snapshot identity, hover behaviour, suspension, ordering and host following.
+- [ ] **7 — Presentation ownership (implemented; user testing pending).** Move overlay panel/lifecycle state into OverlayController and floating state into FloatingDisplayController, retaining ReferenceView and geometry helpers. Separate view/panel geometry updates from photo replacement (preserve zoom versus reset Fit). Preserve export snapshot identity, hover behaviour, suspension, ordering and host following.
 - [ ] **8 — Monitoring ownership.** Move observations into LightroomMonitor with explicit outputs and unknown states. Preserve the existing 0.2s tick order, eligible 2s AX poll, configurable screenshot checks, workspace notifications and foreground cancellation. Policy decides consequences; monitors do not manipulate windows. Avoid introducing queued event delivery or new timer cadence.
 - [ ] **9 — Consolidation and acceptance.** Remove replaced forwarding paths and redundant state only after coverage. Review component boundaries, all mode combinations, no extra AX/capture/extraction work, timing and source map. Update methods/agent guide/test list to actual implementation. Merge only after user acceptance; do not push/package automatically.
 
@@ -49,6 +49,8 @@ Each stage can take several small commits. Dependency reason: tests first; repor
 | 5 | Candidate 1.1.5 build 64 staged | Twelve coordinator methods extracted; eight exact bodies and four adapter-only substitutions verified. Eight migration groups and existing core regressions passed; plist/signature checked. User marked all four stage 5 checks passed; annotations preserved in STAGE-5-ACCEPTANCE.md. Deferred issues remain. |
 
 | 6 | Candidate 1.1.6 build 65 staged | Pipeline owns request state/transport/cache; immutable load context preserves existing identities. Nine migration groups passed, including real transport timer cases and stale-load guards. User completed all four checks on 2026-11-20; floating-display stacking bug logged. Responses preserved in STAGE-6-ACCEPTANCE.md. |
+
+| 7 | Candidate 1.1.7 build 66 staged | Independent presentation owners and transitional coordinator; fourteen relocated bodies byte-identical. Ten migration groups passed; staged signature/plist checked. Native testing pending. |
 
 - [ ] Collect matched native before/after timing samples using the baseline protocol before accepting migrated performance. No timing samples have been collected by this stage.
 
@@ -92,4 +94,12 @@ Stage 4 annotations are preserved in docs/migration/STAGE-4-ACCEPTANCE.md. User 
 
 PhotoRequestPipeline.swift owns bridge transport, pending token/destination/module, cancellation, response timer, invocation time, refresh target identity and SelectionImageCache. It has no AppDelegate reference and performs no window or placement operations. PhotoLoadContext captures existing identities rather than introducing a replacement generation. Selection/response epoch readers and the load/cache worker moved with their existing semantics. Polling remains 50 ms, deadline five seconds; callbacks stay on the existing timer/main queue and decode remains on the user-initiated worker queue.
 
-PhotoRequestCoordinator.swift retains request qualification, UI reporting and load completion/dispatch as a transitional AppDelegate extension. Accessors forward old call sites to the single pipeline state owner. All late-result/module/selection/refresh guards remain in their original order. Cancellation still invalidates view probes first, then worker/state/timer/files, then menu update; independent image cache survives. No extraction, placement, monitoring, display or error policy changes. Stage 5 annotations preserved verbatim in docs/migration/STAGE-5-ACCEPTANCE.md. Candidate 1.1.6 build 65; stage 7 has not started.
+PhotoRequestCoordinator.swift retains request qualification, UI reporting and load completion/dispatch as a transitional AppDelegate extension. Accessors forward old call sites to the single pipeline state owner. All late-result/module/selection/refresh guards remain in their original order. Cancellation still invalidates view probes first, then worker/state/timer/files, then menu update; independent image cache survives. No extraction, placement, monitoring, display or error policy changes. Stage 5 annotations preserved verbatim in docs/migration/STAGE-5-ACCEPTANCE.md. Candidate 1.1.6 build 65; stage 6 user testing subsequently completed.
+
+### Stage 7 ownership boundary
+
+OverlayController owns the displayed panel, host binding, lifecycle/suspension state, geometry settler, displayed layout/module/selection/panel identity and lifecycle counters/history. FloatingDisplayController independently owns its panel/view and title/zoom state. PresentationCoordinator retains the original app-facing guards, callbacks and action ordering, forwarding state to the sole owner for each display. No additional timer, queue, capture or AX read is introduced.
+
+Fourteen presentation/lifecycle methods were relocated; lifecycle history and floating-title formatting now execute on their owners. Cross-component coordination stays in an AppDelegate extension until the monitoring/composition stages. Existing geometry-only updates and image replacement remain separate: view/panel updates preserve zoom, photo replacement resets Fit. ReferenceView, exports, placement algorithms, preview constraints and stacking policy are unchanged. The five deferred bugs/policy items are not fixed here.
+
+Candidate 1.1.7 build 66. Stage 6 annotations already preserved verbatim in STAGE-6-ACCEPTANCE.md. Native stage 7 acceptance and matched performance samples remain pending; stage 8 has not started.

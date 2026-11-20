@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.7 — migration stage 7 candidate
+
+- Separate overlay and floating-display state ownership and presentation coordination. Preserve existing placement, interaction, refresh, suspension and ordering behaviour. Deferred issues remain unchanged.
+
 ## 1.1.6 — migration stage 6 candidate
 
 - Extract photo request, bridge polling, cancellation state and image-cache ownership. Preserve loading, timeout, late-result protection and existing behaviour.

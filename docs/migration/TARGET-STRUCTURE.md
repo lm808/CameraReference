@@ -111,3 +111,9 @@ The actual placement coordinator is currently an AppDelegate extension in Placem
 ## Stage 6 implementation boundary
 
 PhotoRequestPipeline owns request state/transport and image cache without an AppDelegate reference. PhotoLoadContext snapshots the existing token, target, cancellation object, invocation time, module, epoch and refresh target/generation. PhotoRequestCoordinator keeps qualification and dispatch as an extension, with forwarding accessors for unchanged external call sites. The pipeline reads/loads on the same queues and returns through the original main-queue handoff. It retains a refresh panel only as identity/lifetime context; presentation remains outside it. No event bus, new deadline, unified generation or new retry policy.
+
+## Stage 7 implementation boundary
+
+OverlayController and FloatingDisplayController are concrete, independent state owners with no back-reference to AppDelegate. OverlayController owns panel/host/lifecycle and displayed identity; FloatingDisplayController owns its panel/view/title/zoom. PresentationCoordinator is a transitional AppDelegate extension for cross-component actions. Forwarding properties maintain one source of truth, including inout geometry-settler and AX-binding access. Lifecycle trace maintenance and floating-title formatting execute on their respective owners.
+
+Fourteen existing methods moved without changing their bodies. Window construction, NSWindowDelegate callbacks, weak image-view callbacks, ordering and cancellation sequences retain their original coordinator context. Geometry-only updates remain distinct from image replacement in the existing AX completion paths; ReferenceView and export snapshots are unchanged. This stage intentionally does not fix the deferred native stacking or diagnostic preview constraints. Monitoring ownership follows in stage 8, composition cleanup in stage 9.

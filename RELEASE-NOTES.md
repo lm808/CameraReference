@@ -1,5 +1,5 @@
-# Camera Reference 1.1.6 — testing candidate
+# Camera Reference 1.1.7 — testing candidate
 
-Stage 6 moves photo request state, bridge transport, cancellation and image-cache ownership into PhotoRequestPipeline. Request qualification, reporting and late-result guards remain at the coordinator boundary. Polling, deadlines, extraction, cache validation, display routing and current user-facing behaviour are preserved.
+Stage 7 separates overlay and floating-display ownership. Existing display creation, refresh, host following, suspension, ordering and interaction are preserved. No intended user-facing behaviour changes.
 
-The four logged bugs/policy items remain deferred until after migration. Main is untouched. Native acceptance is pending; see TESTING.md. Quit the previous app before opening the testing app.
+The five logged bugs/policy items remain deferred, including floating-display stacking. Main is untouched. Native acceptance is pending; see TESTING.md. Quit the previous app before opening the testing app.

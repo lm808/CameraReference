@@ -42,6 +42,8 @@ Use plain three-component versions in CFBundleShortVersionString (candidate `1.1
 | `AXTrial.swift` | Panel/label geometry shared by AX preview and Accessibility placement |
 | `Layout.swift` | Lightroom window metadata/coordinate helpers, bounded AX probes, overlay host state decisions and overview heuristic |
 | `Interaction.swift` | Image navigation, display geometry and placement checks |
+| `OverlayController.swift`, `FloatingDisplayController.swift` | Independent overlay lifecycle/displayed identity and floating display state owners |
+| `PresentationCoordinator.swift` | App-facing display/lifecycle coordination, forwarding to single presentation state owners; guards and order preserved |
 | `Views.swift` | Shared photo view, overlay/floating panels, floating chrome, previews/toasts/menu diagrams |
 | `Calibration.swift`, `Snapping.swift` | Drag-selection UI, Option edge snapping and region preference clearing |
 | `Shortcut.swift`, `Permissions.swift` | Shortcut recording and feature-triggered native permission prompts |
