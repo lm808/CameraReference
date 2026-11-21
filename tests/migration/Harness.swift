@@ -303,6 +303,9 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
             }
         }
         verifyTargets(menu)
+        let developerMenu=menu.items.first { $0.title=="Developer tools" }!.submenu!
+        expect(developerMenu.items.contains { $0.title=="Show AX placement preview" && $0.action == #selector(AppDelegate.toggleAXTrial) },"Accepted AX preview is directly accessible in Developer tools")
+        expect(!developerMenu.items.contains { $0.title=="Experimental features" },"Empty experimental submenu is removed")
         for screenshot in [false,true] { for automatic in [false,true] {
             prefs.set(screenshot,forKey:"useScreenshotDetection")
             prefs.set(automatic,forKey:app.regionKey("automaticBounds"))

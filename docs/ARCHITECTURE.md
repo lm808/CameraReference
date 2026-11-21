@@ -102,3 +102,7 @@ The six known bugs/policy items remain in [BACKLOG.md](BACKLOG.md), not silently
 ## Post-migration presentation corrections
 
 Confirmed native full-screen hosts use normal-level relative ordering above Lightroom; windowed/unknown hosts retain the active floating-level policy. LightroomHostAccessibility retains its last explicit AXFullScreen reading for the bound host through transient failures. No geometry inference or extra timer is introduced. Overlay and diagnostic preview front-order requests go below a visible same-level floating window. AXTrialPanel shares production frame constraints but cannot become key. Native ordering acceptance remains required.
+
+### Native-test presentation follow-up (1.1.10)
+
+Full-screen ordering now considers Lightroom companion windows between overlay and host, instead of ignoring them. The overlay is reordered immediately above the host, leaving companions (including the revealed title bar) above it; diagnostic borders follow the same relative order. Placement rectangles are unchanged. FloatingPanel owns a named presentation level immediately above ordinary floating windows and explicitly uses managed Mission Control participation. This removes same-level click-order dependence. Native title-bar and Exposé behaviour remain candidate checks.

@@ -13,8 +13,7 @@ final class AXTrialPanel:OverlayPanel {
 }
 
 func referenceInteractionHint(floating:Bool)->String {
-    let drag=floating ? "Drag at Fit: move window. Drag when zoomed: pan.":"Drag: pan."
-    return "Scroll: pan. Command-scroll: zoom.\n" + drag + "\nDouble-click: reload photo and Fit. Right-click: image options."
+    return "• Zoom: ⌘ + scroll\n• Reset: double-click\n• More options: right-click"
 }
 
 // The same image view handles gestures, drawing, refresh and export for both windows.
@@ -215,6 +214,10 @@ private final class FloatingChrome:NSView {
 func floatingDragMovesWindow(zoom:CGFloat,inTitleBar:Bool)->Bool { inTitleBar || zoom <= 1.0001 }
 // Full-size content keeps the photograph stationary while chrome fades over it.
 final class FloatingPanel:OverlayPanel {
+    // Separate level prevents clicking the overlay from covering the reference.
+    // Stay immediately above ordinary floating windows, below system/menu levels.
+    static let presentationLevel=NSWindow.Level(rawValue:NSWindow.Level.floating.rawValue+1)
+    static let presentationCollection:NSWindow.CollectionBehavior=[.canJoinAllSpaces,.fullScreenAuxiliary,.managed]
     private let chrome=FloatingChrome()
     private let caption=ChromeLabel(labelWithString:"")
     private var chromeVisible=false

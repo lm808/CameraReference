@@ -179,3 +179,11 @@ for enabled in [false,true] { for auto in [false,true] { for live in [false,true
     } } }
 } } }
 print("PASS: screenshot AX detection dismisses confirmed changes only; manual/off/unknown and inference-off retain")
+
+for full in [nil,false,true] as [Bool?] {
+    assert(OverlayBehaviourPolicy.fullScreenCompanionCovered(fullScreen:full,order:[1,2,3],overlay:1,host:3,companions:[2,3]) == (full == true))
+    assert(!OverlayBehaviourPolicy.fullScreenCompanionCovered(fullScreen:full,order:[2,1,3],overlay:1,host:3,companions:[2,3]))
+    assert(!OverlayBehaviourPolicy.fullScreenCompanionCovered(fullScreen:full,order:[1,4,3],overlay:1,host:3,companions:[2,3]))
+    assert(!OverlayBehaviourPolicy.fullScreenCompanionCovered(fullScreen:full,order:[2,3],overlay:1,host:3,companions:[2,3]))
+}
+print("PASS: full-screen companions above host remain above overlay; windowed/unknown/foreign ordering unchanged")

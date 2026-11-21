@@ -91,9 +91,7 @@ final class SettingsMenuController {
         let copy=add("Save diagnostics after invocation", #selector(AppDelegate.toggleAutoDiagnostics), to: developer)
         copy.state = autoDiagnostics ? .on:.off
         developer.addItem(.separator())
-        let experimental=NSMenu();let experimentalItem=NSMenuItem(title:"Experimental features",action:nil,keyEquivalent:"")
-        experimentalItem.submenu=experimental;developer.addItem(experimentalItem)
-        let trial=add("Show AX placement preview",#selector(AppDelegate.toggleAXTrial),to:experimental)
+        let trial=add("Show AX placement preview",#selector(AppDelegate.toggleAXTrial),to:developer)
         trial.state=axTrialEnabled ? .on:.off
         let actions=NSMenu();let actionsItem=NSMenuItem(title:"Capture / bridge actions",action:nil,keyEquivalent:"")
         actionsItem.submenu=actions;developer.addItem(actionsItem)

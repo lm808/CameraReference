@@ -16,6 +16,13 @@ enum OverlayBehaviourPolicy {
         lightroomActive && !overview && !dialog && fullScreen != true
     }
 
+    // Full-screen companion windows include the revealed native title bar.
+    // Keep them above the reference without guessing a title-bar height or name.
+    static func fullScreenCompanionCovered(fullScreen:Bool?,order:[Int],overlay:Int,host:Int,companions:Set<Int>)->Bool {
+        guard fullScreen == true,let own=order.firstIndex(of:overlay),let lr=order.firstIndex(of:host),own<lr else { return false }
+        return order[(own+1)..<lr].contains { companions.contains($0) }
+    }
+
     static func geometryChange(accessibility:Bool,automatic:Bool,displayed:OverlayLayout?,selected:OverlayLayout,panelsChanged:Bool,live:Bool,screenshotAXDetection:Bool=false)->AXOverlayChangeAction {
         guard (accessibility || screenshotAXDetection),automatic,let displayed,displayed != selected || panelsChanged else { return .retain }
         return accessibility && live ? .adjust:.dismiss

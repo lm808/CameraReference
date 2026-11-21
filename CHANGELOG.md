@@ -2,6 +2,9 @@
 
 ## 1.1.10 — post-migration backlog candidate
 
+- Follow-up to native testing: keep full-screen Lightroom companion windows above the overlay; give the floating reference a separate higher level and explicit Exposé participation. Native verification pending.
+- Move AX preview directly into Developer tools and use the requested three-bullet tooltip.
+
 - Screenshot with AX view detection dismisses on confirmed photo/view/pane/panel changes and Grid, matching Accessibility with updating off. Screenshot placement algorithms remain unchanged.
 - Use production frame constraints for AX preview borders.
 - Remove stale pane names from manual calibration prompts; clarify overlay/floating gesture tooltips.

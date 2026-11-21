@@ -89,6 +89,10 @@ extension AppDelegate {
         }
     }
     func orderReferencePanelFront(_ overlay:NSPanel) {
+        if let panel,overlay !== panel,panel.isVisible,overlayController.overlayAccessibility?.fullScreen == true {
+            overlay.order(.above,relativeTo:panel.windowNumber)
+            return
+        }
         if let floating,floating.isVisible,floating.level == overlay.level {
             overlay.order(.below,relativeTo:floating.windowNumber)
         } else { overlay.orderFront(nil) }
@@ -146,8 +150,10 @@ extension AppDelegate {
         let lightroomWindows=Set(windows.filter {
             ($0[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==owner.processIdentifier
         }.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.intValue })
-        if levelChanged || overlayNeedsOrdering(order:order,overlay:panel.windowNumber,lightroom:number,lightroomWindows:lightroomWindows) {
+        let companionCovered=OverlayBehaviourPolicy.fullScreenCompanionCovered(fullScreen:fullScreen,order:order,overlay:panel.windowNumber,host:number,companions:lightroomWindows)
+        if levelChanged || companionCovered || overlayNeedsOrdering(order:order,overlay:panel.windowNumber,lightroom:number,lightroomWindows:lightroomWindows) {
             panel.order(.above,relativeTo:number);overlayController.overlayOrderCount += 1
+            if companionCovered { for border in axTrialBorders where border.isVisible { border.order(.above,relativeTo:panel.windowNumber) } }
         }
         overlayController.overlayVisibilityStatus=overlayController.overlayDialogVisible ? "Overlay lowered for a Lightroom dialog.":(fullScreen == true ? "Overlay at normal level above full-screen Lightroom; system controls retain precedence.":"Overlay at normal level while another app is active.")
         return true
@@ -219,8 +225,8 @@ extension AppDelegate {
             let frame = NSRect(x: min(max(base.minX, screen.visibleFrame.minX), screen.visibleFrame.maxX-size.width),
                                y: min(max(base.midY-size.height/2, screen.visibleFrame.minY), screen.visibleFrame.maxY-size.height-28), width: size.width, height: size.height)
             let p = FloatingPanel(contentRect: frame, styleMask: [.titled, .closable, .resizable, .nonactivatingPanel, .fullSizeContentView], backing: .buffered, defer: false)
-            p.level = .floating; p.isFloatingPanel = true; p.hidesOnDeactivate = false
-            p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            p.level = FloatingPanel.presentationLevel; p.isFloatingPanel = true; p.hidesOnDeactivate = false
+            p.collectionBehavior = FloatingPanel.presentationCollection
             p.isReleasedWhenClosed = false; p.backgroundColor = .black; p.delegate = self
             p.appearance = NSAppearance(named: .darkAqua)
             let view = ReferenceView(frame: NSRect(origin: .zero, size: size))

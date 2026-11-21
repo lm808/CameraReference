@@ -48,6 +48,7 @@ The overlay follows Lightroom movement and can be covered by other apps. Overvie
 ## Floating display and navigation
 
 - **Command-scroll:** zoom around the pointer. **Two-finger scroll:** pan a zoomed image.
+- The floating window stays above ordinary windows and participates in Exposé/Mission Control.
 - At Fit, drag the floating picture to move its window; when zoomed, drag to pan. The title bar always moves the window and appears when hovering over the picture.
 - Double-click to reload the selected photo at Fit. Right-click for Fit, 100%, Reload and embedded-JPEG export.
 - Floating displays keep their own photo until reload or reopening. Initial size approximates a photo fitted into half the full viewport width, using its full height.
@@ -60,7 +61,7 @@ GUI preferences use macOS preferences. Advanced settings are edited through **Se
 
 The current selection’s JPEG is cached in RAM. Screenshot placement can reuse validated bounds; its background checks default to every **3 seconds** at reduced resolution. Accessibility reads fresh geometry instead and performs no automatic pixel checks. See [methods](docs/METHODS.md) for cache and polling details.
 
-Use **Developer tools → Diagnostics…** for consolidated information. **Save diagnostics after invocation** automatically updates `~/Library/Application Support/CameraReference/Diagnostics/latest.txt`, including AX evidence. No screenshot is saved. Capture previews are under **Developer tools → Capture / bridge actions**; they show raw captures even if placement rejects their geometry. **Experimental features → Show AX placement preview** draws independent boundary outlines.
+Use **Developer tools → Diagnostics…** for consolidated information. **Save diagnostics after invocation** automatically updates `~/Library/Application Support/CameraReference/Diagnostics/latest.txt`, including AX evidence. No screenshot is saved. Capture previews are under **Developer tools → Capture / bridge actions**; they show raw captures even if placement rejects their geometry. **Developer tools → Show AX placement preview** draws independent boundary outlines.
 
 See [troubleshooting](docs/TROUBLESHOOTING.md), [privacy](PRIVACY.md), [remaining tests](TESTING.md) and [current release notes](RELEASE-NOTES.md). Fit alignment can differ after cropping, perspective/lens corrections or differing RAW/JPEG aspect ratios. ARW preview size varies by camera. Library split screenshot failures associated with status text remain unresolved; assisted fixes need further testing.
 
