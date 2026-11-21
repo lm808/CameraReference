@@ -153,12 +153,38 @@ extension AppDelegate {
         let lightroomWindows=Set(windows.filter {
             ($0[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==owner.processIdentifier
         }.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.intValue })
-        let companionCovered=OverlayBehaviourPolicy.fullScreenCompanionCovered(fullScreen:fullScreen,order:order,overlay:panel.windowNumber,host:number,companions:lightroomWindows)
+        func reportedFrame(_ row:[String:Any])->CGRect? {
+            guard let dict=row[kCGWindowBounds as String] as? [String:Any] else { return nil }
+            return CGRect(dictionaryRepresentation:dict as CFDictionary)
+        }
+        let overlayRow=windows.first { ($0[kCGWindowNumber as String] as? NSNumber)?.intValue==panel.windowNumber }
+        var chromeCandidates=Set<Int>()
+        if let hostRow=lightroom,let hostFrame=reportedFrame(hostRow),let overlayRow,let overlayFrame=reportedFrame(overlayRow) {
+            chromeCandidates=Set(windows.compactMap { row -> Int? in
+                guard let id=(row[kCGWindowNumber as String] as? NSNumber)?.intValue,id != number,
+                      lightroomWindows.contains(id),let frame=reportedFrame(row),
+                      let alpha=(row[kCGWindowAlpha as String] as? NSNumber)?.doubleValue,
+                      OverlayBehaviourPolicy.isTopChrome(frame:frame,alpha:alpha,host:hostFrame,overlay:overlayFrame) else { return nil }
+                return id
+            })
+        }
+        let chrome=OverlayBehaviourPolicy.topChromeAnchor(fullScreen:fullScreen,order:order,host:number,candidates:chromeCandidates)
+        let companionCovered=chrome.map { anchor in
+            guard let own=order.firstIndex(of:panel.windowNumber),let target=order.firstIndex(of:anchor) else { return false }
+            return own<target
+        } ?? false
         if levelChanged || companionCovered || overlayNeedsOrdering(order:order,overlay:panel.windowNumber,lightroom:number,lightroomWindows:lightroomWindows) {
-            diagnostics.windowOrdering.event(WindowOrderRecorder.orderingDecision(rows:windows,overlay:panel.windowNumber,host:number,companions:lightroomWindows,companionCovered:companionCovered,levelChanged:levelChanged))
-            panel.order(.above,relativeTo:number);overlayController.overlayOrderCount += 1
-            diagnostics.windowOrdering.event("overlay order above host=\(number) companionCovered=\(companionCovered) level=\(panel.level.rawValue)")
-            if companionCovered { for border in axTrialBorders where border.isVisible { border.order(.above,relativeTo:panel.windowNumber) } }
+            diagnostics.windowOrdering.event(WindowOrderRecorder.orderingDecision(rows:windows,overlay:panel.windowNumber,host:number,companions:chromeCandidates,companionCovered:companionCovered,levelChanged:levelChanged))
+            if let chrome {
+                panel.order(.below,relativeTo:chrome)
+                diagnostics.windowOrdering.event("overlay order below top chrome=\(chrome) host=\(number) level=\(panel.level.rawValue)")
+                // Preview borders must not cover the same chrome either.
+                for border in axTrialBorders where border.isVisible { border.order(.below,relativeTo:chrome) }
+            } else {
+                panel.order(.above,relativeTo:number)
+                diagnostics.windowOrdering.event("overlay order above host=\(number) level=\(panel.level.rawValue)")
+            }
+            overlayController.overlayOrderCount += 1
         }
         overlayController.overlayVisibilityStatus=overlayController.overlayDialogVisible ? "Overlay lowered for a Lightroom dialog.":(fullScreen == true ? "Overlay at normal level above full-screen Lightroom; system controls retain precedence.":"Overlay at normal level while another app is active.")
         return true

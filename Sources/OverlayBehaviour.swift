@@ -16,11 +16,18 @@ enum OverlayBehaviourPolicy {
         lightroomActive && !overview && !dialog && fullScreen != true
     }
 
-    // Full-screen companion windows include the revealed native title bar.
-    // Keep them above the reference without guessing a title-bar height or name.
-    static func fullScreenCompanionCovered(fullScreen:Bool?,order:[Int],overlay:Int,host:Int,companions:Set<Int>)->Bool {
-        guard fullScreen == true,let own=order.firstIndex(of:overlay),let lr=order.firstIndex(of:host),own<lr else { return false }
-        return order[(own+1)..<lr].contains { companions.contains($0) }
+    // Identify visible host-wide top chrome using reported rectangles, not a
+    // calibrated title-bar height. Labels/side panels and hidden chrome do not qualify.
+    static func isTopChrome(frame:CGRect,alpha:Double,host:CGRect,overlay:CGRect)->Bool {
+        alpha>0 && frame.width>0 && frame.height>0 && frame.height<host.height &&
+        frame.minX<=host.minX && frame.maxX>=host.maxX &&
+        frame.minY<host.midY && frame.intersects(overlay)
+    }
+
+    // Backmost qualifying chrome above the host is the direct ordering anchor.
+    static func topChromeAnchor(fullScreen:Bool?,order:[Int],host:Int,candidates:Set<Int>)->Int? {
+        guard fullScreen == true,let lr=order.firstIndex(of:host) else { return nil }
+        return order[..<lr].last { candidates.contains($0) }
     }
 
     static func geometryChange(accessibility:Bool,automatic:Bool,displayed:OverlayLayout?,selected:OverlayLayout,panelsChanged:Bool,live:Bool,screenshotAXDetection:Bool=false)->AXOverlayChangeAction {

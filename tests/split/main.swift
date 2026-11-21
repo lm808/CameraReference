@@ -180,10 +180,19 @@ for enabled in [false,true] { for auto in [false,true] { for live in [false,true
 } } }
 print("PASS: screenshot AX detection dismisses confirmed changes only; manual/off/unknown and inference-off retain")
 
+let chromeHost=CGRect(x:0,y:0,width:2560,height:1440)
+let chromeOverlay=CGRect(x:306,y:16,width:970,height:1242)
+let titleBar=CGRect(x:0,y:30,width:2560,height:32)
+assert(OverlayBehaviourPolicy.isTopChrome(frame:titleBar,alpha:1,host:chromeHost,overlay:chromeOverlay))
+assert(!OverlayBehaviourPolicy.isTopChrome(frame:titleBar,alpha:0,host:chromeHost,overlay:chromeOverlay))
+assert(!OverlayBehaviourPolicy.isTopChrome(frame:CGRect(x:0,y:-32,width:2560,height:32),alpha:1,host:chromeHost,overlay:chromeOverlay))
+assert(!OverlayBehaviourPolicy.isTopChrome(frame:CGRect(x:0,y:18,width:324,height:1281),alpha:1,host:chromeHost,overlay:chromeOverlay))
+assert(!OverlayBehaviourPolicy.isTopChrome(frame:CGRect(x:1190,y:30,width:83,height:25),alpha:1,host:chromeHost,overlay:chromeOverlay))
+assert(!OverlayBehaviourPolicy.isTopChrome(frame:CGRect(x:0,y:1289,width:2560,height:151),alpha:1,host:chromeHost,overlay:chromeOverlay))
+assert(!OverlayBehaviourPolicy.isTopChrome(frame:chromeHost,alpha:1,host:chromeHost,overlay:chromeOverlay))
 for full in [nil,false,true] as [Bool?] {
-    assert(OverlayBehaviourPolicy.fullScreenCompanionCovered(fullScreen:full,order:[1,2,3],overlay:1,host:3,companions:[2,3]) == (full == true))
-    assert(!OverlayBehaviourPolicy.fullScreenCompanionCovered(fullScreen:full,order:[2,1,3],overlay:1,host:3,companions:[2,3]))
-    assert(!OverlayBehaviourPolicy.fullScreenCompanionCovered(fullScreen:full,order:[1,4,3],overlay:1,host:3,companions:[2,3]))
-    assert(!OverlayBehaviourPolicy.fullScreenCompanionCovered(fullScreen:full,order:[2,3],overlay:1,host:3,companions:[2,3]))
+    assert(OverlayBehaviourPolicy.topChromeAnchor(fullScreen:full,order:[1,2,4,3],host:3,candidates:[2,4]) == (full == true ? 4:nil))
+    assert(OverlayBehaviourPolicy.topChromeAnchor(fullScreen:full,order:[1,3,2],host:3,candidates:[2]) == nil)
+    assert(OverlayBehaviourPolicy.topChromeAnchor(fullScreen:full,order:[1,2],host:3,candidates:[2]) == nil)
 }
-print("PASS: full-screen companions above host remain above overlay; windowed/unknown/foreign ordering unchanged")
+print("PASS: title-bar anchor excludes transparent, non-overlapping and non-chrome windows; windowed/unknown unchanged")

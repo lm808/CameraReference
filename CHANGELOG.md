@@ -2,6 +2,8 @@
 
 ## 1.1.10 — post-migration backlog candidate
 
+- Order full-screen overlays directly below visible overlapping top chrome, excluding hidden panels and labels from correction triggers. Placement unchanged; native verification pending.
+
 - Correct floating-reference initialization so its higher window level survives floating-panel configuration; extend ordering diagnostics with the exact decision input and triggering companion IDs. Native verification pending.
 
 - Add opt-in delayed window-order recordings to investigate remaining title-bar and floating-reference stacking failures; no further placement or ordering change.
