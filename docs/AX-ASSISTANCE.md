@@ -99,20 +99,10 @@ Reports at 2026-11-18 23:10:44 UTC (built-in display) and 2026-11-19 09:59:43 UT
 
 Build 63 replaces the fixed full-screen allowance with `axFullScreenTitleBarAllowancePoints` (default 32, range 0...200 macOS points; 0 disables). It is a calibrated value supported by the recorded reports, not an AX boundary measurement. The file-driven advanced editor exposes it; config generation and missing-key upgrades preserve existing values. Both AX classification and placement use it, while screenshot geometry and windowed placement are unchanged.
 
-## Pending native title-bar identification probe (2026-11-21)
-
-The full-screen ordering fix remains unaccepted: the user reports title-bar occlusion persists. Existing windowed AX reports advertise named close/minimize/zoom/full-screen controls, but do not establish their relationship to the separate revealed full-screen CG window. Explorer 1.0.5 adds `titlebar-after` to compare semantic controls and their container links, alongside Lightroom-only CG metadata, with the bar hidden/revealed. No live results yet. Public AX and CG identifiers are not assumed interchangeable; any bounds match remains evidence to assess, not a production selector. Main app and placement are unchanged by this explorer update.
-
-### Title-bar control pair and ordering investigation
-
-Explorer report `2026-11-21T21-56-16Z-fullscreen-titlebar-controls-pair-81BE3C.txt` completed both targeted probes (42 nodes, no limits/partial result, Lightroom frontmost). Main AXCloseButton/AXMinimizeButton/AXZoomButton share AXGroup N42. Its frame changes from (0,-32,2560,32) to (0,30,2560,32), exactly matching CG window 1993 whose alpha changes 0→1. Control AXWindow and AXTopLevelUIElement still point to the main AX window; the title text frame does not track reveal. This provides semantic parent identification with measured-frame correlation, not a direct AX-to-CG ID API. IDs are session-specific.
-
-Existing saved ordering traces predate commit 4167451's below-chrome action, so they cannot establish whether that action executes, has no effect, or is subsequently reversed. Explorer 1.0.6 adds a read-only timed on-screen-order trace using the named-control shared parent, to pair with the existing app action recorder. No main app code/build/placement change. Full-screen grouping or cross-application ordering constraints are hypotheses, not established causes. Public AppKit ordering documentation does not give a persistence guarantee against subsequent window operations. Do not infer actual ordering from optionAll's array positions; optionOnScreenOnly explicitly specifies front-to-back order in the SDK.
-
-### Current candidate: presentation clipping
+## Accepted title-bar identification and presentation clipping
 
 The paired 2026-11-21 22:46 recordings identified the correct title-bar window but still showed the overlay above it during repeated below-window attempts. These attempts are removed from production. The normal full-screen window level and successful floating-reference initialization fix remain.
 
 Production now uses the close/zoom controls’ shared AXGroup to establish a unique same-PID CG bounds match, then follows that CG ID across animation. The all-window metadata list includes the retracted, alpha-zero bar. Unknown evidence retains the previous clip; explicit hidden evidence or leaving full screen clears it. No pixel capture, new calibrated dimensions or placement changes are involved.
 
-Only in confirmed macOS full screen, overlapping overlay content is masked from its top through the title bar’s lower edge. The mask includes photo, border and label; window frame, image viewport and navigation transform stay fixed. AX preview borders share this mask; floating references do not. Native reveal/hide, animation and transparent-strip click handling remain to be tested. Explorer evidence and tools remain separate under investigations/ and build/AXExplorer/.
+Only in confirmed macOS full screen, overlapping overlay content is masked from its top through the title bar’s lower edge. The mask includes photo, border and label; window frame, image viewport and navigation transform stay fixed. AX preview borders share this mask; floating references do not. Native reveal/hide, unchanged image geometry, title-bar controls and windowed/float regression tests passed on 2026-11-21. The slight polling delay is accepted. Explorer evidence and tools remain separate under investigations/ and build/AXExplorer/.

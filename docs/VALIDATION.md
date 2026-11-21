@@ -2,6 +2,14 @@
 
 Dated build/test records and original user annotations follow. A historical “pending” or “current” statement belongs to that entry, not necessarily today. For current outstanding checks see [TESTING.md](../TESTING.md); for the implemented behaviour see [METHODS.md](METHODS.md).
 
+## 1.1.10 / build 69 — final user acceptance, 2026-11-21
+
+The user confirmed “all tests pass” after title-bar clipping, then authorised documentation cleanup and merge. Original final annotations are preserved verbatim in [clipping response](migration/1.1.10-CLIPPING-TEST-RESPONSE.md); earlier [initial](migration/1.1.10-TEST-RESPONSE.md) and [follow-up](migration/1.1.10-FOLLOW-UP-RESPONSE.md) responses retain their corrections and superseded failures.
+
+Accepted: title-bar reveal/retraction, unchanged zoom/pan/photo geometry, usable revealed controls, windowed/float regression, and the earlier deferred-fix checks. The small clipping delay is explicitly accepted. Migration stage 9 acceptance remains in its original file. All six migration-deferred issues are closed.
+
+The final code change passed focused split/clip geometry tests, migration regression groups, testing-app build, signature/plist verification and diff checks. These automated checks are distinct from the user’s native acceptance. Documentation cleanup does not rebuild, restage or change version/code. Existing staged binaries retain their previous identities; merging source does not replace main’s staged stable app. Matched timing measurements and broader compatibility/screenshot edge cases remain outstanding; no speed-up or exhaustive compatibility claim is made.
+
 ## 1.0.4 candidate
 
 Full automated suite passed, including new-dialog fallback versus known panes/untitled redraws, thumbnail versus ordinary/off-screen host geometry, and calibration text for all five layouts and both modes. App compiled and staged; signature/plist checks passed. Native AX/window-list semantics, Email Photo/View Options, minimise animation and restoration remain pending. No app launch, plugin change or new permission request was performed.

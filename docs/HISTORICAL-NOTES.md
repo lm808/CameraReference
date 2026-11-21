@@ -615,3 +615,46 @@ User authorised an independent assisted backend, with raw AX bands and pixel-aut
 ## Main integration — 1.0.32
 
 Merged at the user’s request. AX-assisted screenshot placement is implemented as a separate optional path: raw AX structure narrows pixel searches; screenshot evidence determines final edges, without calibrated AX offsets. Original screenshot detection remains available. The contribution and overhead of retained background screenshots are instrumented but not yet established by sufficient native measurements; no background screenshot reduction is claimed. Remaining edge cases and comparison tests are in TESTING.md.
+
+
+## Migration deferred-fix investigation archive (closed 2026-11-21)
+
+The following preserves intermediate findings and unsuccessful attempts verbatim. Pending statements are historical. Final implementation uses AX-identified title-bar clipping; all deferred-fix tests passed and the slight delay was accepted.
+
+## Post-migration fixes — candidate 1.1.10 (native verification pending)
+
+- **UI text — floating-window hover instructions (2026-11-20):** stage 7 testing passed, but the user requested tidying the hover text. Review the tooltips/instructions for clarity and consistency with current controls after migration; Candidate: separate overlay/floating tooltips with shorter, multiline gesture instructions. Verify native tooltip readability.
+
+- **Bug — full-screen stacking:** overlay covers macOS menu/title bars when revealed at the screen top. Investigate ordering/window level; retain Lightroom-content visibility without moving placement. Candidate: confirmed AX full-screen hosts use normal-level relative ordering above Lightroom, rather than floating level. Cached full-screen evidence survives transient read failures. Geometry unchanged; native testing required.
+- **Bug — AX diagnostic border constraints:** report 2026-11-19 11:37:40 shows identical calculated preview/production bounds, but standard preview NSPanel requested AppKit y=183 and appeared at y=170. Production OverlayPanel accepted its requested frame. Candidate: AXTrialPanel inherits OverlayPanel frame constraints and cannot become key. Geometry calculations unchanged; verify native placement.
+- **Screenshot response to Lightroom changes:** implemented in candidate 1.1.10; user accepted on 2026-11-21. Screenshot with AX view detection now matches Accessibility with updating off: confirmed photo/view/pane/panel changes dismiss; positive Library Grid dismisses and blocks invocation. Missing evidence retains the overlay. Screenshot with inference off, manual and floating behaviour are unchanged. AX-assisted placement remains independent; no placement algorithms or calibrated offsets change.
+- **Bug — stale view in calibration instructions:** calibration currently builds its prompt from `overlayLayout`, which can resolve to a saved view/pane unrelated to Lightroom's current view. Replace view-specific instructions with a neutral prompt to select whatever region the user wants the overlay to occupy. Suggested wording: “Select the region where you want the overlay to appear. Esc cancels.” Do not mention Loupe, a particular pane or a divider, and do not require fresh view detection merely to generate this prompt. Candidate: remove the pane-specific drag prompt and layout-specific failure guidance; preserve acceptance/cancellation semantics.
+- **Bug — floating display covered by a later overlay (2026-11-20):** stage 6 user test: open the floating display, then invoke the overlay; the overlay covers the floating display. Required behaviour: the floating display must remain above the overlay regardless of invocation order. Investigate window levels and ordering alongside the full-screen stacking issue, without placing either above macOS system controls. Candidate: order overlay and AX borders below an already visible same-level floating window, without raising the floating window or changing its level. Native invocation-order testing required.
+
+### 2026-11-21 test follow-up
+
+Verbatim response: [1.1.10-TEST-RESPONSE.md](migration/1.1.10-TEST-RESPONSE.md). AX preview geometry and screenshot fallback/isolation/late-result cases passed. User requested three tooltip bullets and promotion of AX preview to a direct developer tool. Menu bar ordering passed; revealed title bar remained behind the overlay. Floating invocation order passed, but click ordering and Exposé participation failed. Follow-up keeps full-screen Lightroom companion windows above the reference, elevates the floating reference one level above ordinary floating panels, and explicitly opts it into managed Mission Control behaviour. Only these cases need native retesting; earlier candidate descriptions above record the prior attempt.
+
+### Window-order diagnostic follow-up
+
+User confirmed both title-bar occlusion in full screen and floating-window occlusion after overlay clicks persist. Later screenshots supersede the floating-window checkbox in the saved follow-up response. Added an opt-in delayed metadata trace, not another ordering fix. Await the two recordings in TESTING.md to establish actual levels, focus transitions, system-window ownership and order. Placement remains unchanged.
+
+2026-11-21 recordings: the windowed float and overlay both actually used level 3; clicks exchanged key status. Candidate now assigns the float's intended level 4 after setting isFloatingPanel. Full-screen recording confirmed the title bar revealing at y=30, height 32, alpha 1 while repeated companionCovered ordering attempts continued. The diagnostic now logs the exact pre-order on-screen level-zero input and intervening companion IDs; title-bar ordering remains unchanged pending that evidence. Native float verification remains required.
+
+Title-bar follow-up: recording 19:49:54 identified title-bar window 1598 below overlay 1591 while 36 companions triggered repeated corrections, including transparent panels/labels. Candidate now uses visible, overlapping host-wide top chrome as a direct below-window anchor. It uses reported geometry without a calibrated height and leaves placement untouched. User reports the floating-window fix appears successful; title-bar native verification remains pending.
+
+
+Current title-bar candidate supersedes the above ordering attempts: remove companion/top-chrome reordering and mask the overlapping overlay strip using named AX control-parent identification. Keep frame/photo geometry fixed; clear on retraction or exit from macOS full screen. Native clipping and title-bar click handling are pending in TESTING.md. Float initialization fix is retained and user reports it appears successful.
+
+
+### Read-only title-bar probing history
+
+## Pending native title-bar identification probe (2026-11-21)
+
+The full-screen ordering fix remains unaccepted: the user reports title-bar occlusion persists. Existing windowed AX reports advertise named close/minimize/zoom/full-screen controls, but do not establish their relationship to the separate revealed full-screen CG window. Explorer 1.0.5 adds `titlebar-after` to compare semantic controls and their container links, alongside Lightroom-only CG metadata, with the bar hidden/revealed. No live results yet. Public AX and CG identifiers are not assumed interchangeable; any bounds match remains evidence to assess, not a production selector. Main app and placement are unchanged by this explorer update.
+
+### Title-bar control pair and ordering investigation
+
+Explorer report `2026-11-21T21-56-16Z-fullscreen-titlebar-controls-pair-81BE3C.txt` completed both targeted probes (42 nodes, no limits/partial result, Lightroom frontmost). Main AXCloseButton/AXMinimizeButton/AXZoomButton share AXGroup N42. Its frame changes from (0,-32,2560,32) to (0,30,2560,32), exactly matching CG window 1993 whose alpha changes 0→1. Control AXWindow and AXTopLevelUIElement still point to the main AX window; the title text frame does not track reveal. This provides semantic parent identification with measured-frame correlation, not a direct AX-to-CG ID API. IDs are session-specific.
+
+Existing saved ordering traces predate commit 4167451's below-chrome action, so they cannot establish whether that action executes, has no effect, or is subsequently reversed. Explorer 1.0.6 adds a read-only timed on-screen-order trace using the named-control shared parent, to pair with the existing app action recorder. No main app code/build/placement change. Full-screen grouping or cross-application ordering constraints are hypotheses, not established causes. Public AppKit ordering documentation does not give a persistence guarantee against subsequent window operations. Do not infer actual ordering from optionAll's array positions; optionOnScreenOnly explicitly specifies front-to-back order in the SDK.

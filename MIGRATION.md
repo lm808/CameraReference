@@ -1,5 +1,7 @@
 # Structure migration — working checklist
 
+**Closure, 2026-11-21:** migration stages and all six deferred fixes are accepted in 1.1.10 / build 69. Documentation cleanup and merge authorised; code/version unchanged. Stage-specific pending statements below are historical. Final evidence is in docs/VALIDATION.md and the preserved 1.1.10 test responses. Matched performance measurements remain uncollected.
+
 Branch: `codex/structure-migration` · worktree: `worktrees/structure-migration`
 Baseline: main at `a568c6e`, application 1.0.32. Main and its staged daily-use app remain untouched. Stage 9 delivers candidate 1.1.9; main and its accepted app stay at 1.0.32.
 

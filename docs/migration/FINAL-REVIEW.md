@@ -1,5 +1,7 @@
 # Migration consolidation review — stage 9
 
+**Closure, 2026-11-21:** migration stages and all six deferred fixes are accepted in 1.1.10 / build 69. Documentation cleanup and merge authorised; code/version unchanged. Stage-specific pending statements below are historical. Final evidence is in docs/VALIDATION.md and the preserved 1.1.10 test responses. Matched performance measurements remain uncollected.
+
 2026-11-20 · candidate 1.1.9 build 68 · accepted main remains a568c6e / 1.0.32.
 
 ## What is now implemented

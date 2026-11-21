@@ -1,6 +1,6 @@
 # Outstanding work
 
-Current state: 1.0.32 on main. Daily use is accepted by the user; this does not imply every deferred native test has passed. [TESTING.md](../TESTING.md) holds the actionable checklist; [research findings](AX-ASSISTANCE.md) and [validation](VALIDATION.md) retain evidence.
+Current source: accepted 1.1.10 / build 69. Migration and its six deferred fixes are complete; wider checks below remain separate. [TESTING.md](../TESTING.md) holds the actionable checklist; [research findings](AX-ASSISTANCE.md) and [validation](VALIDATION.md) retain evidence.
 
 ## Screenshot backup modes
 
@@ -32,27 +32,8 @@ Current state: 1.0.32 on main. Daily use is accepted by the user; this does not 
 
 AX placement, view inference, configurable corrections and assisted search are already implemented; they are not future feature proposals. Pinch was deliberately removed in favour of Command-scroll. Historical development tasks belong in HISTORICAL-NOTES.md, not here.
 
-## Post-migration fixes — candidate 1.1.10 (native verification pending)
+## Migration closure — 2026-11-21
 
-- **UI text — floating-window hover instructions (2026-11-20):** stage 7 testing passed, but the user requested tidying the hover text. Review the tooltips/instructions for clarity and consistency with current controls after migration; Candidate: separate overlay/floating tooltips with shorter, multiline gesture instructions. Verify native tooltip readability.
+All six deferred items are accepted: floating hover text, full-screen title-bar visibility, AX preview frame constraints, screenshot-with-AX dismissal policy, generic calibration instructions, and floating-window stacking. Final title-bar clipping tests passed; the small reveal delay is accepted. See [validation](VALIDATION.md) and [original test response](migration/1.1.10-CLIPPING-TEST-RESPONSE.md). Superseded attempts are archived in [historical notes](HISTORICAL-NOTES.md).
 
-- **Bug — full-screen stacking:** overlay covers macOS menu/title bars when revealed at the screen top. Investigate ordering/window level; retain Lightroom-content visibility without moving placement. Candidate: confirmed AX full-screen hosts use normal-level relative ordering above Lightroom, rather than floating level. Cached full-screen evidence survives transient read failures. Geometry unchanged; native testing required.
-- **Bug — AX diagnostic border constraints:** report 2026-11-19 11:37:40 shows identical calculated preview/production bounds, but standard preview NSPanel requested AppKit y=183 and appeared at y=170. Production OverlayPanel accepted its requested frame. Candidate: AXTrialPanel inherits OverlayPanel frame constraints and cannot become key. Geometry calculations unchanged; verify native placement.
-- **Screenshot response to Lightroom changes:** implemented in candidate 1.1.10; user accepted on 2026-11-21. Screenshot with AX view detection now matches Accessibility with updating off: confirmed photo/view/pane/panel changes dismiss; positive Library Grid dismisses and blocks invocation. Missing evidence retains the overlay. Screenshot with inference off, manual and floating behaviour are unchanged. AX-assisted placement remains independent; no placement algorithms or calibrated offsets change.
-- **Bug — stale view in calibration instructions:** calibration currently builds its prompt from `overlayLayout`, which can resolve to a saved view/pane unrelated to Lightroom's current view. Replace view-specific instructions with a neutral prompt to select whatever region the user wants the overlay to occupy. Suggested wording: “Select the region where you want the overlay to appear. Esc cancels.” Do not mention Loupe, a particular pane or a divider, and do not require fresh view detection merely to generate this prompt. Candidate: remove the pane-specific drag prompt and layout-specific failure guidance; preserve acceptance/cancellation semantics.
-- **Bug — floating display covered by a later overlay (2026-11-20):** stage 6 user test: open the floating display, then invoke the overlay; the overlay covers the floating display. Required behaviour: the floating display must remain above the overlay regardless of invocation order. Investigate window levels and ordering alongside the full-screen stacking issue, without placing either above macOS system controls. Candidate: order overlay and AX borders below an already visible same-level floating window, without raising the floating window or changing its level. Native invocation-order testing required.
-
-### 2026-11-21 test follow-up
-
-Verbatim response: [1.1.10-TEST-RESPONSE.md](migration/1.1.10-TEST-RESPONSE.md). AX preview geometry and screenshot fallback/isolation/late-result cases passed. User requested three tooltip bullets and promotion of AX preview to a direct developer tool. Menu bar ordering passed; revealed title bar remained behind the overlay. Floating invocation order passed, but click ordering and Exposé participation failed. Follow-up keeps full-screen Lightroom companion windows above the reference, elevates the floating reference one level above ordinary floating panels, and explicitly opts it into managed Mission Control behaviour. Only these cases need native retesting; earlier candidate descriptions above record the prior attempt.
-
-### Window-order diagnostic follow-up
-
-User confirmed both title-bar occlusion in full screen and floating-window occlusion after overlay clicks persist. Later screenshots supersede the floating-window checkbox in the saved follow-up response. Added an opt-in delayed metadata trace, not another ordering fix. Await the two recordings in TESTING.md to establish actual levels, focus transitions, system-window ownership and order. Placement remains unchanged.
-
-2026-11-21 recordings: the windowed float and overlay both actually used level 3; clicks exchanged key status. Candidate now assigns the float's intended level 4 after setting isFloatingPanel. Full-screen recording confirmed the title bar revealing at y=30, height 32, alpha 1 while repeated companionCovered ordering attempts continued. The diagnostic now logs the exact pre-order on-screen level-zero input and intervening companion IDs; title-bar ordering remains unchanged pending that evidence. Native float verification remains required.
-
-Title-bar follow-up: recording 19:49:54 identified title-bar window 1598 below overlay 1591 while 36 companions triggered repeated corrections, including transparent panels/labels. Candidate now uses visible, overlapping host-wide top chrome as a direct below-window anchor. It uses reported geometry without a calibrated height and leaves placement untouched. User reports the floating-window fix appears successful; title-bar native verification remains pending.
-
-
-Current title-bar candidate supersedes the above ordering attempts: remove companion/top-chrome reordering and mask the overlapping overlay strip using named AX control-parent identification. Keep frame/photo geometry fixed; clear on retraction or exit from macOS full screen. Native clipping and title-bar click handling are pending in TESTING.md. Float initialization fix is retained and user reports it appears successful.
+Matched pre/post-migration latency measurements were not collected; no performance improvement claim is made. The generated-source migration test harness remains useful regression protection; replacing it with direct component construction is future test-infrastructure work, not a release blocker.

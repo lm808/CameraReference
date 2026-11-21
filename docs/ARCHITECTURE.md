@@ -1,6 +1,6 @@
 # Architecture and source map
 
-Current candidate implementation: 1.1.10 (structure-migration; main remains 1.0.32). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
+Current accepted implementation: 1.1.10 / build 69. This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
 
 ## Source ownership
 
@@ -97,15 +97,15 @@ The monitor emits tick, foreground, Space, display-change and delayed display-ch
 
 Cadence remains 0.2 seconds for maintenance, 2 seconds for eligible live AX polls, 0.6 seconds for display-check debounce, 50 ms for bridge response polling, with a five-second request deadline. Background capture starts only after its original guards. No new capture, AX read, extraction, dispatch queue or display prerequisite was introduced by consolidation. Native ordering and latency cannot be certified by source equivalence or synthetic tests. Matched native timing samples remain pending; see [baseline protocol](migration/BASELINE.md).
 
-The six known bugs/policy items remain in [BACKLOG.md](BACKLOG.md), not silently fixed by migration. Current validation and limitations are in [VALIDATION.md](VALIDATION.md); migration history and target deviations are in [final review](migration/FINAL-REVIEW.md) and [MIGRATION.md](../MIGRATION.md).
+The six deferred bugs/policy items were subsequently fixed and accepted in 1.1.10; broader outstanding work remains in [BACKLOG.md](BACKLOG.md). Current validation and limitations are in [VALIDATION.md](VALIDATION.md); migration history and target deviations are in [final review](migration/FINAL-REVIEW.md) and [MIGRATION.md](../MIGRATION.md).
 
 ## Post-migration presentation corrections
 
-Confirmed native full-screen hosts use normal-level relative ordering above Lightroom; windowed/unknown hosts retain the active floating-level policy. LightroomHostAccessibility retains its last explicit AXFullScreen reading for the bound host through transient failures. No geometry inference or extra timer is introduced. Overlay and diagnostic preview front-order requests go below a visible same-level floating window. AXTrialPanel shares production frame constraints but cannot become key. Native ordering acceptance remains required.
+Confirmed native full-screen hosts use normal-level relative ordering above Lightroom. Windowed/unknown hosts retain the active floating-level policy. LightroomHostAccessibility retains the last explicit AXFullScreen reading through transient failures.
 
-### Native-test presentation follow-up (1.1.10)
+For full-screen title-bar reveal, Layout.swift identifies the shared AX parent of named close/zoom controls and correlates its measured frame to a same-PID CG window. The cached CG identity follows animation; all-window metadata includes the hidden bar. The existing maintenance tick samples this evidence. PresentationCoordinator applies a top mask through OverlayPanel.clipTop in Views.swift; frame, image viewport and navigation transform remain unchanged. Explicit hidden/windowed evidence clears the mask; unknown evidence retains it. AX preview borders share clipping; floating references do not. Failed companion/top-chrome relative-ordering workarounds were removed. Native tests passed; the slight polling delay is accepted.
 
-Full-screen ordering now considers Lightroom companion windows between overlay and host, instead of ignoring them. The overlay is reordered immediately above the host, leaving companions (including the revealed title bar) above it; diagnostic borders follow the same relative order. Placement rectangles are unchanged. FloatingPanel owns a named presentation level immediately above ordinary floating windows and explicitly uses managed Mission Control participation. This removes same-level click-order dependence. Native title-bar and Exposé behaviour remain candidate checks.
+AXTrialPanel shares production frame constraints and cannot become key. FloatingPanel applies its higher presentation level after floating-panel configuration, with managed Mission Control participation. Floating click/invocation ordering tests passed.
 
 ### Opt-in window-order recording
 

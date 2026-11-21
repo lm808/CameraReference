@@ -1,15 +1,15 @@
 # Changelog
 
-## 1.1.10 — post-migration backlog candidate
+## 1.1.10 — accepted migration and backlog fixes
 
-- Clip the overlay’s overlapping top strip when the AX-identified macOS full-screen title bar is revealed. Photo size, position, zoom and placement remain unchanged. Remove unsuccessful title-bar relative-ordering workarounds; native verification pending.
-- Preserve the floating-reference initialization fix and delayed window-order diagnostics, now including title-bar identity and clip depth. User reports the float fix appears successful.
+- Clip the overlay’s overlapping top strip when the AX-identified macOS full-screen title bar is revealed. Photo size, position, zoom and placement remain unchanged. Remove unsuccessful title-bar relative-ordering workarounds. Native tests passed; the slight reveal delay is accepted.
+- Preserve the floating-reference initialization fix and delayed window-order diagnostics, now including title-bar identity and clip depth. Floating-window tests passed.
 - Move AX preview directly into Developer tools and use the requested three-bullet tooltip.
 
 - Screenshot with AX view detection dismisses on confirmed photo/view/pane/panel changes and Grid, matching Accessibility with updating off. Screenshot placement algorithms remain unchanged.
 - Use production frame constraints for AX preview borders.
 - Remove stale pane names from manual calibration prompts; clarify overlay/floating gesture tooltips.
-- Candidate stacking fixes: normal-level ordering for confirmed macOS full-screen hosts, and relative ordering beneath an existing floating window. Native verification pending.
+- Retain normal-level ordering for confirmed macOS full-screen hosts and the independent floating-window level.
 
 ## 1.1.9 — migration stage 9 candidate
 

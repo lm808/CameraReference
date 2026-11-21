@@ -1,12 +1,12 @@
-# Title-bar clipping — 1.1.10 / build 69
+# Testing status — 1.1.10 / build 69
 
-Quit the previous testing app and open this worktree’s `release/CameraReference Testing.app`. Main, version and placement calculations are unchanged. Earlier annotations remain in [1.1.10-FOLLOW-UP-RESPONSE.md](docs/migration/1.1.10-FOLLOW-UP-RESPONSE.md).
+All migration and deferred-fix tests are accepted. On 2026-11-21 the user confirmed “all tests pass”, including title-bar reveal/hide, unchanged photo size/position, title-bar controls, and windowed/floating regression checks. The slight title-bar clipping delay is accepted; no optimisation is requested.
 
-- [ ] **Reveal/hide:** in macOS full-screen Lightroom, hide its top panel and show the overlay. Move the pointer to the screen top. The revealed title bar should be fully visible: the overlapping overlay strip, including border and photo, disappears. Move away: the strip returns. Repeat twice.
-- [ ] **No image movement:** zoom/pan the overlay, then reveal/hide the title bar. The remaining photo must stay exactly the same size and position. Check Loupe and both split orientations; a lower pane that does not overlap the bar must remain unchanged.
-- [ ] **Controls:** while revealed, check that the title-bar controls respond normally. Report if the transparent strip still intercepts clicks.
-- [ ] **Windowed/float regression:** exit full screen. The overlay must be complete. With the floating reference overlapping it, click the overlay and then the float; the float should remain above it.
+Original annotations are preserved in:
 
-If a case fails, use **Developer tools → Record window ordering (5-second delay)…**, return to Lightroom within five seconds, and reproduce during the following fifteen seconds. Reports now include the AX-identified title-bar window, alpha/bounds and clip depth. No screenshots are taken. Saved reports remain under `~/Library/Application Support/CameraReference/Diagnostics/WindowOrdering/`.
+- [Initial backlog tests](docs/migration/1.1.10-TEST-RESPONSE.md)
+- [Follow-up tests and later corrections](docs/migration/1.1.10-FOLLOW-UP-RESPONSE.md)
+- [Final clipping tests](docs/migration/1.1.10-CLIPPING-TEST-RESPONSE.md)
+- [Migration stage 9](docs/migration/STAGE-9-ACCEPTANCE.md)
 
-Automated geometry/build checks do not establish native masking, control interaction or animation behaviour; those are the checks above. User previously reported the floating-window fix appears successful.
+No outstanding checklist remains for this migration. Broader screenshot, compatibility and performance investigations remain in [BACKLOG.md](docs/BACKLOG.md); this acceptance does not claim exhaustive coverage of them.
