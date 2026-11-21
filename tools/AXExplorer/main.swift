@@ -2,7 +2,7 @@ import AppKit
 import ApplicationServices
 
 // Standalone read-only investigation. No actions, attribute writes, capture or app activation.
-let version = "1.0.5"
+let version = "1.0.6"
 let relationships = ["AXSections", "AXChildren", "AXContents", "AXVisibleChildren", "AXChildrenInNavigationOrder"]
 let scalars: Set<String> = ["AXRole", "AXSubrole", "AXIdentifier", "AXHidden", "AXVisible", "AXEnabled", "AXFocused", "AXMain", "AXMinimized", "AXModal", "AXFullScreen"]
 struct Budget {
@@ -53,6 +53,18 @@ func titlebarWindowRows(_ rows:[[String:Any]],pid:pid_t)->String {
         return "CG index=\(index) id=\(value(kCGWindowNumber)) layer=\(value(kCGWindowLayer)) alpha=\(value(kCGWindowAlpha)) onScreen=\(value(kCGWindowIsOnscreen)) frame=\(frame.map { String(describing:$0) } ?? "unknown")"
     }.joined(separator:"\n")
 }
+func exactWindowMatches(_ rows:[[String:Any]],pid:pid_t,frame:CGRect)->[Int] {
+    rows.compactMap { row in
+        guard (row[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==pid,
+              let data=row[kCGWindowBounds as String] as? [String:Any],
+              let rect=CGRect(dictionaryRepresentation:data as CFDictionary),rect==frame else { return nil }
+        return (row[kCGWindowNumber as String] as? NSNumber)?.intValue
+    }
+}
+func reportedOrder(_ ids:[Int],window:Int,anchor:Int)->String {
+    guard window != anchor,let own=ids.firstIndex(of:window),let target=ids.firstIndex(of:anchor) else { return "unknown" }
+    return own<target ? "above":"below"
+}
 if CommandLine.arguments.contains("--self-test") {
     precondition(parseBudget(["1000","8","5"]) != nil)
     for args in [["0","8","5"],["1000","31","5"],["1000","8","nan"],["1000","8","31"]] { precondition(parseBudget(args) == nil) }
@@ -74,7 +86,15 @@ if CommandLine.arguments.contains("--self-test") {
     precondition(probeText.contains("id=7") && probeText.contains("alpha=0"))
     precondition(!probeText.contains("PRIVATE") && !probeText.contains("id=8"))
     precondition(titlebarControlLinks.contains("AXCloseButton") && titlebarContainerLinks.contains("AXWindow"))
-    print("PASS: title-bar metadata privacy/owner filtering; toolbar classification, explorer limits and safe report labels; no live AX calls.")
+    let matchFrame=CGRect(x:0,y:30,width:2560,height:32)
+    let matchRows:[[String:Any]]=[7,8].map { [kCGWindowNumber as String:$0,kCGWindowOwnerPID as String:42,kCGWindowBounds as String:matchFrame.dictionaryRepresentation] }
+    precondition(exactWindowMatches(matchRows,pid:42,frame:matchFrame)==[7,8]) // retain ambiguity
+    precondition(exactWindowMatches(matchRows,pid:43,frame:matchFrame).isEmpty)
+    precondition(exactWindowMatches(matchRows,pid:42,frame:matchFrame.offsetBy(dx:0,dy:1)).isEmpty)
+    precondition(reportedOrder([7,8,9],window:7,anchor:8)=="above")
+    precondition(reportedOrder([7,8,9],window:9,anchor:8)=="below")
+    precondition(reportedOrder([7,8,9],window:7,anchor:10)=="unknown")
+    print("PASS: exact semantic-frame matching/ambiguity and on-screen ordering; title-bar metadata privacy/owner filtering; toolbar classification, explorer limits and safe report labels; no live AX calls.")
     exit(0)
 }
 
@@ -196,6 +216,75 @@ final class Explorer {
         emit("Unexplored queued nodes: \(remaining.map{"N\($0)"}.joined(separator:","))\nDepth-limited nodes: \(depthStops)\nExplicitly pruned nodes: \(pruned)")
         emit("Host before=\(String(describing:before)); after=\(String(describing:after)); unchanged=\(before != nil && before==after). IDs are session-local, not stable selectors.")
     }
+    func traceTitlebarOrder(_ args:[String]) {
+        guard args.count<=1,let seconds=toolbarDelay(args.first ?? "10") else { emit("Use titlebar-order-after [SECONDS], 1–60 seconds.");return }
+        guard let pid,!nodes.isEmpty else { emit("Run refresh first.");return }
+        emit("Read-only ordering trace starts in \(seconds)s, then samples for 15s. Keep the overlay ON and float/AX preview OFF. Return to Lightroom and reveal/hide/reveal its title bar. No window ordering or activation is performed by this tool.")
+        fflush(stdout);Thread.sleep(forTimeInterval:seconds)
+        guard AXIsProcessTrusted() else { emit("ORDER TRACE skipped: Accessibility unavailable.");return }
+        let root=AXUIElementCreateApplication(pid)
+        let stamp=ISO8601DateFormatter();stamp.formatOptions=[.withInternetDateTime,.withFractionalSeconds]
+        let start=ProcessInfo.processInfo.systemUptime,end=start+15
+        emit("ORDER TRACE START \(stamp.string(from:Date())) uptime=\(start); samples approximately 0.2s apart. CG uses optionOnScreenOnly front-to-back order, unlike optionAll. No titles or images.")
+        while ProcessInfo.processInfo.systemUptime<end {
+            let sampleStart=ProcessInfo.processInfo.systemUptime
+            deadline=min(end,sampleStart+0.5);partial=false
+            emit("ORDER SAMPLE \(stamp.string(from:Date())) uptime=\(sampleStart) frontmost=\(NSWorkspace.shared.frontmostApplication?.processIdentifier.description ?? "unknown")")
+            func element(_ node:AXUIElement,_ key:String)->AXUIElement? {
+                AXUIElementSetMessagingTimeout(node,0.03)
+                let (raw,status)=read(node,key)
+                guard status == .success,let raw,CFGetTypeID(raw)==AXUIElementGetTypeID() else {
+                    emit("Link \(key) unavailable status=\(status.rawValue)");return nil
+                }
+                let result=unsafeBitCast(raw,to:AXUIElement.self)
+                AXUIElementSetMessagingTimeout(result,0.03)
+                return result
+            }
+            var hostFrame:CGRect?,titleFrame:CGRect?
+            if NSWorkspace.shared.frontmostApplication?.processIdentifier==pid,
+               let main=element(root,"AXMainWindow") {
+                hostFrame=rect(main)
+                let full=(read(main,"AXFullScreen").0 as? NSNumber)?.boolValue
+                if let close=element(main,"AXCloseButton"),let zoom=element(main,"AXZoomButton"),
+                   let closeParent=element(close,"AXParent"),let zoomParent=element(zoom,"AXParent") {
+                    let same=CFEqual(closeParent,zoomParent)
+                    let role=read(closeParent,"AXRole").0 as? String
+                    let closeRole=read(close,"AXSubrole").0 as? String
+                    let zoomRole=read(zoom,"AXSubrole").0 as? String
+                    let group=rect(closeParent)
+                    emit("AX fullScreen=\(full.map(String.init) ?? "unknown") sharedParent=\(same) parentRole=\(role ?? "unknown") closeSubrole=\(closeRole ?? "unknown") zoomSubrole=\(zoomRole ?? "unknown") group=\(String(describing:group)) host=\(String(describing:hostFrame))")
+                    if full == true,same,role=="AXGroup",closeRole=="AXCloseButton",zoomRole=="AXZoomButton" || zoomRole=="AXFullScreenButton" {
+                        titleFrame=group
+                    }
+                }
+            } else { emit("AX sample skipped: Lightroom not frontmost or main window unavailable.") }
+            if let rows=CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements],kCGNullWindowID) as? [[String:Any]] {
+                let titleIDs=titleFrame.map { exactWindowMatches(rows,pid:pid,frame:$0) } ?? []
+                let hostIDs=hostFrame.map { exactWindowMatches(rows,pid:pid,frame:$0) } ?? []
+                emit("Exact CG matches title=\(titleIDs) host=\(hostIDs); zero/multiple matches are inconclusive, not resolved by shape.")
+                emit(titlebarWindowRows(rows,pid:pid))
+                let apps=NSWorkspace.shared.runningApplications.filter { ["org.local.CameraReference","org.local.CameraReference.testing"].contains($0.bundleIdentifier ?? "") }
+                let ids=rows.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.intValue }
+                for app in apps {
+                    emit("Reference app pid=\(app.processIdentifier) bundle=\(app.bundleIdentifier ?? "unknown")")
+                    emit(titlebarWindowRows(rows,pid:app.processIdentifier))
+                    for row in rows where (row[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==app.processIdentifier {
+                        guard let id=(row[kCGWindowNumber as String] as? NSNumber)?.intValue else { continue }
+                        let order=titleIDs.count==1 ? reportedOrder(ids,window:id,anchor:titleIDs[0]):"unknown"
+                        let frame=(row[kCGWindowBounds as String] as? [String:Any]).flatMap { CGRect(dictionaryRepresentation:$0 as CFDictionary) }
+                        let overlap=frame.flatMap { f in titleFrame.map { f.intersects($0) } }
+                        emit("Reference window id=\(id) relativeToTitle=\(order) overlapsTitle=\(overlap.map(String.init) ?? "unknown"); identity of overlay/float comes from app recorder.")
+                    }
+                }
+            } else { emit("CG on-screen list unavailable") }
+            emit("ORDER SAMPLE END uptime=\(ProcessInfo.processInfo.systemUptime) deadlineReached=\(ProcessInfo.processInfo.systemUptime>=deadline) frontmostAfter=\(NSWorkspace.shared.frontmostApplication?.processIdentifier.description ?? "unknown"); AX and CG reads are sequential, not atomic.")
+            deadline=Double.greatestFiniteMagnitude
+            let remaining=min(end-ProcessInfo.processInfo.systemUptime,0.2-(ProcessInfo.processInfo.systemUptime-sampleStart))
+            if remaining>0 { Thread.sleep(forTimeInterval:remaining) }
+        }
+        emit("ORDER TRACE END \(stamp.string(from:Date())); use save LABEL. Correlate uptime with the app's recording start/actions; this tool only observes, and cannot prove which process caused a change.")
+    }
+
     func delayedTitlebar(_ args:[String]) {
         guard args.count<=1,let seconds=toolbarDelay(args.first ?? "10") else { emit("Use titlebar-after [SECONDS], 1–60 seconds.");return }
         guard let pid,!nodes.isEmpty else { emit("Run refresh first.");return }
@@ -356,6 +445,7 @@ final class Explorer {
 refresh                 Connect/reconnect; list Lightroom windows; reset IDs/skips
 windows                 Refresh AXWindows list (same session IDs)
 toolbar [MENU-TITLE]    Read toolbar command in View menu, without opening it
+titlebar-order-after [SEC]  Observe AX-identified title bar and reference ordering for 15s
 titlebar-after [SEC]     Delayed semantic title-bar controls/parents and CG metadata
 toolbar-after [SEC] [MENU-TITLE]  Wait (default 10s), then read only if Lightroom is active
 node N                  Role, frame, safe attributes, parent and relationships
@@ -377,6 +467,7 @@ No actions or attribute writes. Only toolbar command reads menu titles; other te
                 emit("Accessibility granted: \(AXIsProcessTrustedWithOptions(options)). If unchanged, check System Settings for this executable or Terminal; restart explorer if necessary.")
             case "refresh": refresh()
             case "toolbar": toolbar(parts.count>1 ? parts.dropFirst().joined(separator:" "):"View")
+            case "titlebar-order-after": traceTitlebarOrder(Array(parts.dropFirst()))
             case "titlebar-after": delayedTitlebar(Array(parts.dropFirst()))
             case "toolbar-after": delayedToolbar(Array(parts.dropFirst()))
             case "limits":

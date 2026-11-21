@@ -1,10 +1,31 @@
-# AX Explorer 1.0.5
+# AX Explorer 1.0.6
 
 Standalone, read-only Lightroom Accessibility investigation. It does not link CameraReference app code, capture the screen, activate Lightroom, change settings or perform AX actions. The app is not rebuilt. No Screen Recording permission is needed.
 
 ## Start
 
 Double-click the staged `build/AXExplorer/Explore.command` (opens Terminal), or run `build/AXExplorer/AXExplorer` from Terminal. Type `permission` if access has not been granted, follow System Settings, then `refresh`. macOS may attribute permission to Terminal or the executable. Do not remove existing CameraReference permissions. If access remains unavailable, restart the explorer. No automatic permission prompt on startup.
+
+## Observe the failed title-bar ordering (overlay ON)
+
+`titlebar-order-after 10` waits ten seconds, then observes for fifteen seconds, approximately every 0.2s. It never creates/reorders windows, activates apps, or changes placement. It follows the main window's named close and zoom buttons, requires their shared AXGroup parent in confirmed full screen, and matches that group's exact reported bounds to Lightroom CG windows. Zero or multiple matches are inconclusive. It logs the on-screen front-to-back list and reference-window relationships, opacity, level and overlap. Unlike the earlier all-window snapshot, this list has documented front-to-back ordering. Reads are sequential, not atomic; per-sample timestamps and focus/deadline status expose transitions.
+
+For the focused test, leave the existing testing app running with the overlay **on**, float and AX preview **off**, and Lightroom in macOS full screen with its top panel hidden. Restart the explorer to load 1.0.6 (not the main app). Run:
+
+```text
+refresh
+clear
+note Overlay on title-bar ordering failure
+titlebar-order-after 10
+```
+
+Immediately switch to Lightroom and start the app's existing **Developer tools → Record window ordering (5-second delay)…** command. Close the menu and return to Lightroom. Hold the native title bar revealed for about ten seconds, move the pointer away for three seconds, then reveal it again for ten seconds. Wait thirty seconds from the explorer command before returning to Terminal. Save:
+
+```text
+save fullscreen-titlebar-order
+```
+
+Tell the agent that both reports are saved and whether the title bar remained covered. The explorer records actual ordering and semantic identity; the app recorder records attempted actions. Comparing their wall-clock timestamps can distinguish missed identification, an ineffective call, and a later reversal (within sampling resolution). No result yet proves which process causes a reversal; window-group behaviour and cross-application ordering remain hypotheses. This command reads public AX/CG metadata only and requires no Screen Recording permission.
 
 ## Full-screen title-bar investigation
 
