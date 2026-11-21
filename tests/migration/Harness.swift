@@ -37,12 +37,6 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         expect(traceRows.hasPrefix("rank=0 id=7") && traceRows.contains("rank=1 id=3"),"Trace preserves supplied stacking order, not sorted IDs")
         expect(traceRows.contains("level=4") && traceRows.contains("alpha=0") && traceRows.contains("onScreen=unknown"),"Trace retains invisible/unknown metadata")
         expect(!traceRows.contains("PRIVATE TITLE"),"Trace omits window titles")
-        let decisionRows:[[String:Any]]=[1,2,4,3].map { [kCGWindowNumber as String:$0,kCGWindowAlpha as String:0] }
-        let decision=WindowOrderRecorder.orderingDecision(rows:decisionRows,overlay:1,host:3,companions:[2,3],companionCovered:true,levelChanged:false)
-        expect(decision.contains("companionCandidates=[2]") && decision.contains("interveningOtherWindows=[4]"),"Decision identifies companions separately from unrelated windows")
-        expect(decision.contains("alpha=0") && decision.contains("rank=3 id=3"),"Decision preserves exact input including transparent windows")
-        let reversed=WindowOrderRecorder.orderingDecision(rows:decisionRows,overlay:3,host:1,companions:[2,1],companionCovered:false,levelChanged:true)
-        expect(reversed.contains("companionCandidates=[]"),"No intervening candidates when overlay is behind host")
         let recorder=WindowOrderRecorder()
         recorder.event("disabled event")
         expect(recorder.entries.isEmpty,"Disabled recorder does no logging")
@@ -294,7 +288,10 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         app.assistedChecks=3;app.assistedAXSeconds=0.02;app.assistedCheckSeconds=0.05
         for mode in [false,true] {
             prefs.set(mode,forKey:"useScreenshotDetection")
-            expect(diagnosticReport(app.diagnosticSections()) == diagnosticReport(app.baselineDiagnosticSections()).replacingOccurrences(of:"Screenshot modes retain cache-invalidation behaviour.",with:"Screenshot with AX view detection dismisses on confirmed photo/view/pane/panel changes and Grid. Without AX view detection, existing cache-invalidation behaviour is retained."),"Report matches frozen formatter except the approved screenshot policy description")
+            let clipLine="\nTitle-bar clip: \(app.overlayController.titlebarClipStatus); top=0.0 pt"
+            let current=diagnosticReport(app.diagnosticSections())
+            expect(current.contains(clipLine),"Report includes title-bar clip state")
+            expect(current.replacingOccurrences(of:clipLine,with:"") == diagnosticReport(app.baselineDiagnosticSections()).replacingOccurrences(of:"Screenshot modes retain cache-invalidation behaviour.",with:"Screenshot with AX view detection dismisses on confirmed photo/view/pane/panel changes and Grid. Without AX view detection, existing cache-invalidation behaviour is retained."),"Report matches frozen formatter except the approved screenshot policy description")
         }
         let reportURL=MigrationEnvironment.root.appendingPathComponent("Diagnostics/latest.txt")
         var generated=0,failures=0

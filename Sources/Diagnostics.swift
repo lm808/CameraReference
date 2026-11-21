@@ -46,7 +46,7 @@ final class DiagnosticsService {
         let assistedPixelFailures=app.assistedPixelFailures
         let assistedEvidence=app.assistedEvidence
         let axLiveUpdate=app.axLiveUpdate
-        let overlayVisibilityStatus=app.overlayController.overlayVisibilityStatus
+        let overlayVisibilityStatus=app.overlayController.overlayVisibilityStatus + "\nTitle-bar clip: \(app.overlayController.titlebarClipStatus); top=\(app.panel?.titlebarClipHeight ?? 0) pt"
         let overlayGeometrySource=app.overlayController.overlayGeometrySource
         let overlayLifecycleStatus=app.overlayController.overlayLifecycleStatus
         let overlayMoveCount=app.overlayController.overlayMoveCount
@@ -238,6 +238,7 @@ extension AppDelegate {
                             self.orderReferencePanelFront(border)
                         } else { border.orderOut(nil) }
                         self.axTrialBorders.append(border)
+                        self.applyTitlebarClip()
                         self.lastAXTrial += "\n\(name): requested AppKit \(frame); actual \(border.frame); visible \(border.isVisible); parent visible \(actual.isVisible); suspended \(self.overlayController.overlaySuspended)."
                     }
                 } else if proposal != nil { self.lastAXTrial += "\nPreview not drawn: host changed or does not match overlay host. AX top-left: \(proposal!.host); overlay AppKit: \(String(describing:self.overlayController.overlayHost?.frame))." }

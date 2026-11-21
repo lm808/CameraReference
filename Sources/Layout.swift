@@ -244,6 +244,9 @@ final class LightroomHostAccessibility {
     private let application:AXUIElement
     private let host:AXUIElement
     private var observer:AXObserver?
+    private var titlebarGroup:AXUIElement?
+    private var titlebarID:CGWindowID?
+    private(set) var titlebarStatus="not sampled"
     private var lastFullScreen:Bool?
     private var fullScreenStatus="not read"
     private var notifiedMinimized:Bool?
@@ -363,6 +366,39 @@ final class LightroomHostAccessibility {
             lastFullScreen=value.boolValue;fullScreenStatus="\(value.boolValue)"
         } else { fullScreenStatus="unavailable; retained \(lastFullScreen.map(String.init) ?? "unknown")" }
         return lastFullScreen // A temporary read failure must not raise a known full-screen overlay.
+    }
+    // Exact AX-parent matching establishes identity; the cached CG ID follows
+    // its animation without requiring two asynchronous frame reads to agree.
+    func revealedTitlebar(pid:pid_t)->TitlebarVisibility {
+        titlebarStatus="unavailable; retaining previous clip"
+        func child(_ node:AXUIElement,_ key:String)->AXUIElement? {
+            guard let value=Self.element(Self.read(node,key)) else { return nil }
+            AXUIElementSetMessagingTimeout(value,0.01);return value
+        }
+        guard let close=child(host,"AXCloseButton"),let zoom=child(host,"AXZoomButton"),
+              Self.read(close,"AXSubrole") as? String == "AXCloseButton",
+              ["AXZoomButton","AXFullScreenButton"].contains(Self.read(zoom,"AXSubrole") as? String ?? ""),
+              let group=child(close,"AXParent"),let other=child(zoom,"AXParent"),CFEqual(group,other),
+              Self.read(group,"AXRole") as? String == "AXGroup",let frame=Self.frame(group) else { return .unknown }
+        if titlebarGroup.map({ CFEqual($0,group) }) != true { titlebarGroup=group;titlebarID=nil }
+        // Include hidden windows: on-screen-only rows can omit the retracted bar.
+        guard let all=CGWindowListCopyWindowInfo([.optionAll,.excludeDesktopElements],kCGNullWindowID) as? [[String:Any]] else { return .unknown }
+        let owned=all.filter { ($0[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==pid }
+        func rect(_ row:[String:Any])->CGRect? {
+            (row[kCGWindowBounds as String] as? [String:Any]).flatMap { CGRect(dictionaryRepresentation:$0 as CFDictionary) }
+        }
+        if titlebarID == nil {
+            let matches=owned.filter { rect($0)==frame }
+            guard matches.count==1,let id=(matches[0][kCGWindowNumber as String] as? NSNumber)?.uint32Value else { return .unknown }
+            titlebarID=id
+        }
+        guard let row=owned.first(where:{ ($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value==titlebarID }),
+              let alpha=(row[kCGWindowAlpha as String] as? NSNumber)?.doubleValue,let bounds=rect(row) else {
+            titlebarID=nil;return .unknown
+        }
+        titlebarStatus="AX close/zoom shared parent; CG \(titlebarID!); alpha \(alpha); bounds \(bounds)"
+        if alpha<=0 { return .hidden }
+        return .visible(appKitRect(bounds,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height))
     }
     var layoutFrame:CGRect? {
         guard let rect=Self.frame(host),rect.width>0,rect.height>0 else { return nil }

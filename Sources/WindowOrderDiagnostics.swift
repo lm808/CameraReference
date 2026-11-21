@@ -18,7 +18,7 @@ final class WindowOrderRecorder {
         guard !active else { return }
         active=true;entries=[];started=ProcessInfo.processInfo.systemUptime
         self.sample=sample;self.completion=completion
-        entries.append("Window ordering trace — \(ISO8601DateFormatter().string(from:Date()))\n5-second preparation, then 15 seconds sampled every 0.1 seconds. Actual elapsed timestamps are authoritative.\nCG rows: API-returned order, global top-left points. Snapshot list uses optionAll; ordering decisions include the exact on-screen level-zero input before mutation. AppKit frames/pointer: global bottom-left points.\nNo images, window titles, filenames or keystrokes collected. All owners included; absent rows/attributes are not evidence of invisibility.\n")
+        entries.append("Window ordering trace — \(ISO8601DateFormatter().string(from:Date()))\n5-second preparation, then 15 seconds sampled every 0.1 seconds. Actual elapsed timestamps are authoritative.\nCG rows: API-returned order, global top-left points. Snapshot list uses optionAll. AppKit frames/pointer: global bottom-left points.\nNo images, window titles, filenames or keystrokes collected. All owners included; absent rows/attributes are not evidence of invisibility.\n")
         for name in [NSWindow.didBecomeKeyNotification,NSWindow.didResignKeyNotification,NSWindow.didBecomeMainNotification,NSWindow.didResignMainNotification] {
             observers.append(NotificationCenter.default.addObserver(forName:name,object:nil,queue:.main) { [weak self] note in
                 guard let w=note.object as? NSWindow else { return }
@@ -51,18 +51,6 @@ final class WindowOrderRecorder {
         observers=[];sample=nil;completion=nil;active=false
     }
     deinit { stop() }
-
-    // Describe the existing decision's input, without querying or changing windows.
-    // Retain alpha-zero rows: the current predicate includes them too.
-    static func orderingDecision(rows input:[[String:Any]],overlay:Int,host:Int,companions:Set<Int>,companionCovered:Bool,levelChanged:Bool)->String {
-        let order=input.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.intValue }
-        var between:[Int]=[]
-        if let own=order.firstIndex(of:overlay),let lr=order.firstIndex(of:host),own<lr {
-            between=Array(order[(own+1)..<lr])
-        }
-        let triggers=between.filter { companions.contains($0) }
-        return "ORDER DECISION before mutation: overlay=\(overlay) host=\(host) levelChanged=\(levelChanged) companionCovered=\(companionCovered) companionCandidates=\(triggers) interveningOtherWindows=\(between.filter { !companions.contains($0) })\nExact on-screen level-zero input:\n"+rows(input)
-    }
 
     static func rows(_ rows:[[String:Any]])->String {
         rows.enumerated().map { index,row in
@@ -104,6 +92,7 @@ extension AppDelegate {
         let front=NSWorkspace.shared.frontmostApplication
         var lines=["frontmost pid=\(front?.processIdentifier.description ?? "unknown") app=\(front?.localizedName ?? "unknown"); pointer=\(NSEvent.mouseLocation); buttons=\(NSEvent.pressedMouseButtons)",
                    state("overlay",panel),state("floating",floating),
+                   "Title-bar clip: \(overlayController.titlebarClipStatus); top=\(panel?.titlebarClipHeight ?? 0)",
                    "host id=\(overlayController.overlayHost?.id.description ?? "none"); cached AX: \(overlayController.overlayAccessibility?.diagnostic ?? "unavailable")",
                    "policy status (not verified stacking): \(overlayController.overlayVisibilityStatus)"]
         lines += axTrialBorders.map { state("AX border",$0) }

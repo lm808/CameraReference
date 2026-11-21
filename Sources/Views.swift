@@ -1,9 +1,37 @@
 import AppKit
+import QuartzCore
 
 class OverlayPanel: NSPanel {
     // The detector already validates the display bounds. AppKit must not shift the
     // borderless overlay away from its exact image coordinates in full-screen Spaces.
     override func constrainFrameRect(_ frameRect:NSRect,to screen:NSScreen?)->NSRect { frameRect }
+    private var unclippedAppearance:(opaque:Bool,background:NSColor)?
+    private var topMask:CAShapeLayer?
+    private(set) var titlebarClipHeight:CGFloat=0
+    func clipTop(_ height:CGFloat) {
+        guard let view=contentView else { return }
+        let height=min(view.bounds.height,max(0,height))
+        guard height>0 || topMask != nil else { return }
+        if height == titlebarClipHeight,topMask?.frame == view.bounds { return }
+        if unclippedAppearance == nil { unclippedAppearance=(isOpaque,backgroundColor) }
+        CATransaction.begin();CATransaction.setDisableActions(true)
+        defer { CATransaction.commit() }
+        titlebarClipHeight=height
+        if height>0 {
+            isOpaque=false;backgroundColor = .clear
+            view.wantsLayer=true
+            let mask=topMask ?? CAShapeLayer()
+            mask.fillColor=NSColor.black.cgColor
+            mask.frame=view.bounds
+            mask.path=CGPath(rect:CGRect(x:0,y:0,width:view.bounds.width,height:view.bounds.height-height),transform:nil)
+            view.layer?.mask=mask;topMask=mask
+        } else {
+            view.layer?.mask=nil;topMask=nil
+            if let original=unclippedAppearance { isOpaque=original.opaque;backgroundColor=original.background }
+            unclippedAppearance=nil
+        }
+        // The view's bounds, imageViewport, navigation and window frame stay intact.
+    }
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 }

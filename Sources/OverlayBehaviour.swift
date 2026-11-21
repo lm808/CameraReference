@@ -1,7 +1,10 @@
 import Foundation
 
+enum TitlebarVisibility { case unknown, hidden, visible(CGRect) }
+
 // A decision is scoped to its operation: geometry adjust preserves zoom/image;
 // photo adjust requests a fresh selection at Fit. Neither can open an off overlay.
+
 enum AXOverlayChangeAction { case retain, adjust, dismiss }
 enum OverlayHostAction:Equatable { case retain,suspend,translate(CGPoint) }
 
@@ -10,24 +13,17 @@ enum OverlayHostAction:Equatable { case retain,suspend,translate(CGPoint) }
 /// guards, and execute actions in the original order. Do not fold suspension into
 /// dismissal, or screenshot cache invalidation into AX live placement.
 enum OverlayBehaviourPolicy {
-    // Confirmed native full-screen keeps app overlays below system/titlebar UI.
+    // Confirmed native full-screen avoids floating-level priority over system UI.
     // Unknown evidence retains the windowed policy; no geometry inference.
     static func useFloatingOverlayLevel(lightroomActive:Bool,overview:Bool,dialog:Bool,fullScreen:Bool?)->Bool {
         lightroomActive && !overview && !dialog && fullScreen != true
     }
 
-    // Identify visible host-wide top chrome using reported rectangles, not a
-    // calibrated title-bar height. Labels/side panels and hidden chrome do not qualify.
-    static func isTopChrome(frame:CGRect,alpha:Double,host:CGRect,overlay:CGRect)->Bool {
-        alpha>0 && frame.width>0 && frame.height>0 && frame.height<host.height &&
-        frame.minX<=host.minX && frame.maxX>=host.maxX &&
-        frame.minY<host.midY && frame.intersects(overlay)
-    }
-
-    // Backmost qualifying chrome above the host is the direct ordering anchor.
-    static func topChromeAnchor(fullScreen:Bool?,order:[Int],host:Int,candidates:Set<Int>)->Int? {
-        guard fullScreen == true,let lr=order.firstIndex(of:host) else { return nil }
-        return order[..<lr].last { candidates.contains($0) }
+    // Presentation only: shave the top through the occluder's lower edge.
+    // Both rectangles are AppKit coordinates. Never change the photo viewport.
+    static func titlebarClipHeight(overlay:CGRect,titlebar:CGRect?)->CGFloat {
+        guard let titlebar,overlay.intersects(titlebar) else { return 0 }
+        return min(overlay.height,max(0,overlay.maxY-titlebar.minY))
     }
 
     static func geometryChange(accessibility:Bool,automatic:Bool,displayed:OverlayLayout?,selected:OverlayLayout,panelsChanged:Bool,live:Bool,screenshotAXDetection:Bool=false)->AXOverlayChangeAction {

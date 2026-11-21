@@ -104,6 +104,7 @@ extension AppDelegate {
         updateOverlayLifecycle()
         let fullScreen=overlayController.overlayAccessibility?.fullScreen
         let floating=OverlayBehaviourPolicy.useFloatingOverlayLevel(lightroomActive:isLightroom(),overview:lightroomMonitor.workspaceOverview,dialog:overlayController.overlayDialogVisible,fullScreen:fullScreen)
+        if fullScreen == false { overlayController.revealedTitlebar=nil;overlayController.titlebarClipStatus="windowed; no clip";applyTitlebarClip() }
         let desiredLevel:NSWindow.Level=floating ? .floating:.normal
         let levelChanged=panel.level != desiredLevel
         // Lower immediately on app deactivation, even if host metadata is
@@ -121,6 +122,7 @@ extension AppDelegate {
         }
         guard let owner=NSWorkspace.shared.runningApplications.first(where:isLightroomApp),
               let rows=CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements],kCGNullWindowID) as? [[String:Any]] else { return false }
+        updateTitlebarClip(fullScreen:fullScreen,pid:owner.processIdentifier)
         let windows=rows.filter { ($0[kCGWindowLayer as String] as? NSNumber)?.intValue==0 }
         let lightroom=windows.filter {
             guard ($0[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==owner.processIdentifier,
@@ -153,43 +155,33 @@ extension AppDelegate {
         let lightroomWindows=Set(windows.filter {
             ($0[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==owner.processIdentifier
         }.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.intValue })
-        func reportedFrame(_ row:[String:Any])->CGRect? {
-            guard let dict=row[kCGWindowBounds as String] as? [String:Any] else { return nil }
-            return CGRect(dictionaryRepresentation:dict as CFDictionary)
+        if levelChanged || overlayNeedsOrdering(order:order,overlay:panel.windowNumber,lightroom:number,lightroomWindows:lightroomWindows) {
+            panel.order(.above,relativeTo:number);overlayController.overlayOrderCount += 1
+            diagnostics.windowOrdering.event("overlay order above host=\(number) level=\(panel.level.rawValue)")
         }
-        let overlayRow=windows.first { ($0[kCGWindowNumber as String] as? NSNumber)?.intValue==panel.windowNumber }
-        var chromeCandidates=Set<Int>()
-        if let hostRow=lightroom,let hostFrame=reportedFrame(hostRow),let overlayRow,let overlayFrame=reportedFrame(overlayRow) {
-            chromeCandidates=Set(windows.compactMap { row -> Int? in
-                guard let id=(row[kCGWindowNumber as String] as? NSNumber)?.intValue,id != number,
-                      lightroomWindows.contains(id),let frame=reportedFrame(row),
-                      let alpha=(row[kCGWindowAlpha as String] as? NSNumber)?.doubleValue,
-                      OverlayBehaviourPolicy.isTopChrome(frame:frame,alpha:alpha,host:hostFrame,overlay:overlayFrame) else { return nil }
-                return id
-            })
-        }
-        let chrome=OverlayBehaviourPolicy.topChromeAnchor(fullScreen:fullScreen,order:order,host:number,candidates:chromeCandidates)
-        let companionCovered=chrome.map { anchor in
-            guard let own=order.firstIndex(of:panel.windowNumber),let target=order.firstIndex(of:anchor) else { return false }
-            return own<target
-        } ?? false
-        if levelChanged || companionCovered || overlayNeedsOrdering(order:order,overlay:panel.windowNumber,lightroom:number,lightroomWindows:lightroomWindows) {
-            diagnostics.windowOrdering.event(WindowOrderRecorder.orderingDecision(rows:windows,overlay:panel.windowNumber,host:number,companions:chromeCandidates,companionCovered:companionCovered,levelChanged:levelChanged))
-            if let chrome {
-                panel.order(.below,relativeTo:chrome)
-                diagnostics.windowOrdering.event("overlay order below top chrome=\(chrome) host=\(number) level=\(panel.level.rawValue)")
-                // Preview borders must not cover the same chrome either.
-                for border in axTrialBorders where border.isVisible { border.order(.below,relativeTo:chrome) }
-            } else {
-                panel.order(.above,relativeTo:number)
-                diagnostics.windowOrdering.event("overlay order above host=\(number) level=\(panel.level.rawValue)")
-            }
-            overlayController.overlayOrderCount += 1
-        }
-        overlayController.overlayVisibilityStatus=overlayController.overlayDialogVisible ? "Overlay lowered for a Lightroom dialog.":(fullScreen == true ? "Overlay at normal level above full-screen Lightroom; system controls retain precedence.":"Overlay at normal level while another app is active.")
+        overlayController.overlayVisibilityStatus=overlayController.overlayDialogVisible ? "Overlay lowered for a Lightroom dialog.":(fullScreen == true ? "Overlay at normal level; revealed title bar clips the overlay content.":"Overlay at normal level while another app is active.")
         return true
     }
+    func updateTitlebarClip(fullScreen:Bool?,pid:pid_t) {
+        guard fullScreen == true else { return }
+        switch overlayController.overlayAccessibility?.revealedTitlebar(pid:pid) ?? .unknown {
+        case .unknown: break // Retain the last mask through transient/animation read failures.
+        case .hidden: overlayController.revealedTitlebar=nil
+        case .visible(let frame): overlayController.revealedTitlebar=frame
+        }
+        overlayController.titlebarClipStatus=overlayController.overlayAccessibility?.titlebarStatus ?? "AX unavailable; retaining previous clip"
+        applyTitlebarClip()
+    }
+    func applyTitlebarClip() {
+        let windows=([panel].compactMap { $0 }) + axTrialBorders.compactMap { $0 as? OverlayPanel }
+        for window in windows {
+            let depth=OverlayBehaviourPolicy.titlebarClipHeight(overlay:window.frame,titlebar:overlayController.revealedTitlebar)
+            if depth != window.titlebarClipHeight { diagnostics.windowOrdering.event("title-bar clip id=\(window.windowNumber) top=\(depth); frame unchanged") }
+            window.clipTop(depth)
+        }
+    }
     func hide() {
+        overlayController.revealedTitlebar=nil;overlayController.titlebarClipStatus="overlay not shown"
         diagnostics.windowOrdering.event("overlay hide requested")
         clearAXTrialBorders()
         if destination == .overlay { cancelRequest() }
@@ -226,6 +218,7 @@ extension AppDelegate {
         // Convert through the actual native window and content view after AppKit rounding.
         view.imageViewport = view.convert(p.convertFromScreen(photoFrame ?? region), from:nil)
         view.needsDisplay = true
+        applyTitlebarClip()
         lastLayout += "\nOverlay content bounds: \(view.bounds). Photo viewport (view): \(view.imageViewport!). Panel visible: \(p.isVisible). Display scale: \(p.backingScaleFactor)."
         guard p.isVisible else { hide();report("Overlay panel did not become visible; see geometry diagnostics.");return nil }
         if screenshotAXDismissEnabled,let hints=lightroomMonitor.invocationPanelHints,let host=overlayController.overlayHost,

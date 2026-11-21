@@ -2,13 +2,8 @@
 
 ## 1.1.10 — post-migration backlog candidate
 
-- Order full-screen overlays directly below visible overlapping top chrome, excluding hidden panels and labels from correction triggers. Placement unchanged; native verification pending.
-
-- Correct floating-reference initialization so its higher window level survives floating-panel configuration; extend ordering diagnostics with the exact decision input and triggering companion IDs. Native verification pending.
-
-- Add opt-in delayed window-order recordings to investigate remaining title-bar and floating-reference stacking failures; no further placement or ordering change.
-
-- Follow-up to native testing: keep full-screen Lightroom companion windows above the overlay; give the floating reference a separate higher level and explicit Exposé participation. Native verification pending.
+- Clip the overlay’s overlapping top strip when the AX-identified macOS full-screen title bar is revealed. Photo size, position, zoom and placement remain unchanged. Remove unsuccessful title-bar relative-ordering workarounds; native verification pending.
+- Preserve the floating-reference initialization fix and delayed window-order diagnostics, now including title-bar identity and clip depth. User reports the float fix appears successful.
 - Move AX preview directly into Developer tools and use the requested three-bullet tooltip.
 
 - Screenshot with AX view detection dismisses on confirmed photo/view/pane/panel changes and Grid, matching Accessibility with updating off. Screenshot placement algorithms remain unchanged.

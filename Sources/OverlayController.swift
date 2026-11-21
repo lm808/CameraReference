@@ -23,6 +23,8 @@ final class OverlayController {
     var overlaySuspended=false
     var overlayResumeAfter:TimeInterval=0
     var overlayVisibilityStatus="Overlay not shown."
+    var revealedTitlebar:CGRect?
+    var titlebarClipStatus="not sampled"
     var overlayMoveCount=0
     var overlayOrderCount=0
     var overlayLevelChangeCount=0
