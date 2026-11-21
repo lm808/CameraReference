@@ -155,6 +155,7 @@ extension AppDelegate {
         }.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.intValue })
         let companionCovered=OverlayBehaviourPolicy.fullScreenCompanionCovered(fullScreen:fullScreen,order:order,overlay:panel.windowNumber,host:number,companions:lightroomWindows)
         if levelChanged || companionCovered || overlayNeedsOrdering(order:order,overlay:panel.windowNumber,lightroom:number,lightroomWindows:lightroomWindows) {
+            diagnostics.windowOrdering.event(WindowOrderRecorder.orderingDecision(rows:windows,overlay:panel.windowNumber,host:number,companions:lightroomWindows,companionCovered:companionCovered,levelChanged:levelChanged))
             panel.order(.above,relativeTo:number);overlayController.overlayOrderCount += 1
             diagnostics.windowOrdering.event("overlay order above host=\(number) companionCovered=\(companionCovered) level=\(panel.level.rawValue)")
             if companionCovered { for border in axTrialBorders where border.isVisible { border.order(.above,relativeTo:panel.windowNumber) } }
@@ -230,7 +231,9 @@ extension AppDelegate {
             let frame = NSRect(x: min(max(base.minX, screen.visibleFrame.minX), screen.visibleFrame.maxX-size.width),
                                y: min(max(base.midY-size.height/2, screen.visibleFrame.minY), screen.visibleFrame.maxY-size.height-28), width: size.width, height: size.height)
             let p = FloatingPanel(contentRect: frame, styleMask: [.titled, .closable, .resizable, .nonactivatingPanel, .fullSizeContentView], backing: .buffered, defer: false)
-            p.level = FloatingPanel.presentationLevel; p.isFloatingPanel = true; p.hidesOnDeactivate = false
+            p.isFloatingPanel = true; p.hidesOnDeactivate = false
+            // isFloatingPanel can reset the level; apply the final level afterward.
+            p.level = FloatingPanel.presentationLevel
             p.collectionBehavior = FloatingPanel.presentationCollection
             p.isReleasedWhenClosed = false; p.backgroundColor = .black; p.delegate = self
             p.appearance = NSAppearance(named: .darkAqua)

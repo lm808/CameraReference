@@ -49,3 +49,5 @@ Verbatim response: [1.1.10-TEST-RESPONSE.md](migration/1.1.10-TEST-RESPONSE.md).
 ### Window-order diagnostic follow-up
 
 User confirmed both title-bar occlusion in full screen and floating-window occlusion after overlay clicks persist. Later screenshots supersede the floating-window checkbox in the saved follow-up response. Added an opt-in delayed metadata trace, not another ordering fix. Await the two recordings in TESTING.md to establish actual levels, focus transitions, system-window ownership and order. Placement remains unchanged.
+
+2026-11-21 recordings: the windowed float and overlay both actually used level 3; clicks exchanged key status. Candidate now assigns the float's intended level 4 after setting isFloatingPanel. Full-screen recording confirmed the title bar revealing at y=30, height 32, alpha 1 while repeated companionCovered ordering attempts continued. The diagnostic now logs the exact pre-order on-screen level-zero input and intervening companion IDs; title-bar ordering remains unchanged pending that evidence. Native float verification remains required.

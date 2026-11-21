@@ -2,6 +2,8 @@
 
 ## 1.1.10 — post-migration backlog candidate
 
+- Correct floating-reference initialization so its higher window level survives floating-panel configuration; extend ordering diagnostics with the exact decision input and triggering companion IDs. Native verification pending.
+
 - Add opt-in delayed window-order recordings to investigate remaining title-bar and floating-reference stacking failures; no further placement or ordering change.
 
 - Follow-up to native testing: keep full-screen Lightroom companion windows above the overlay; give the floating reference a separate higher level and explicit Exposé participation. Native verification pending.
