@@ -106,3 +106,7 @@ Confirmed native full-screen hosts use normal-level relative ordering above Ligh
 ### Native-test presentation follow-up (1.1.10)
 
 Full-screen ordering now considers Lightroom companion windows between overlay and host, instead of ignoring them. The overlay is reordered immediately above the host, leaving companions (including the revealed title bar) above it; diagnostic borders follow the same relative order. Placement rectangles are unchanged. FloatingPanel owns a named presentation level immediately above ordinary floating windows and explicitly uses managed Mission Control participation. This removes same-level click-order dependence. Native title-bar and Exposé behaviour remain candidate checks.
+
+### Opt-in window-order recording
+
+`WindowOrderDiagnostics.swift` owns a bounded five-second-delay/fifteen-second trace, started only by the developer menu. It samples CG metadata and existing AppKit/cached AX state on the main run loop every 100 ms, observes own-window focus notifications, and accepts observational action markers from PresentationCoordinator. It never captures pixels, reads new AX geometry, activates an app or orders a window. Disk output is asynchronous and separate from latest.txt. When inactive, action messages are not evaluated and there is no recording timer. Reports retain all owners without window titles, and identify our overlay/floating/border/host IDs.

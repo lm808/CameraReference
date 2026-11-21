@@ -2,10 +2,12 @@ import AppKit
 import ApplicationServices
 
 /// Owns report state, diagnostic windows and preview lifetime. All mutation stays
-/// on the existing main-thread call sites; no new queue, timer or production read.
+/// on main-thread call sites. Opt-in window-order recording owns a bounded timer;
+/// routine report collection does not start it.
 /// Coordination adapters retain cross-component guards and post-display scheduling;
 /// the service owns report state, while readers/placement stay in their own modules.
 final class DiagnosticsService {
+    let windowOrdering=WindowOrderRecorder()
     var diagnosticsWindow:DiagnosticsController?
     var capturePreview:CapturePreviewController?
     var captureBaseline:CapturePreviewController?

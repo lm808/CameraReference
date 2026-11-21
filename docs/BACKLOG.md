@@ -45,3 +45,7 @@ AX placement, view inference, configurable corrections and assisted search are a
 ### 2026-11-21 test follow-up
 
 Verbatim response: [1.1.10-TEST-RESPONSE.md](migration/1.1.10-TEST-RESPONSE.md). AX preview geometry and screenshot fallback/isolation/late-result cases passed. User requested three tooltip bullets and promotion of AX preview to a direct developer tool. Menu bar ordering passed; revealed title bar remained behind the overlay. Floating invocation order passed, but click ordering and Exposé participation failed. Follow-up keeps full-screen Lightroom companion windows above the reference, elevates the floating reference one level above ordinary floating panels, and explicitly opts it into managed Mission Control behaviour. Only these cases need native retesting; earlier candidate descriptions above record the prior attempt.
+
+### Window-order diagnostic follow-up
+
+User confirmed both title-bar occlusion in full screen and floating-window occlusion after overlay clicks persist. Later screenshots supersede the floating-window checkbox in the saved follow-up response. Added an opt-in delayed metadata trace, not another ordering fix. Await the two recordings in TESTING.md to establish actual levels, focus transitions, system-window ownership and order. Placement remains unchanged.

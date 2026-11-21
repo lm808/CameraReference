@@ -72,3 +72,5 @@ See [troubleshooting](docs/TROUBLESHOOTING.md), [privacy](PRIVACY.md), [remainin
 Run `bash test.sh` for automated checks. `bash scripts/stage.sh` builds and refreshes the stable app in `release/`; use `--testing` in a separate candidate worktree for the purple testing app. Run only one copy at a time: settings and bridge are shared. `build/` is intermediate output. Packaging is explicit via `scripts/package.sh`; it does not rebuild. See the source-build guide before replacing a working app.
 
 Licensing remains undecided. No open-source licence has been selected.
+
+For window-stacking investigations, **Developer tools → Record window ordering (5-second delay)…** records fifteen seconds of window metadata after a five-second delay. Reports are saved separately under `~/Library/Application Support/CameraReference/Diagnostics/WindowOrdering/`; no screenshots or window titles are collected. See TESTING.md for the current reproduction steps.

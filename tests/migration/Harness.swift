@@ -30,6 +30,37 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
             prefs.removePersistentDomain(forName:MigrationEnvironment.suite)
             try? fm.removeItem(at:MigrationEnvironment.root)
         }
+        let rows:[[String:Any]]=[
+            [kCGWindowNumber as String:7,kCGWindowOwnerPID as String:9,kCGWindowOwnerName as String:"Fixture",kCGWindowLayer as String:4,kCGWindowAlpha as String:0,kCGWindowIsOnscreen as String:true,kCGWindowName as String:"PRIVATE TITLE",kCGWindowBounds as String:CGRect(x:-50,y:0,width:100,height:32).dictionaryRepresentation],
+            [kCGWindowNumber as String:3,kCGWindowOwnerName as String:"Second"]]
+        let traceRows=WindowOrderRecorder.rows(rows)
+        expect(traceRows.hasPrefix("rank=0 id=7") && traceRows.contains("rank=1 id=3"),"Trace preserves supplied stacking order, not sorted IDs")
+        expect(traceRows.contains("level=4") && traceRows.contains("alpha=0") && traceRows.contains("onScreen=unknown"),"Trace retains invisible/unknown metadata")
+        expect(!traceRows.contains("PRIVATE TITLE"),"Trace omits window titles")
+        let recorder=WindowOrderRecorder()
+        recorder.event("disabled event")
+        expect(recorder.entries.isEmpty,"Disabled recorder does no logging")
+        recorder.start(sample:{ fatalError("No live sample should run during this synchronous test") },completion:{ _ in fatalError("Stopped recorder must not save") })
+        recorder.event("test ordering action")
+        let count=recorder.entries.count
+        recorder.start(sample:{ "replacement" },completion:{ _ in })
+        expect(recorder.entries.count==count && recorder.active,"Repeated starts preserve the running trace")
+        recorder.stop();recorder.event("after stop")
+        expect(!recorder.active && recorder.entries.count==count,"Stop removes timer/observers and stops logging")
+        expect(recorder.entries.joined().contains("test ordering action"),"Ordering actions appear in the trace")
+        let timedRecorder=WindowOrderRecorder()
+        var samples=0,completed=""
+        timedRecorder.start(sample:{ samples += 1;return "synthetic window snapshot" },completion:{ completed=$0 })
+        let now=ProcessInfo.processInfo.systemUptime
+        timedRecorder.tick(now:now)
+        expect(samples==0,"Preparation delay takes no snapshots")
+        timedRecorder.tick(now:now+6)
+        expect(samples==1,"Sampling starts after preparation")
+        timedRecorder.tick(now:now+21)
+        expect(!timedRecorder.active && completed.contains("synthetic window snapshot"),"Deadline finishes and returns the trace")
+        timedRecorder.tick(now:now+22)
+        expect(samples==1,"Completed trace never samples again")
+        print("PASS diagnostics: ordered metadata, privacy, delay/deadline, duplicate start and stop")
         // Geometry adapters are read-free; test both target-pane and combined
         // floating requests with translated and negative display coordinates.
         for origin in [CGPoint.zero,CGPoint(x:-1080,y:-480),CGPoint(x:587,y:47)] {
@@ -306,6 +337,7 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         let developerMenu=menu.items.first { $0.title=="Developer tools" }!.submenu!
         expect(developerMenu.items.contains { $0.title=="Show AX placement preview" && $0.action == #selector(AppDelegate.toggleAXTrial) },"Accepted AX preview is directly accessible in Developer tools")
         expect(!developerMenu.items.contains { $0.title=="Experimental features" },"Empty experimental submenu is removed")
+        expect(developerMenu.items.contains { $0.action == #selector(AppDelegate.recordWindowOrdering) },"Delayed recorder is available in Developer tools")
         for screenshot in [false,true] { for automatic in [false,true] {
             prefs.set(screenshot,forKey:"useScreenshotDetection")
             prefs.set(automatic,forKey:app.regionKey("automaticBounds"))

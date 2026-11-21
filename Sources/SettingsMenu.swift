@@ -88,6 +88,7 @@ final class SettingsMenuController {
         let developer = submenu("Developer tools")
         developer.addItem(detail); developer.addItem(.separator())
         add("Diagnostics…", #selector(AppDelegate.showDiagnostics), to: developer)
+        add("Record window ordering (5-second delay)…", #selector(AppDelegate.recordWindowOrdering), to: developer)
         let copy=add("Save diagnostics after invocation", #selector(AppDelegate.toggleAutoDiagnostics), to: developer)
         copy.state = autoDiagnostics ? .on:.off
         developer.addItem(.separator())

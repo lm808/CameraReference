@@ -44,6 +44,7 @@ extension AppDelegate {
         overlayController.overlayResumeAfter=ProcessInfo.processInfo.systemUptime+0.4
         for border in axTrialBorders { border.orderOut(nil) }
         panel.orderOut(nil)
+        diagnostics.windowOrdering.event("overlay orderOut: suspend")
     }
     func reconcileOverlayHost() {
         guard let panel,let saved=overlayController.overlayHost else { return }
@@ -89,6 +90,7 @@ extension AppDelegate {
         }
     }
     func orderReferencePanelFront(_ overlay:NSPanel) {
+        diagnostics.windowOrdering.event("orderReferencePanelFront id=\(overlay.windowNumber) level=\(overlay.level.rawValue)")
         if let panel,overlay !== panel,panel.isVisible,overlayController.overlayAccessibility?.fullScreen == true {
             overlay.order(.above,relativeTo:panel.windowNumber)
             return
@@ -107,6 +109,7 @@ extension AppDelegate {
         // Lower immediately on app deactivation, even if host metadata is
         // temporarily unavailable. Never leave a globally floating overlay.
         if levelChanged { panel.level=desiredLevel;overlayController.overlayLevelChangeCount += 1
+            diagnostics.windowOrdering.event("overlay level set=\(desiredLevel.rawValue) actual=\(panel.level.rawValue)")
             for border in axTrialBorders { border.level=desiredLevel }
         }
         guard !lightroomMonitor.workspaceOverview,!overlayController.overlaySuspended else { return false }
@@ -153,12 +156,14 @@ extension AppDelegate {
         let companionCovered=OverlayBehaviourPolicy.fullScreenCompanionCovered(fullScreen:fullScreen,order:order,overlay:panel.windowNumber,host:number,companions:lightroomWindows)
         if levelChanged || companionCovered || overlayNeedsOrdering(order:order,overlay:panel.windowNumber,lightroom:number,lightroomWindows:lightroomWindows) {
             panel.order(.above,relativeTo:number);overlayController.overlayOrderCount += 1
+            diagnostics.windowOrdering.event("overlay order above host=\(number) companionCovered=\(companionCovered) level=\(panel.level.rawValue)")
             if companionCovered { for border in axTrialBorders where border.isVisible { border.order(.above,relativeTo:panel.windowNumber) } }
         }
         overlayController.overlayVisibilityStatus=overlayController.overlayDialogVisible ? "Overlay lowered for a Lightroom dialog.":(fullScreen == true ? "Overlay at normal level above full-screen Lightroom; system controls retain precedence.":"Overlay at normal level while another app is active.")
         return true
     }
     func hide() {
+        diagnostics.windowOrdering.event("overlay hide requested")
         clearAXTrialBorders()
         if destination == .overlay { cancelRequest() }
         (panel?.contentView as? ReferenceView)?.releaseContent()
@@ -260,6 +265,7 @@ extension AppDelegate {
         floatingController.floatingTitle=filename + " — " + origin.rawValue + " · Camera Reference"
         updateFloatingTitle()
         floating?.orderFrontRegardless()
+        diagnostics.windowOrdering.event("floating orderFrontRegardless level=\(floating?.level.rawValue.description ?? "none")")
         collectCompleteDiagnostics()
     }
     func windowWillClose(_ notification: Notification) {
