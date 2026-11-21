@@ -2,7 +2,7 @@ import AppKit
 import ApplicationServices
 
 // Standalone read-only investigation. No actions, attribute writes, capture or app activation.
-let version = "1.0.4"
+let version = "1.0.5"
 let relationships = ["AXSections", "AXChildren", "AXContents", "AXVisibleChildren", "AXChildrenInNavigationOrder"]
 let scalars: Set<String> = ["AXRole", "AXSubrole", "AXIdentifier", "AXHidden", "AXVisible", "AXEnabled", "AXFocused", "AXMain", "AXMinimized", "AXModal", "AXFullScreen"]
 struct Budget {
@@ -42,6 +42,17 @@ func toolbarState(_ title: String) -> String {
 func toolbarCandidate(_ title:String,_ shortcut:String,_ modifiers:Int?) -> Bool {
     title.lowercased().contains("toolbar") || (shortcut.lowercased()=="t" && modifiers==8)
 }
+// Public semantic links only; never read window titles or invoke controls.
+let titlebarControlLinks=["AXCloseButton","AXMinimizeButton","AXZoomButton","AXFullScreenButton","AXTitleUIElement","AXProxy"]
+let titlebarContainerLinks=["AXParent","AXWindow","AXTopLevelUIElement"]
+func titlebarWindowRows(_ rows:[[String:Any]],pid:pid_t)->String {
+    rows.enumerated().compactMap { index,row -> String? in
+        guard (row[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==pid else { return nil }
+        func value(_ key:CFString)->String { row[key as String].map { String(describing:$0) } ?? "unknown" }
+        let frame=(row[kCGWindowBounds as String] as? [String:Any]).flatMap { CGRect(dictionaryRepresentation:$0 as CFDictionary) }
+        return "CG index=\(index) id=\(value(kCGWindowNumber)) layer=\(value(kCGWindowLayer)) alpha=\(value(kCGWindowAlpha)) onScreen=\(value(kCGWindowIsOnscreen)) frame=\(frame.map { String(describing:$0) } ?? "unknown")"
+    }.joined(separator:"\n")
+}
 if CommandLine.arguments.contains("--self-test") {
     precondition(parseBudget(["1000","8","5"]) != nil)
     for args in [["0","8","5"],["1000","31","5"],["1000","8","nan"],["1000","8","31"]] { precondition(parseBudget(args) == nil) }
@@ -56,7 +67,14 @@ if CommandLine.arguments.contains("--self-test") {
     precondition(toolbarState("Show/Hide Toolbar").hasPrefix("unknown"))
     precondition(toolbarCandidate("Other language","t",8))
     precondition(!toolbarCandidate("Other action","t",0))
-    print("PASS: toolbar classification, explorer limits and safe report labels; no live AX calls.")
+    let probeRows:[[String:Any]]=[
+        [kCGWindowNumber as String:7,kCGWindowOwnerPID as String:42,kCGWindowName as String:"PRIVATE",kCGWindowAlpha as String:0],
+        [kCGWindowNumber as String:8,kCGWindowOwnerPID as String:43]]
+    let probeText=titlebarWindowRows(probeRows,pid:42)
+    precondition(probeText.contains("id=7") && probeText.contains("alpha=0"))
+    precondition(!probeText.contains("PRIVATE") && !probeText.contains("id=8"))
+    precondition(titlebarControlLinks.contains("AXCloseButton") && titlebarContainerLinks.contains("AXWindow"))
+    print("PASS: title-bar metadata privacy/owner filtering; toolbar classification, explorer limits and safe report labels; no live AX calls.")
     exit(0)
 }
 
@@ -178,6 +196,58 @@ final class Explorer {
         emit("Unexplored queued nodes: \(remaining.map{"N\($0)"}.joined(separator:","))\nDepth-limited nodes: \(depthStops)\nExplicitly pruned nodes: \(pruned)")
         emit("Host before=\(String(describing:before)); after=\(String(describing:after)); unchanged=\(before != nil && before==after). IDs are session-local, not stable selectors.")
     }
+    func delayedTitlebar(_ args:[String]) {
+        guard args.count<=1,let seconds=toolbarDelay(args.first ?? "10") else { emit("Use titlebar-after [SECONDS], 1–60 seconds.");return }
+        guard let pid,!nodes.isEmpty else { emit("Run refresh first.");return }
+        emit("Title-bar probe in \(seconds)s. Switch to Lightroom and hold the desired title-bar state. Keep it steady until delay + \(budget.seconds)s has elapsed. No actions or screenshots.")
+        fflush(stdout);Thread.sleep(forTimeInterval:seconds)
+        guard AXIsProcessTrusted(),NSWorkspace.shared.frontmostApplication?.processIdentifier==pid else {
+            emit("TITLEBAR skipped: Accessibility unavailable or Lightroom not frontmost. No visibility conclusion.");return
+        }
+        let start=ProcessInfo.processInfo.systemUptime
+        deadline=start+budget.seconds;partial=false
+        defer {
+            let timedOut=ProcessInfo.processInfo.systemUptime>=deadline
+            deadline=Double.greatestFiniteMagnitude
+            emit("TITLEBAR END elapsed=\(String(format:"%.2f",ProcessInfo.processInfo.systemUptime-start))s timeLimit=\(timedOut) partial=\(partial) frontmostAfter=\(NSWorkspace.shared.frontmostApplication?.processIdentifier==pid). Missing/partial evidence is inconclusive.")
+        }
+        emit("TITLEBAR \(Date()) pid=\(pid); semantic controls and ancestors; no geometry classification. IDs remain session-local.")
+        func cg(_ phase:String) {
+            emit("CG \(phase): optionAll API order (not asserted stacking order)")
+            if let rows=CGWindowListCopyWindowInfo([.optionAll,.excludeDesktopElements],kCGNullWindowID) as? [[String:Any]] {
+                emit(titlebarWindowRows(rows,pid:pid))
+            } else { emit("CG unavailable") }
+        }
+        cg("before")
+        let root=AXUIElementCreateApplication(pid)
+        guard let rootID=add(root,"titlebar.application") else { partial=true;return }
+        let main=related(rootID,"AXMainWindow")
+        let windows=related(rootID,"AXWindows")
+        var queue=(main+windows).map { ($0,0) },seen=Set<Int>(),cursor=0
+        while cursor<queue.count,seen.count<budget.limit,ProcessInfo.processInfo.systemUptime<deadline {
+            let (id,depth)=queue[cursor];cursor += 1
+            guard seen.insert(id).inserted else { continue }
+            emit(summary(id))
+            var names:CFArray?
+            let status=AXUIElementCopyAttributeNames(nodes[id],&names)
+            emit("N\(id) attributes status=\(status.rawValue): \((names as? [String] ?? []).sorted().joined(separator:", "))")
+            for key in scalars.sorted() {
+                let (value,result)=read(nodes[id],key)
+                emit("N\(id).\(key)=\(value.map { String(describing:$0) } ?? "unavailable") status=\(result.rawValue)")
+            }
+            guard depth<min(budget.depth,4) else { partial=true;continue }
+            let role=read(nodes[id],"AXRole").0 as? String
+            // Do not walk unrelated sidebar children or the application's full tree.
+            let keys=(role=="AXWindow" ? titlebarControlLinks:[]) + titlebarContainerLinks
+            for key in keys {
+                for child in related(id,key) where child != rootID && !seen.contains(child) { queue.append((child,depth+1)) }
+            }
+        }
+        if cursor<queue.count { partial=true }
+        emit("TITLEBAR examined=\(seen.count) remaining=\(queue.count-cursor); controls may remain attached to the main AX window even when drawn in separate CG chrome.")
+        cg("after")
+    }
+
     func delayedToolbar(_ args:[String]) {
         guard let seconds=toolbarDelay(args.first ?? "10") else { emit("Use toolbar-after SECONDS [MENU-TITLE], with 1–60 seconds.");return }
         guard let pid,!nodes.isEmpty else { emit("Run refresh first.");return }
@@ -286,6 +356,7 @@ final class Explorer {
 refresh                 Connect/reconnect; list Lightroom windows; reset IDs/skips
 windows                 Refresh AXWindows list (same session IDs)
 toolbar [MENU-TITLE]    Read toolbar command in View menu, without opening it
+titlebar-after [SEC]     Delayed semantic title-bar controls/parents and CG metadata
 toolbar-after [SEC] [MENU-TITLE]  Wait (default 10s), then read only if Lightroom is active
 node N                  Role, frame, safe attributes, parent and relationships
 children N              List direct children
@@ -306,6 +377,7 @@ No actions or attribute writes. Only toolbar command reads menu titles; other te
                 emit("Accessibility granted: \(AXIsProcessTrustedWithOptions(options)). If unchanged, check System Settings for this executable or Terminal; restart explorer if necessary.")
             case "refresh": refresh()
             case "toolbar": toolbar(parts.count>1 ? parts.dropFirst().joined(separator:" "):"View")
+            case "titlebar-after": delayedTitlebar(Array(parts.dropFirst()))
             case "toolbar-after": delayedToolbar(Array(parts.dropFirst()))
             case "limits":
                 if let next=parseBudget(Array(parts.dropFirst())) { budget=next;emit("Limits: \(next.limit) elements, depth \(next.depth), \(next.seconds)s") }

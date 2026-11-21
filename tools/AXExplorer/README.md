@@ -1,10 +1,39 @@
-# AX Explorer 1.0.4
+# AX Explorer 1.0.5
 
 Standalone, read-only Lightroom Accessibility investigation. It does not link CameraReference app code, capture the screen, activate Lightroom, change settings or perform AX actions. The app is not rebuilt. No Screen Recording permission is needed.
 
 ## Start
 
 Double-click the staged `build/AXExplorer/Explore.command` (opens Terminal), or run `build/AXExplorer/AXExplorer` from Terminal. Type `permission` if access has not been granted, follow System Settings, then `refresh`. macOS may attribute permission to Terminal or the executable. Do not remove existing CameraReference permissions. If access remains unavailable, restart the explorer. No automatic permission prompt on startup.
+
+## Full-screen title-bar investigation
+
+`titlebar-after 10` waits ten seconds, verifies Lightroom is frontmost, then reads fresh main/window references, named close/minimize/zoom/full-screen/title/proxy elements and their parent/window/top-level links. It records roles, subroles, identifiers, available attribute names, frames and errors, plus Lightroom-only CG metadata before/after. It does not infer a title bar from shape, open menus, press controls, request Screen Recording, or read titles/control values. CG IDs and AX node IDs are distinct; matching is deliberately left for analysis.
+
+Run the testing app normally if desired, but turn its overlay and float **off** for this probe so they cannot obscure the title bar. Set Lightroom to macOS full screen, with its top panel hidden. Then in this explorer:
+
+```text
+refresh
+clear
+limits 200 4 8
+note Full screen title bar hidden
+titlebar-after 10
+```
+
+Return to Lightroom within ten seconds. Keep the pointer away from the screen top and wait **20 seconds from issuing the command** before returning to Terminal. Then:
+
+```text
+note Full screen title bar revealed
+titlebar-after 10
+```
+
+Return to Lightroom, move to the screen top and keep the native title bar revealed for the full 20 seconds. Do not click its traffic-light buttons or open a menu. Return to Terminal and save both readings:
+
+```text
+save fullscreen-titlebar-controls-pair
+```
+
+If either read reports skipped, partial, a time/element limit, or focus changed, retain the report so we can assess it; do not treat missing evidence as absence. This is a bounded targeted traversal, not a full application scan. Depth is capped at four; `limits` controls node/time budgets. The main app, its build/version and placement are untouched.
 
 ## Delayed toolbar reading
 
