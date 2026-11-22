@@ -28,10 +28,14 @@ extension AppDelegate {
             recorder.help=help;recorder.setAccessibilityLabel(name+" shortcut");recorder.font = .systemFont(ofSize:14)
             return [NSTextField(labelWithString:name),recorder,NSButton(title:"Default",target:recorder,action:#selector(ShortcutRecorder.useDefault)),NSButton(title:"Clear",target:recorder,action:#selector(ShortcutRecorder.clearShortcut))]
         }
-        let grid=NSGridView(views:rows);grid.columnSpacing=12;grid.rowSpacing=8;grid.yPlacement = .center
+        // Reorder presentation only; recording/save order and hotkey IDs stay fixed.
+        let loupeRow=2+ViewShortcut.defaults.firstIndex(where:{$0.layout == .full})!
+        let displayOrder=[0,1,loupeRow]+rows.indices.filter{$0>=2 && $0 != loupeRow}
+        let grid=NSGridView(views:displayOrder.map{rows[$0]});grid.columnSpacing=12;grid.rowSpacing=8;grid.yPlacement = .center
+        grid.row(at:1).bottomPadding=12
         grid.column(at:0).width=175;grid.column(at:1).width=145
         let stack=NSStackView(views:[grid,help]);stack.orientation = .vertical;stack.alignment = .leading;stack.spacing=12
-        stack.frame=CGRect(x:0,y:0,width:540,height:330);help.widthAnchor.constraint(equalToConstant:540).isActive=true
+        stack.frame=CGRect(x:0,y:0,width:540,height:342);help.widthAnchor.constraint(equalToConstant:540).isActive=true
         let alert=NSAlert();alert.icon=NSApp.applicationIconImage;alert.messageText="Keyboard shortcuts";alert.accessoryView=stack
         alert.addButton(withTitle:"Save");alert.addButton(withTitle:"Cancel")
         NSApp.activate(ignoringOtherApps:true)

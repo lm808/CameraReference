@@ -369,24 +369,25 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         app.updateLayoutMenu()
         expect(menu.items.first?.isEnabled == false,"Version heading remains disabled")
         let root=app.menus.layoutRoot!
-        func visibleChoices()->[String] { root.submenu?.items.filter { !$0.isHidden }.map(\.title) ?? [] }
-        expect(root.title=="◧  Reference View (Left)"+app.viewShortcutSuffix(.left) && root.state == .off,"Root shows pane without checkmark")
+        func menuText(_ item:NSMenuItem)->String { item.title.replacingOccurrences(of:"\t",with:"   ") }
+        func visibleChoices()->[String] { root.submenu?.items.filter { !$0.isHidden }.map(menuText) ?? [] }
+        expect(menuText(root)=="◧  Reference View (Left)"+app.viewShortcutSuffix(.left) && root.state == .off,"Root shows pane without checkmark")
         expect(root.image === app.layoutItems[.left]!.image,"Root uses selected pane icon")
         expect(visibleChoices()==["◧  Left"+app.viewShortcutSuffix(.left),"◨  Right"+app.viewShortcutSuffix(.right)],"Auto side-by-side offers two panes")
         expect(app.layoutItems[.left]!.state == .on,"Detected pane checked in submenu")
         for mode in OverlayLayout.allCases {
             app.lightroomMonitor.detectedLayout=mode;app.updateLayoutMenu()
             expect(root.state == .off && root.image === app.layoutItems[mode]!.image,"Each root icon follows selection without a tick")
-            if mode == .full { expect(root.title=="▣  Loupe View"+app.viewShortcutSuffix(.full) && root.submenu==nil && root.action==nil && root.isEnabled && !menu.autoenablesItems,"Automatic Loupe is normal but has no submenu/action") }
+            if mode == .full { expect(menuText(root)=="▣  Loupe View"+app.viewShortcutSuffix(.full) && root.submenu==nil && root.action==nil && root.isEnabled && !menu.autoenablesItems,"Automatic Loupe is normal but has no submenu/action") }
             else { expect(visibleChoices().count==2,"Automatic split has two choices") }
         }
         app.lightroomMonitor.detectedLayoutModule="library";app.updateLayoutMenu()
-        expect(root.title=="View detected on next invocation" && root.submenu==nil && root.image==nil,"Unknown view does not imply confirmed selection")
+        expect(menuText(root)=="View detected on next invocation" && root.submenu==nil && root.image==nil,"Unknown view does not imply confirmed selection")
         prefs.set(true,forKey:"useScreenshotDetection");prefs.set(false,forKey:"experimentalAutomaticView")
         let expectedTitles=["▣  Loupe View","◧  Reference View (Left)","◨  Reference View (Right)","⬒  Reference View (Top)","⬓  Reference View (Bottom)"]
         for mode in OverlayLayout.allCases {
             app.overlayLayout=mode; prefs.set(true,forKey:app.regionKey("automaticBounds"));app.updateLayoutMenu()
-            expect(visibleChoices()==zip(expectedTitles,OverlayLayout.allCases).map { $0+app.viewShortcutSuffix($1) } && root.title==app.layoutItems[mode]!.title,"Manual screenshot selection always offers all five")
+            expect(visibleChoices()==zip(expectedTitles,OverlayLayout.allCases).map { $0+app.viewShortcutSuffix($1) } && menuText(root)==menuText(app.layoutItems[mode]!),"Manual screenshot selection always offers all five")
             expect(root.state == .off && app.layoutItems[mode]!.state == .on,"Only child selection checked")
         }
         prefs.set(false,forKey:app.regionKey("automaticBounds"));app.updateLayoutMenu()

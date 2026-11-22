@@ -152,7 +152,6 @@ final class SettingsMenuController {
         let mode=overlayLayout
         let unknown=automaticViewEnabled && inferred == nil
         root.title=unknown ? "View detected on next invocation":layoutSymbol(mode)+"  "+layoutTitle(mode)+owner.viewShortcutSuffix(mode)
-        styleShortcut(root,suffix:unknown ? "":owner.viewShortcutSuffix(mode))
         root.image=unknown ? nil:layoutItems[mode]?.image
         let hasChoices = !unknown && (!automaticViewEnabled || mode != .full)
         if hasChoices {
@@ -163,10 +162,11 @@ final class SettingsMenuController {
         root.isEnabled = !unknown
         for (choice,item) in layoutItems {
             item.title=layoutSymbol(choice)+"  "+(automaticViewEnabled ? paneTitle(choice):layoutTitle(choice))+owner.viewShortcutSuffix(choice)
-            styleShortcut(item,suffix:owner.viewShortcutSuffix(choice))
             item.isHidden=automaticViewEnabled && (unknown || choice.group != mode.group)
             item.state=choice==mode ? .on:.off
         }
+        styleShortcuts(in:root.menu)
+        styleShortcuts(in:layoutChoices)
     }
     func updateDetectionMenu() {
         let automatic=CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
@@ -187,20 +187,37 @@ final class SettingsMenuController {
     }
     func updateToggleTitle() {
         floatingMenuItem?.title=(floating?.isVisible == true ? "Hide floating display" : "Show floating display") + "   " + shortcutText(key:floatingKeyLabel,modifiers:floatingShortcut.1)
-        styleShortcut(floatingMenuItem,suffix:shortcutText(key:floatingKeyLabel,modifiers:floatingShortcut.1))
         let active=panel != nil || destination == .overlay || viewProbeID != nil || detectionCompletion != nil
         toggleItem?.title=(active ? "Hide overlay" : "Show overlay") + "   " + shortcutText(key:keyLabel,modifiers:currentShortcut.1)
-        styleShortcut(toggleItem,suffix:shortcutText(key:keyLabel,modifiers:currentShortcut.1))
+        styleShortcuts(in:toggleItem?.menu)
     }
-    // Presentation only: keep plain titles and native actions/bindings intact.
-    private func styleShortcut(_ item:NSMenuItem?,suffix:String) {
-        guard let item else { return }
-        guard !suffix.isEmpty,item.title.hasSuffix(suffix) else { item.attributedTitle=nil;return }
-        let title=NSMutableAttributedString(string:item.title)
-        let length=(suffix as NSString).length
-        title.addAttribute(.foregroundColor,value:NSColor.secondaryLabelColor,
-                           range:NSRange(location:title.length-length,length:length))
-        item.attributedTitle=title
+    // Presentation only: attributed tabs align hints without registering native
+    // key equivalents or changing the existing Carbon shortcut/action paths.
+    private func styleShortcuts(in menu:NSMenu?) {
+        guard let menu else { return }
+        let known=[layoutRoot,floatingMenuItem,toggleItem].compactMap{$0}+Array(layoutItems.values)
+        let font=NSFont.menuFont(ofSize:0)
+        func parts(_ item:NSMenuItem)->(String,String) {
+            guard known.contains(where:{$0 === item}),
+                  let separator=item.title.range(of:"\t",options:.backwards) ?? item.title.range(of:"   ",options:.backwards) else { return (item.title,"") }
+            return (String(item.title[..<separator.lowerBound]),String(item.title[separator.upperBound...]))
+        }
+        func width(_ text:String)->CGFloat { (text as NSString).size(withAttributes:[.font:font]).width }
+        let visible=menu.items.filter{!$0.isHidden && !$0.isSeparatorItem}
+        let labelWidth=visible.map{width(parts($0).0)}.max() ?? 0
+        let hintWidth=visible.map{width(parts($0).1)}.max() ?? 0
+        let rightEdge=ceil(labelWidth+24+hintWidth)
+        let paragraph=NSMutableParagraphStyle()
+        paragraph.tabStops=[NSTextTab(textAlignment:.right,location:rightEdge,options:[:])]
+        for item in menu.items where known.contains(where:{$0 === item}) {
+            let (label,hint)=parts(item)
+            guard !hint.isEmpty else { item.attributedTitle=nil;continue }
+            let title=NSMutableAttributedString(string:label+"\t"+hint,attributes:[.font:font,.paragraphStyle:paragraph])
+            let length=(hint as NSString).length
+            title.addAttribute(.foregroundColor,value:NSColor.disabledControlTextColor,
+                               range:NSRange(location:title.length-length,length:length))
+            item.attributedTitle=title
+        }
     }
     func validateMenuItem(_ item:NSMenuItem) -> Bool {
         if item === screenshotReuseItem { return screenshotDetectionEnabled }
