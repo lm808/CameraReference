@@ -70,13 +70,13 @@ Original split outer-bound changes previously regressed placement into UI or tin
 |---|---|---|
 | Host tracking | AX logical frame cross-checks host geometry | Off-screen/multi-display and lifecycle cases; cannot repair capture pixels |
 | AX placement | Surrounding panels, opacity, toolbar menu and calibrated corrections | Scales, sessions, languages and broader layouts |
-| View inference | Label geometry, independent of screenshot assistance; always on for AX | Recreated/missing labels and native Grid menu marks |
-| Guided pixel search | Separate AXAssisted path narrows ranges using raw structure; pixels choose edges | Compare pure/assisted results on ambiguous photos and panels |
-| Status text/dividers | Assisted-only interruption tolerance and midpoint fallback after outer validation | Library Embedded Preview cases, hidden toolbar/right panel |
-| Background checks | AX signatures plus retained pixel checks, contribution/cost counters | Enough native measurement to decide whether screenshots can be reduced |
+| View inference | Label geometry, independently optional for Screenshot; always on for AX | Recreated/missing labels and native Grid menu marks |
+| Screenshot fallback | Independent pixel outer detection with validated wider side retry | Small-window and hidden-panel native acceptance |
+| Split placement | 50/50 within validated pixel outer bounds; no divider scan | Library Embedded Preview/extra bottom space; both orientations |
+| Background checks | Existing pixel checks retained; AX panel signature used separately by optional view detection | Sustained cost measurements; no screenshot reduction claimed |
 | Diagnostics | Automatic bounded complete reports after invocation when saving enabled | Timing/provenance consistency through rapid changes |
 
-No calibrated AX offsets are applied to screenshot results. The original screenshot path stays independently selectable and protected. Screenshot assistance still needs Screen Recording permission. Current AX placement needs no automatic pixel capture; explicit previews/snapping remain separate.
+No calibrated AX offsets are applied to screenshot results. The single screenshot fallback needs Screen Recording permission and does not use AX placement hints. Assisted placement was retired in candidate 1.1.11; its findings remain in HISTORICAL-NOTES.md. Current AX placement needs no automatic pixel capture; explicit previews/snapping remain separate.
 
 ## Investigation files and retention
 

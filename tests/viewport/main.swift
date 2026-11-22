@@ -26,8 +26,8 @@ if CommandLine.arguments.count>1 {
         expect(abs(r.minY/CGFloat(raster.height)-0.086)<0.006 && abs(r.maxY/CGFloat(raster.height)-0.868)<0.006,"Screenshot vertical bounds wrong: \(r)")
     }
 }
-func fixture(bg:[UInt8],hidden:Bool=false,split:Int=0,narrow:Bool=false)->EdgeRaster {
-    let w=900,h=650,l=hidden ? 8:(narrow ? 320:120),r=hidden ? 892:(narrow ? 580:780),t=60,b=580
+func fixture(bg:[UInt8],hidden:Bool=false,split:Int=0,narrow:Bool=false,panelWidth:Int?=nil)->EdgeRaster {
+    let w=900,h=650,l=hidden ? 8:(panelWidth ?? (narrow ? 320:120)),r=hidden ? 892:(900-(panelWidth ?? (narrow ? 320:120))),t=60,b=580
     var rgba=[UInt8](repeating:255,count:w*h*4)
     for y in 0..<h { for x in 0..<w {
         var c:[UInt8]=[45,45,45]
@@ -184,13 +184,13 @@ for bg:[UInt8] in [[0,0,0],[70,70,70],[255,255,255],[40,80,110]] {
 print("PASS: narrow centre viewport with wide side panels across black, grey, white and coloured surrounds")
 
 let limited=detectViewport(in:fixture(bg:[0,0,0],narrow:true),singlePhoto:true,sideSearchPercent:30)
-expect(limited.bounds == nil && limited.workingAreaTooNarrow,"Interval-limited viewport must fail gracefully, not use wider bounds")
-expect(limited.summary.contains("Working area too narrow for automatic placement—enlarge it or calibrate manually."),"Narrow message changed")
+expect(limited.bounds == CGRect(x:320,y:60,width:260,height:520) && !limited.workingAreaTooNarrow,"Validated wider search must rescue an interval-limited viewport")
+expect(limited.summary.contains("Expanded side search to 50%"),"Narrow message changed")
 expect(!detectViewport(in:blank,singlePhoto:true,sideSearchPercent:30).workingAreaTooNarrow,"Missing borders incorrectly labelled narrow")
 var intervalCache=ViewportCache()
 expect(intervalCache.inspect(fixture(bg:[0,0,0],narrow:true),key:"same",singlePhoto:true,sideSearchPercent:45).0.bounds != nil,"Wide interval failed")
 let changedInterval=intervalCache.inspect(fixture(bg:[0,0,0],narrow:true),key:"same",singlePhoto:true,sideSearchPercent:30)
-expect(!changedInterval.1 && changedInterval.0.bounds == nil && changedInterval.0.workingAreaTooNarrow,"Interval edit reused cached placement")
+expect(!changedInterval.1 && changedInterval.0.bounds == limited.bounds,"Interval edit reused cached placement")
 expect(try! DetectionConfig.parse("sideSearchPercent = 30").sideSearchPercent == 30,"Interval config not parsed")
 for invalid in ["sideSearchPercent = 4", "sideSearchPercent = 51", "sideSearchPercent = nan", "sideSearchPercent = 30\nsideSearchPercent = 45"] {
     do { _=try DetectionConfig.parse(invalid);fatalError("Invalid interval accepted") } catch {}
@@ -207,152 +207,51 @@ expect(try! String(contentsOf:oldConfigURL,encoding:.utf8) == once,"Interval app
 try! "sideSearchPercent = 30\nfitInsetPoints = 22\n".write(to:oldConfigURL,atomically:true,encoding:.utf8)
 expect(try! oldStore.reload().sideSearchPercent == 30,"Edited interval not reloaded")
 expect(DetectionConfig().key != (try! DetectionConfig.parse("sideSearchPercent = 45")).key,"Manual layout key ignores interval")
-print("PASS: configurable side search, narrow-only failure message, cache invalidation, config migration and reload")
+print("PASS: configurable side search, validated wider retry, cache invalidation, config migration and reload")
 
-for mode:OverlayLayout in [.left,.right,.upper,.lower] {
- let raster=fixture(bg:[0,0,0],split:mode.group)
- let result=detectSplitViewport(in:raster,layout:mode)
- expect(result.bounds != nil,"Explicit pane missing: \(mode) \(result.summary)")
- let pane=result.bounds!
- expect(mode.group==1 ? pane.width<340 && pane.height>500:pane.height<270 && pane.width>650,"Wrong pane dimensions")
- if mode == .right { expect(pane.minX>440,"Right pane selected left") }
- if mode == .lower { expect(pane.minY>310,"Lower pane selected upper") }
- let wrong=detectSplitViewport(in:fixture(bg:[0,0,0],split:mode.group==1 ? 2:1),layout:mode)
- expect(wrong.bounds==nil,"Wrong divider orientation accepted")
- let single=detectSplitViewport(in:fixture(bg:[0,0,0]),layout:mode)
- expect(single.bounds==nil,"Single-photo rectangle accepted as split without calibration")
- let seeded=detectSplitViewport(in:raster,layout:mode,seed:pane)
- expect(seeded.bounds != nil,"Calibrated pane validation failed")
-}
-print("PASS: explicit split raster path selects all four panes; wrong orientation/single view fall back; calibrated seeds validate")
 
-// Selected orientation ignores unrelated perpendicular UI lines, retaining evidence on its own axis.
-var crossed=fixture(bg:[0,0,0],split:1).rgba
-for y in 319...321 { for x in 120..<780 { for c in 0..<3 { crossed[(y*900+x)*4+c]=90 } } }
-let crossRaster=EdgeRaster(width:900,height:650,rgba:crossed)
-expect(detectSplitViewport(in:crossRaster,layout:.left).bounds != nil,"Left/right choice should restrict divider search to vertical")
-expect(detectSplitViewport(in:crossRaster,layout:.upper).bounds != nil,"Upper/lower choice should restrict divider search to horizontal")
-print("PASS: selected split orientation constrains divider search; Full path remains independent")
-
-// Portrait photos leave a narrow central gap. Photo edges must not become
-// either the combined viewport or the internal divider.
-func portraitPair(orientation:Int)->EdgeRaster {
-    let width=1600,height=1000
-    var bytes=[UInt8](repeating:255,count:width*height*4)
-    for y in 0..<height { for x in 0..<width {
-        var color:[UInt8]=[45,45,45]
-        if x>=200 && x<1400 && y>=80 && y<900 { color=[0,0,0] }
-        if x==199 || x==1400 || y==79 || y==900 { color=[90,90,90] }
-        let photo = orientation==1
-          ? ((x>=300 && x<700 || x>=900 && x<1300) && y>=96 && y<884)
-          : (x>=216 && x<1384 && (y>=110 && y<460 || y>=520 && y<870))
-        if photo { color=[UInt8(80+(x/11)%70),UInt8(80+(y/13)%70),110] }
-        if orientation==1 && abs(x-800)<=1 && y>=80 && y<900 { color=[60,60,60] }
-        if orientation==2 && abs(y-490)<=1 && x>=200 && x<1400 { color=[60,60,60] }
-        for c in 0..<3 { bytes[(y*width+x)*4+c]=color[c] }
-    } }
-    return EdgeRaster(width:width,height:height,rgba:bytes)
-}
-func paneFromKnownViewport(_ raster:EdgeRaster,_ mode:OverlayLayout,_ viewport:CGRect,_ inset:CGFloat=18)->CGRect? {
-    let scan=scanInsetDivider(in:raster,viewport:viewport,layout:mode,insetPixels:CGSize(width:inset,height:inset))
-    return mode.pane(in:viewport,vertical:mode.group==1 ? scan.position:nil,horizontal:mode.group==2 ? scan.position:nil)
+// Split orientation comes from the selected view, never from pixel divider traces.
+for bg:[UInt8] in [[0,0,0],[70,70,70],[255,255,255]] {
+ for hidden in [false,true] { for divider in [0,1,2] {
+  let raster=fixture(bg:bg,hidden:hidden,split:divider)
+  let outer=detectViewport(in:raster,singlePhoto:true).bounds!
+  for mode:OverlayLayout in [.left,.right,.upper,.lower] {
+   let found=detectSplitViewport(in:raster,layout:mode)
+   let expected=mode.pane(in:outer,vertical:outer.midX,horizontal:outer.midY)
+   expect(found.bounds==expected,"50/50 split changed with divider pixels: \(found.summary)")
+  }
+ } }
 }
 for mode:OverlayLayout in [.left,.right,.upper,.lower] {
-    let raster=portraitPair(orientation:mode.group)
-    let full=CGRect(x:200,y:80,width:1200,height:820)
-    let found=paneFromKnownViewport(raster,mode,full)
-    expect(found != nil,"Known viewport margin scan failed")
-    let expected=mode.pane(in:full,vertical:800,horizontal:490)!
-    expect(abs(found!.minX-expected.minX)<3 && abs(found!.minY-expected.minY)<3 && abs(found!.width-expected.width)<3 && abs(found!.height-expected.height)<3,"Photo edge/gap chosen by margin scan")
-    // This deliberately ambiguous artificial scene is NOT used to change Full.
-    let detectedFull=detectViewport(in:raster,singlePhoto:true)
-    let split=detectSplitViewport(in:raster,layout:mode)
-    if let outer=detectedFull.bounds,let pane=split.bounds { expect(outer.contains(pane),"Split bypassed Full bounds") }
+ expect(detectSplitViewport(in:blank,layout:mode).bounds==nil,"Never split an unvalidated outer area")
 }
-print("PASS: margin scanner selects all four panes from known combined viewport; split never replaces Full bounds")
-
-let staleGap=CGRect(x:700,y:80,width:100,height:820)
-let corrected=detectSplitViewport(in:fixture(bg:[0,0,0],split:1),layout:.left,seed:staleGap)
-expect(corrected.bounds != nil && corrected.bounds!.width>320 && abs(corrected.bounds!.minX-120)<3,"Stale gap calibration hint reused as a pane")
-print("PASS: stale pane hint cannot override Full bounds")
+// Reproduces the default 40% zone failing on a 100px-wide working area.
+let tiny=fixture(bg:[0,0,0],panelWidth:400)
+let tinyOuter=detectViewport(in:tiny,singlePhoto:true,sideSearchPercent:40)
+expect(tinyOuter.bounds==CGRect(x:400,y:60,width:100,height:520),"Default-zone rescue failed: \(tinyOuter.summary)")
+expect(tinyOuter.summary.contains("Expanded side search"),"Fixture did not exercise wider retry")
 for mode:OverlayLayout in [.left,.right,.upper,.lower] {
-    let full=portraitPair(orientation:mode.group),w=1280,h=800
-    var bytes=[UInt8](repeating:0,count:w*h*4)
-    for y in 0..<h { for x in 0..<w { for c in 0..<4 { bytes[(y*w+x)*4+c]=full.rgba[((y*full.height/h)*full.width+x*full.width/w)*4+c] } } }
-    let low=paneFromKnownViewport(EdgeRaster(width:w,height:h,rgba:bytes),mode,CGRect(x:160,y:64,width:960,height:656),14.4)
-    let high=paneFromKnownViewport(full,mode,CGRect(x:200,y:80,width:1200,height:820))
-    expect(low != nil && high != nil,"Resolution-dependent split rejection")
-    let r=low!,normalized=CGRect(x:r.minX/0.8,y:r.minY/0.8,width:r.width/0.8,height:r.height/0.8)
-    expect(!panelBoundsChanged(previous:high,current:normalized,tolerance:4),"Background resolution invalidates stable split")
+ expect(detectSplitViewport(in:tiny,layout:mode,sideSearchPercent:40).bounds == mode.pane(in:tinyOuter.bounds!,vertical:450,horizontal:320),"Narrow split must use validated full bounds")
 }
-print("PASS: split placement agrees across normal and 1280px background resolution")
+// Fractional midpoints retain both halves with no gap or doubled pixel.
+let odd=CGRect(x:11,y:27,width:661,height:519)
+let l=OverlayLayout.left.pane(in:odd,vertical:odd.midX,horizontal:nil)!
+let r=OverlayLayout.right.pane(in:odd,vertical:odd.midX,horizontal:nil)!
+expect(l.maxX==r.minX && l.union(r)==odd && l.width==r.width,"Odd-sized split lost coverage")
+let u=OverlayLayout.upper.pane(in:odd,vertical:nil,horizontal:odd.midY)!
+let d=OverlayLayout.lower.pane(in:odd,vertical:nil,horizontal:odd.midY)!
+expect(u.maxY==d.minY && u.union(d)==odd && u.height==d.height,"Odd-sized stacked split lost coverage")
+print("PASS: pixel-only 50/50 panes, absent/wrong divider independence, hidden panels, default-zone narrow rescue, invalid-outer rejection and fractional coverage")
 
-for mode:OverlayLayout in [.left,.upper] {
-    let base=fixture(bg:[0,0,0],split:mode.group)
-    var pixels=base.rgba
-    // Divider stops six pixels short of the selected margin.
-    for y in 60..<580 { for x in 120..<780 {
-        let endpoint=mode == .left ? (abs(x-450)<2 && y>=574):(abs(y-320)<2 && x<126)
-        // Distracting text-like marks in the UNUSED top/right margins.
-        let label=mode == .left ? (x>=390 && x<397 && y<75):(y>=270 && y<277 && x>765)
-        if endpoint || label { for c in 0..<3 { pixels[(y*900+x)*4+c]=endpoint ? 0:120 } }
-    } }
-    let result=detectSplitViewport(in:EdgeRaster(width:900,height:650,rgba:pixels),layout:mode)
-    expect(result.bounds != nil,"Endpoint gap or unused-margin label blocked scan")
-}
-let emptyInset=scanInsetDivider(in:fixture(bg:[0,0,0],split:1),viewport:CGRect(x:120,y:60,width:660,height:520),layout:.left,insetPixels:.zero)
-expect(emptyInset.position==nil,"Zero inset must offer calibration")
-print("PASS: short divider endpoint gaps tolerated; top/right labels ignored; zero inset rejected")
-
-// AX-assisted search: raw panels guide intervals, pixels remain authoritative.
-let hintHost=CGRect(x:0,y:0,width:900,height:650)
-let rawPanels=[CGRect(x:0,y:60,width:137,height:520),CGRect(x:763,y:60,width:137,height:520),CGRect(x:0,y:20,width:900,height:51),CGRect(x:0,y:620,width:900,height:30)]
-let hints=AXScreenHints(host:hintHost,visibleFrames:rawPanels,toolbar:"shown")!
-for hidden in [false,true] {
-    let h=hidden ? AXScreenHints(host:hintHost,visibleFrames:[],toolbar:"unknown")!:hints
-    for mode:OverlayLayout in [.full,.left,.right,.upper,.lower] {
-        let raster=fixture(bg:[0,0,0],hidden:hidden,split:mode.group)
-        let assisted=detectAXAssistedViewport(in:raster,hints:h,layout:mode,settings:DetectionConfig())
-        let original=mode == .full ? detectViewport(in:raster,singlePhoto:true):detectSplitViewport(in:raster,layout:mode)
-        expect(assisted.bounds==original.bounds,"Guided/pure mismatch \(mode): \(assisted.summary)")
-        expect(!assisted.summary.contains("fallback"),"Expected guided success: \(assisted.summary)")
-    }
-}
-let wrongHints=AXScreenHints(host:hintHost,visibleFrames:[CGRect(x:0,y:60,width:330,height:520),CGRect(x:570,y:60,width:330,height:520)],toolbar:"shown")!
-let fallback=detectAXAssistedViewport(in:fixture(bg:[0,0,0]),hints:wrongHints,layout:.full,settings:DetectionConfig())
-expect(fallback.summary.contains("fallback") && fallback.bounds==detectViewport(in:fixture(bg:[0,0,0]),singlePhoto:true).bounds,"Contradictory hints must fall back")
-var altered=DetectionConfig();altered.axShownLeftOffsetPoints=90;altered.axToolbarHeightPoints=150;altered.axLibraryBottomOffsetPoints=100
-expect(detectAXAssistedViewport(in:fixture(bg:[0,0,0]),hints:hints,layout:.full,settings:altered).bounds==detectAXAssistedViewport(in:fixture(bg:[0,0,0]),hints:hints,layout:.full,settings:DetectionConfig()).bounds,"Calibrated AX offsets leaked into assisted detection")
-let translatedHints=AXScreenHints(host:hintHost.offsetBy(dx:300,dy:50),visibleFrames:rawPanels.map{$0.offsetBy(dx:300,dy:50)},toolbar:"shown")!
-expect(translatedHints.signature==hints.signature,"Translation should not change structural signature")
-expect(AXScreenHints(host:hintHost,visibleFrames:rawPanels,toolbar:"hidden")!.signature != hints.signature,"Toolbar state must invalidate signature")
-expect(AutomaticPlacementMode.resolve(saved:nil,legacy:nil) == .accessibility,"Fresh default should be AX")
-expect(AutomaticPlacementMode.resolve(saved:nil,legacy:false) == .screenshot,"Preserve explicit screenshot preference")
-expect(AutomaticPlacementMode.resolve(saved:"assisted",legacy:true) == .assisted,"New choice takes precedence")
-print("PASS: AX-assisted pixel bounds/splits, hidden panels, fallback, offset independence, signatures and preference migration")
-
-expect(AutomaticPlacementMode.accessibility.usesAXViewDetection(screenshotOption:false),"AX-only must always detect view")
-for mode:AutomaticPlacementMode in [.assisted,.screenshot] {
-    expect(!mode.usesAXViewDetection(screenshotOption:false),"Screenshot view detection must be independently optional")
-    expect(mode.usesAXViewDetection(screenshotOption:true),"Screenshot view detection option must be honoured")
-}
-print("PASS: mandatory AX-only view detection and independent screenshot view detection")
-
-// A status label in each bottom corner must not erase the complete outer area.
-let cleanAssistedRaster=fixture(bg:[0,0,0],split:1)
-var labelledPixels=cleanAssistedRaster.rgba
-for y in 565..<579 { for x in Array(345..<415)+Array(695..<765) {
-    for c in 0..<3 { labelledPixels[(y*900+x)*4+c]=210 }
-} }
-let labelledRaster=EdgeRaster(width:900,height:650,rgba:labelledPixels)
-let labelledResult=detectAXAssistedViewport(in:labelledRaster,hints:hints,layout:.left,settings:DetectionConfig())
-expect(labelledResult.bounds==detectAXAssistedViewport(in:cleanAssistedRaster,hints:hints,layout:.left,settings:DetectionConfig()).bounds,"Bottom status labels changed assisted bounds: \(labelledResult.summary)")
-let noDivider=detectAXAssistedViewport(in:fixture(bg:[0,0,0]),hints:hints,layout:.left,settings:DetectionConfig())
-expect(noDivider.bounds != nil && noDivider.summary.contains("50/50"),"Validated area should permit midpoint fallback")
-let empty=EdgeRaster(width:900,height:650,rgba:[UInt8](repeating:0,count:900*650*4))
-let invalid=detectAXAssistedViewport(in:empty,hints:hints,layout:.left,settings:DetectionConfig())
-expect(invalid.bounds == nil && !invalid.summary.contains("using 50/50"),"No midpoint without validated outer bounds")
-let headerHints=AXScreenHints(host:hintHost,visibleFrames:[CGRect(x:0,y:150,width:137,height:430),CGRect(x:763,y:150,width:137,height:430)],toolbar:"shown")!
-let rejectedHeader=detectAXAssistedViewport(in:fixture(bg:[0,0,0]),hints:headerHints,layout:.left,settings:DetectionConfig())
-expect(rejectedHeader.bounds == nil && rejectedHeader.summary.contains("header"),"Fallback cannot accept a top boundary above structural evidence")
-print("PASS: status-label tolerance, structural top rejection and validated-only midpoint fallback")
+// Panel signatures remain solely for the accepted AX view/panel-change policy.
+let host=CGRect(x:0,y:0,width:900,height:650)
+let panels=[CGRect(x:0,y:60,width:137,height:520),CGRect(x:763,y:60,width:137,height:520)]
+let state=AXPanelState(host:host,visibleFrames:panels,toolbar:"shown")!
+expect(AXPanelState(host:host.offsetBy(dx:300,dy:50),visibleFrames:panels.map{$0.offsetBy(dx:300,dy:50)},toolbar:"shown")!.signature==state.signature,"Translation changed panel state")
+expect(AXPanelState(host:host,visibleFrames:panels,toolbar:"hidden")!.signature != state.signature,"Toolbar state must change signature")
+expect(AutomaticPlacementMode.resolve(saved:nil,legacy:nil) == .accessibility,"Fresh default remains AX")
+expect(AutomaticPlacementMode.resolve(saved:"assisted",legacy:true) == .screenshot,"Retired assisted choice migrates to screenshot")
+expect(AutomaticPlacementMode.accessibility.usesAXViewDetection(screenshotOption:false),"AX view detection remains mandatory")
+expect(!AutomaticPlacementMode.screenshot.usesAXViewDetection(screenshotOption:false),"Screenshot inference remains optional")
+expect(AutomaticPlacementMode.screenshot.usesAXViewDetection(screenshotOption:true),"Screenshot inference honoured")
+print("PASS: preserved AX panel signatures and retired backend migration")

@@ -37,14 +37,6 @@ final class DiagnosticsService {
         let storageStatus=app.storageStatus
         let automaticPlacementMode=app.automaticPlacementMode
         let automaticViewEnabled=app.automaticViewEnabled
-        let assistedChecks=app.assistedChecks
-        let assistedAXSeconds=app.assistedAXSeconds
-        let assistedCheckSeconds=app.assistedCheckSeconds
-        let assistedAXChanges=app.assistedAXChanges
-        let assistedAXFailures=app.assistedAXFailures
-        let assistedPixelChanges=app.assistedPixelChanges
-        let assistedPixelFailures=app.assistedPixelFailures
-        let assistedEvidence=app.assistedEvidence
         let axLiveUpdate=app.axLiveUpdate
         let overlayVisibilityStatus=app.overlayController.overlayVisibilityStatus + "\nTitle-bar clip: \(app.overlayController.titlebarClipStatus); top=\(app.panel?.titlebarClipHeight ?? 0) pt"
         let overlayGeometrySource=app.overlayController.overlayGeometrySource
@@ -64,7 +56,7 @@ final class DiagnosticsService {
             DiagnosticSection(title:"Accessibility & display map",body:lastAXMapping),
             DiagnosticSection(title:"Saved diagnostics",body:diagnosticSaveStatus),
             DiagnosticSection(title:"Automatic view experiment",body:lastViewDetection),
-            DiagnosticSection(title:"Placement method & assisted evidence",body:"Method: \(automaticPlacementMode.title). View detection: \(automaticViewEnabled ? "automatic AX":"menu selection").\nRetained screenshot checks: \(assistedChecks); AX time: \(Int(assistedAXSeconds*1000)) ms; retained capture/check time: \(Int((assistedCheckSeconds-assistedAXSeconds)*1000)) ms.\nAX changes: \(assistedAXChanges); AX unavailable/stale: \(assistedAXFailures).\nPixel boundary changes after unchanged AX: \(assistedPixelChanges); pixel validation failures: \(assistedPixelFailures).\n\(assistedEvidence)\nAll periodic screenshot checks retained for this measurement trial; counters are session-only."),
+            DiagnosticSection(title:"Placement method",body:"Method: \(automaticPlacementMode.title). View detection: \(automaticViewEnabled ? "automatic AX":"menu selection"). Screenshot placement uses pixel evidence only; splits are 50/50 within validated outer bounds."),
             DiagnosticSection(title:"AX placement trial",body:lastAXTrial),
             DiagnosticSection(title:"AX toolbar visibility",body:lastAXToolbar),
             DiagnosticSection(title:"Grid view & view-change policy",body:lastGridStatus+"\nAX-only update overlay with LrC view: \(axLiveUpdate). Screenshot with AX view detection dismisses on confirmed photo/view/pane/panel changes and Grid. Without AX view detection, existing cache-invalidation behaviour is retained."),

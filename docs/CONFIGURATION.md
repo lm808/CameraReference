@@ -25,8 +25,8 @@ Settings → Advanced settings… → Open config file opens this plain-text fil
 |---|---|---|
 | `left`, `right` | `ui` | `ui` or `photo`: include UI backdrop or end at calculated photo edge |
 | `top`, `bottom` | `ui` | Same per-side choice |
-| `fitInsetPoints` | 18 | 0–100 macOS points; minimum Fit margin and split scan band |
-| `sideSearchPercent` | 40 | 5–50%; side-border search from each window edge |
+| `fitInsetPoints` | 18 | 0–100 macOS points; minimum Fit margin |
+| `sideSearchPercent` | 40 | 5–50%; initial side-border search from each window edge; validated retry to 50% on failure |
 | `panelCheckIntervalSeconds` | 3 | 0–3600; 0 disables background capture checks |
 | `verticalSnapFraction`, `horizontalSnapFraction` | 0.25 | 0.05–1; minimum sustained edge fraction |
 | `snapDistancePoints` | 8 | 1–30; Option-snapping attraction radius |

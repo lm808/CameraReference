@@ -10,7 +10,7 @@ final class LightroomMonitor {
         // nil distinguishes unavailable/not requested from a successful false/no-pair read.
         let grid:(selected:Bool?,report:String)?
         let proposal:AXTrialProposal?
-        let hints:AXScreenHints?
+        let hints:AXPanelState?
     }
     let folder:URL
     private(set) var moduleTimer:Timer?
@@ -22,7 +22,7 @@ final class LightroomMonitor {
     var lastModuleSample: (String, Date)?
     var observedModule:String?
     var workspaceOverview=false
-    var invocationPanelHints:AXScreenHints?
+    var invocationPanelHints:AXPanelState?
     var detectedLayout:OverlayLayout?
     var detectedLayoutModule:String?
     var liveViewBusy=false
@@ -83,10 +83,10 @@ final class LightroomMonitor {
             // AX placement retains its configured fallback. Screenshot dismissal
             // requires actual toolbar evidence; unavailable is not a panel change.
             let toolbar=axMode ? (toolbarReading?.effectiveState ?? "unknown"):toolbarReading?.shown.map { $0 ? "shown":"hidden" }
-            var proposal:AXTrialProposal?,hints:AXScreenHints?
+            var proposal:AXTrialProposal?,hints:AXPanelState?
             _=accessibilityMappingReport { host,windows,fullScreen in
                 proposal=axTrialProposal(host:host,windows:windows,settings:viewSettings,fullScreen:fullScreen)
-                if checkPanels,let toolbar { hints=AXScreenHints(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),toolbar:toolbar) }
+                if checkPanels,let toolbar { hints=AXPanelState(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),toolbar:toolbar) }
             }
             let evidence=AXEvidence(grid:grid,proposal:proposal,hints:hints)
             DispatchQueue.main.async { completion(evidence) }

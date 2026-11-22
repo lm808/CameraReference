@@ -12,14 +12,10 @@ final class AppSettings {
         AutomaticPlacementMode.resolve(saved:preferences.string(forKey:"automaticPlacementMode"),
             legacy:preferences.object(forKey:"experimentalAXPlacement") as? Bool)
     }
-    var screenshotAssistanceEnabled:Bool {
-        (preferences.object(forKey:"screenshotAXAssistance") as? Bool) ?? (legacyPlacementMode == .assisted)
-    }
     var automaticPlacementMode:AutomaticPlacementMode {
-        screenshotDetectionEnabled ? (screenshotAssistanceEnabled ? .assisted:.screenshot):.accessibility
+        screenshotDetectionEnabled ? .screenshot:.accessibility
     }
     var axPlacementEnabled:Bool { !screenshotDetectionEnabled }
-    var assistedPlacementEnabled:Bool { screenshotDetectionEnabled && screenshotAssistanceEnabled }
     var automaticViewEnabled:Bool { automaticPlacementMode.usesAXViewDetection(screenshotOption:preferences.bool(forKey:"experimentalAutomaticView")) }
     var axLiveUpdate:Bool { (preferences.object(forKey:"axLiveUpdate") as? Bool) ?? true }
     var axTrialEnabled:Bool { preferences.bool(forKey:"developerAXTrial") }

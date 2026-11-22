@@ -24,7 +24,6 @@ See [installation](docs/INSTALL.md) for the app and bridge, or [building from so
 | Accessibility (default for new settings) | Uses panel geometry, view labels and toolbar state, with configurable geometry corrections. Always infers the view; no automatic screenshots or capture fallback. |
 | Screenshot | Finds viewport boundaries in captured pixels. With both AX options off, uses your menu view selection and the original detector. |
 | Screenshot + AX view detection | Infers the view for the menu and screenshot detector. Placement still comes from pixels. |
-| Screenshot + AX-assisted placement | Uses raw AX structure to guide a separate pixel search. Can be combined with AX view detection; calibrated AX offsets are not applied. |
 
 Choose the desired pane for split views. These choices do not change Lightroom’s own view. Accessibility needs macOS Accessibility permission. Screenshot features need Screen Recording permission, which the app **does not request**: grant it yourself if wanted. Existing preferences are preserved when upgrading.
 
@@ -41,7 +40,7 @@ In automatic Accessibility mode, **Update overlay with LrC view** defaults on:
 
 Confirmed module changes dismiss in every mode. Accessibility mode also checks the direct **View → Grid** menu selection to dismiss/block overlays in Library Grid; selection-mark reliability still needs native confirmation. Missing menu evidence is treated as unknown.
 
-Screenshot with AX view detection now matches Accessibility with updating off: confirmed photo/view/pane/panel changes dismiss; positive Library Grid dismisses and blocks invocation. Missing evidence retains the overlay. Screenshot with inference off, manual and floating behaviour are unchanged. AX-assisted placement remains independent; no placement algorithms or calibrated offsets change. Background screenshot checks still invalidate cached placement only. Nothing automatically opens a dismissed overlay.
+Screenshot with AX view detection now matches Accessibility with updating off: confirmed photo/view/pane/panel changes dismiss; positive Library Grid dismisses and blocks invocation. Missing evidence retains the overlay. Screenshot with inference off, manual and floating behaviour are unchanged. Screenshot placement uses pixel-validated outer bounds and equal splits; AX view detection never supplies placement edges. Background screenshot checks still invalidate cached placement only. Nothing automatically opens a dismissed overlay.
 
 The overlay follows Lightroom movement and can be covered by other apps. Overview, minimise and Space transitions temporarily suspend it; a brief linger during minimise is a known limitation. Intermittent off-screen capture failures remain under investigation.
 
@@ -63,7 +62,7 @@ The current selection’s JPEG is cached in RAM. Screenshot placement can reuse 
 
 Use **Developer tools → Diagnostics…** for consolidated information. **Save diagnostics after invocation** automatically updates `~/Library/Application Support/CameraReference/Diagnostics/latest.txt`, including AX evidence. No screenshot is saved. Capture previews are under **Developer tools → Capture / bridge actions**; they show raw captures even if placement rejects their geometry. **Developer tools → Show AX placement preview** draws independent boundary outlines.
 
-See [troubleshooting](docs/TROUBLESHOOTING.md), [privacy](PRIVACY.md), [remaining tests](TESTING.md) and [current release notes](RELEASE-NOTES.md). Fit alignment can differ after cropping, perspective/lens corrections or differing RAW/JPEG aspect ratios. ARW preview size varies by camera. Library split screenshot failures associated with status text remain unresolved; assisted fixes need further testing.
+See [troubleshooting](docs/TROUBLESHOOTING.md), [privacy](PRIVACY.md), [remaining tests](TESTING.md) and [current release notes](RELEASE-NOTES.md). Fit alignment can differ after cropping, perspective/lens corrections or differing RAW/JPEG aspect ratios. ARW preview size varies by camera. Library split screenshot failures associated with status text remain unresolved; outer-bound reliability still needs testing.
 
 ## Development
 

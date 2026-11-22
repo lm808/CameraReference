@@ -123,11 +123,11 @@ extension AppDelegate {
         DispatchQueue.global(qos:.userInitiated).async {
             let grid=accessibilityGridReading(module:module)
             let toolbar=axMode ? nil:accessibilityToolbarReading(fallback:settings.toolbarUnknownFallback,module:module).shown
-            var proposal:AXTrialProposal?,panelHints:AXScreenHints?
+            var proposal:AXTrialProposal?,panelHints:AXPanelState?
             let mapping=accessibilityMappingReport { host,windows,fullScreen in
                 // No fine adjustments: only classify the raw visible panel/label evidence.
                 proposal=axTrialProposal(host:host,windows:windows,settings:viewSettings,fullScreen:fullScreen)
-                if let toolbar { panelHints=AXScreenHints(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),toolbar:toolbar ? "shown":"hidden") }
+                if let toolbar { panelHints=AXPanelState(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),toolbar:toolbar ? "shown":"hidden") }
             }
             DispatchQueue.main.async {
                 guard self.viewProbeID==id else { return }

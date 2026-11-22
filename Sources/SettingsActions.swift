@@ -27,7 +27,7 @@ extension AppDelegate {
     }
     func placementOptionsChanged() {
         cancelScreenInspection();cancelPanelCheck();cancelRequest()
-        assistedSignature=nil;lightroomMonitor.liveViewGeneration += 1;lightroomMonitor.nextLiveViewCheck=0
+        lightroomMonitor.liveViewGeneration += 1;lightroomMonitor.nextLiveViewCheck=0
         lightroomMonitor.detectedLayout=nil;lightroomMonitor.detectedLayoutModule=nil
         invalidateAutomaticGeometry();updateDetectionMenu();updateLayoutMenu()
         report("Placement: \(automaticPlacementMode.title). AX view detection \(automaticViewEnabled ? "on":"off"). Manual calibration takes precedence.")
@@ -37,12 +37,6 @@ extension AppDelegate {
               let screenshot=item.representedObject as? Bool,screenshot != screenshotDetectionEnabled else { return }
         if !screenshot && !FeaturePermission.accessibility.ensure() { return }
         CameraPreferences.shared.set(screenshot,forKey:"useScreenshotDetection")
-        placementOptionsChanged()
-    }
-    @objc func toggleScreenshotAssistance() {
-        guard screenshotDetectionEnabled else { return }
-        if !screenshotAssistanceEnabled && !FeaturePermission.accessibility.ensure() { return }
-        CameraPreferences.shared.set(!screenshotAssistanceEnabled,forKey:"screenshotAXAssistance")
         placementOptionsChanged()
     }
     @objc func toggleAXTrial(_ item:NSMenuItem) {

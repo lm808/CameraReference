@@ -47,19 +47,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var screenModule:String?
     var status: NSStatusItem!
     lazy var photoRequests=PhotoRequestPipeline(folder:folder)
-    var assistedSignature:String?
-    var assistedChecks=0,assistedAXChanges=0,assistedAXFailures=0,assistedPixelChanges=0,assistedPixelFailures=0
-    var assistedCheckSeconds:Double=0,assistedAXSeconds:Double=0
-    var assistedEvidence="No assisted comparison yet."
-    static func screenHints(module:String?)->AXScreenHints? {
-        let toolbar=accessibilityToolbarReading(module:module)
-        var hints:AXScreenHints?
-        _=accessibilityMappingReport { host,windows,_ in
-            hints=AXScreenHints(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),
-                toolbar:toolbar.shown.map { $0 ? "shown":"hidden" } ?? "unknown")
-        }
-        return hints
-    }
     var viewProbeID:UUID?
     var pendingAXPanelSignature:String?
     var manualOverlayLayout:OverlayLayout { savedOverlayLayout(CameraPreferences.shared,module:currentModule() ?? lightroomMonitor.observedModule) }

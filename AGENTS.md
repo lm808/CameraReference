@@ -14,7 +14,6 @@ The user runs only staged apps: stable `release/CameraReference.app` or candidat
 
 - `bash build.sh`: native-architecture macOS app at `build/CameraReference.app` (ad-hoc signed).
 - `bash test.sh`: Swift regression executables and Lua stand-ins; requires Apple command-line tools and texlua.
-- `bash test.sh <stacked-left-crop.png> <side-by-side-bottom-crop.png>`: optional original crop scanner checks; images remain external.
 - `bash scripts/stage.sh`: build and incrementally refresh release/; --no-build stages an already verified build.
 - `bash scripts/package.sh`: package the existing release/ payload as a DMG/checksum under ignored dist/. Uses hdiutil; may require sandbox approval. Does not install the app or publish anything. Existing DMG is not overwritten.
 - Verify signature/plist and `git diff --check` before committing. Run checks appropriate to the change; avoid repeating unchanged suites without reason.
@@ -36,13 +35,13 @@ Use plain three-component versions in CFBundleShortVersionString (candidate `1.1
 | `Core.swift` | Protocol/source primitives, cancellation, extraction helpers |
 | `ImageSource.swift` | Standalone/embedded selection, orientation/decode, file fingerprints, one-selection RAM cache |
 | `Export.swift` | View-specific JPEG snapshots and explicit safe export |
-| `ScreenProbe.swift` | ScreenCaptureKit capture/crop, points↔raster mapping, Full/split placement result, margin divider scanner |
+| `ScreenProbe.swift` | ScreenCaptureKit capture/crop, points↔raster mapping, Full/split placement result, equal splitting |
 | `ViewportDetector.swift` | Full UI rectangle evidence and cached raster-boundary validation; protect the established Full path |
 | `PhotoDetector.swift` | Legacy/diagnostic photo-edge detection and related fixtures; not a replacement for UI Fit calculation |
 | `ConfigEditor.swift` | File-driven advanced settings table, value-only edits, validation and external-edit protection |
 | `DetectionConfig.swift` | Advanced config schema, parser, metadata cache and legacy filename migration |
 | `SplitLayout.swift` | Explicit pane geometry, floating half-viewport fit, placement memory, comparison/order helpers |
-| `AXAssisted.swift` | Raw structural hints, isolated guided pixel search and placement-method preference resolution; calibrated AX offsets never enter this path |
+| `AXPanelState.swift`, `PlacementMode.swift` | Preserved AX panel-change signature and two-backend preference resolution; no AX-guided pixel placement |
 | `AXTrial.swift` | Panel/label geometry shared by AX preview and Accessibility placement |
 | `Layout.swift` | Lightroom window metadata/coordinate helpers, bounded AX probes, overlay host state decisions and overview heuristic |
 | `Interaction.swift` | Image navigation, display geometry and placement checks |
@@ -61,7 +60,7 @@ Main flow: shortcut → bridge request/epoch → image load or RAM hit → manua
 
 - Never write RAW/catalogue/Develop settings. Image extraction/capture stays in memory. Export requires explicit user action.
 - Never infer main Lightroom view from secondary-display API or command availability. Explicit menu selection guides screenshot mode when AX view inference is off; AX label inference supplies the view when enabled and always in Accessibility mode. A successful no-pair read assumes single, not confirmed Library Loupe.
-- Original screenshot split uses unchanged Full bounds, then bottom/left inset scanning. Assisted screenshot is separately routed; AX uses corrected panel geometry and midpoint/label constraints. See docs/METHODS.md before changing this; prior alternate outer-bound logic regressed badly.
+- Screenshot splits use the validated Full bounds, then 50/50 division. Wider side search retries use the same pixel validation. AX uses its unchanged corrected panel geometry and midpoint/label constraints. Keep the two placement methods independent; see docs/METHODS.md.
 - Preserve point/pixel and top-left/AppKit conversions; do not substitute display width for window crop.
 - Full mode and accepted manual placement must remain usable during split development.
 - Keep original Fit geometry separate from the whole-region zoom/pan boundary. Preserve the CR3 extraction path when adjusting ARW tag selection; RAW and extracted preview data remain read-only/in-memory.
@@ -88,9 +87,9 @@ Do not commit build/release/dist artifacts, personal config, bridge runtime file
 
 `tools/AXExplorer/` is a separate interactive read-only executable, built by `bash scripts/build-ax-explorer.sh` into `build/AXExplorer/`. It never rebuilds the app or changes its version/settings. Exploratory commands, branch skips and budgets are runtime options. Reports are saved explicitly under the worktree’s ignored investigations/ax-reports folder (never in Application Support). Leave all live use and permission prompts to the user; `--self-test` performs no live AX calls. Review tool findings separately before integrating production selectors.
 
-## Assisted screenshot path
+## Screenshot fallback
 
-`Sources/AXAssisted.swift` contains raw structural hints, a separately maintained guided pixel search and placement-mode preference resolution. Do not modify ViewportDetector or the original split scanner to tune this experiment. The optional ScreenProbe hook must leave nil-hint behaviour unchanged. AX view inference remains separate from placement-method selection. Background screenshot checks are retained until measured evidence supports reducing them.
+Screenshot placement is independent of AX geometry; optional AX view detection supplies layout only. AXPanelState retains the prior signature for view/panel-change policy. Preserve background pixel checks, permission preflights and cache guards. Retired assisted preferences resolve to Screenshot; never reintroduce a third placement path. Current work is tracked in FINAL-WORK.md; guided recalibration is deferred.
 
 ## Structure migration worktree
 

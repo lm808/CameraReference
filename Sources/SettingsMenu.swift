@@ -10,7 +10,6 @@ final class SettingsMenuController {
     var detail: NSMenuItem!
     var shortcutItem: NSMenuItem!
     var screenshotToggleItem:NSMenuItem?
-    var assistedToggleItem:NSMenuItem?
     var viewToggleItem:NSMenuItem?
     var detectionMethodItems=[NSMenuItem]()
     var liveUpdateItem:NSMenuItem?
@@ -24,7 +23,6 @@ final class SettingsMenuController {
     var axPlacementEnabled:Bool { owner.axPlacementEnabled }
     var screenshotDetectionEnabled:Bool { owner.screenshotDetectionEnabled }
     var axLiveUpdate:Bool { owner.axLiveUpdate }
-    var assistedPlacementEnabled:Bool { owner.assistedPlacementEnabled }
     var automaticViewEnabled:Bool { owner.automaticViewEnabled }
     var autoDiagnostics:Bool { owner.autoDiagnostics }
     var axTrialEnabled:Bool { owner.axTrialEnabled }
@@ -78,8 +76,7 @@ final class SettingsMenuController {
             item.representedObject=value;detectionMethodItems.append(item)
         }
         viewToggleItem=add("AX view detection",#selector(AppDelegate.toggleAutomaticView),to:settings)
-        assistedToggleItem=add("AX-assisted placement",#selector(AppDelegate.toggleScreenshotAssistance),to:settings)
-        assistedToggleItem?.indentationLevel=1;viewToggleItem?.indentationLevel=1
+        viewToggleItem?.indentationLevel=1
         liveUpdateItem=add("Update overlay with LrC view",#selector(AppDelegate.toggleAXLiveUpdate(_:)),to:settings)
         liveUpdateItem?.indentationLevel=1
         updateDetectionMenu()
@@ -176,11 +173,8 @@ final class SettingsMenuController {
         liveUpdateItem?.isHidden=screenshotDetectionEnabled
         liveUpdateItem?.isEnabled=automatic && axPlacementEnabled
         liveUpdateItem?.state=axLiveUpdate ? .on:.off
-        assistedToggleItem?.isHidden=axPlacementEnabled
         viewToggleItem?.isHidden=axPlacementEnabled
-        assistedToggleItem?.state=assistedPlacementEnabled ? .on:.off
         viewToggleItem?.state=automaticViewEnabled ? .on:.off
-        assistedToggleItem?.isEnabled=automatic && screenshotDetectionEnabled
         viewToggleItem?.isEnabled=automatic && screenshotDetectionEnabled
     }
     func updateToggleTitle() {
@@ -190,7 +184,7 @@ final class SettingsMenuController {
     }
     func validateMenuItem(_ item:NSMenuItem) -> Bool {
         if item === liveUpdateItem { return axPlacementEnabled && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) }
-        if item === assistedToggleItem || item === viewToggleItem {
+        if item === viewToggleItem {
             return screenshotDetectionEnabled && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
         }
         if detectionMethodItems.contains(where:{$0 === item}) { return CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) }
@@ -204,10 +198,8 @@ final class SettingsMenuController {
 extension AppDelegate {
     var screenshotDetectionEnabled:Bool { settings.screenshotDetectionEnabled }
     var legacyPlacementMode:AutomaticPlacementMode { settings.legacyPlacementMode }
-    var screenshotAssistanceEnabled:Bool { settings.screenshotAssistanceEnabled }
     var automaticPlacementMode:AutomaticPlacementMode { settings.automaticPlacementMode }
     var axPlacementEnabled:Bool { settings.axPlacementEnabled }
-    var assistedPlacementEnabled:Bool { settings.assistedPlacementEnabled }
     var automaticViewEnabled:Bool { settings.automaticViewEnabled }
     var axLiveUpdate:Bool { settings.axLiveUpdate }
     var axTrialEnabled:Bool { settings.axTrialEnabled }
@@ -231,10 +223,6 @@ extension AppDelegate {
     var screenshotToggleItem:NSMenuItem? {
         get { menus.screenshotToggleItem }
         set { menus.screenshotToggleItem=newValue }
-    }
-    var assistedToggleItem:NSMenuItem? {
-        get { menus.assistedToggleItem }
-        set { menus.assistedToggleItem=newValue }
     }
     var viewToggleItem:NSMenuItem? {
         get { menus.viewToggleItem }

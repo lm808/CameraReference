@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.11 — screenshot simplification candidate
+
+- Divide validated screenshot working areas equally for split views; remove divider scanning.
+- Use the fully validated wider search result when a small working area lies outside the initial side-search range.
+- Remove AX-assisted placement and its menu; preserve optional AX view detection and existing AX-only behaviour. Older assisted selections resolve to Screenshot.
+- Native acceptance pending; no recalibration changes.
+
 ## 1.1.10 — accepted migration and backlog fixes
 
 - Clip the overlay’s overlapping top strip when the AX-identified macOS full-screen title bar is revealed. Photo size, position, zoom and placement remain unchanged. Remove unsuccessful title-bar relative-ordering workarounds. Native tests passed; the slight reveal delay is accepted.

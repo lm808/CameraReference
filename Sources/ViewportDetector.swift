@@ -66,6 +66,7 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
         return chosen.sorted()
     }
     func rectangleScore(_ r:CGRect)->Double? {
+        guard r.width>12,r.height>12 else { return nil }
         let corners=[rgb(Int(r.minX)+4,Int(r.minY)+4),rgb(Int(r.maxX)-5,Int(r.minY)+4),rgb(Int(r.minX)+4,Int(r.maxY)-5),rgb(Int(r.maxX)-5,Int(r.maxY)-5)]
         guard corners.allSatisfy({distance($0,corners[0])<=8}) else { return nil }
         var sides=[[[Double]]]()
@@ -125,14 +126,14 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
         accepted.sort { $0.1==$1.1 ? $0.0.width*$0.0.height<$1.0.width*$1.0.height : $0.1>$1.1 }
         searchReport="Rectangle search: L \(ls), R \(rs), T \(ts), B \(bs); \(checked) checked, \(accepted.count) supported."
         guard let strongest=accepted.first else {
-            // Diagnose an interval-limited viewport with the same full validation.
-            // The wider result is evidence for the message, never a placement fallback.
-            if sideSearchPercent < 50,
-               let wider=detectViewport(in:raster,singlePhoto:singlePhoto,sideSearchPercent:50).bounds,
-               wider.minX >= CGFloat(Int(Double(w)*sideSearchPercent/100)) || wider.maxX < CGFloat(Int(Double(w)*(100-sideSearchPercent)/100)) {
-                var result=failure(searchReport+"\nWorking area too narrow for automatic placement—enlarge it or calibrate manually.")
-                result.workingAreaTooNarrow=true
-                return result
+            // A small window can put valid borders outside the preferred band.
+            // Retry to the centre with identical complete-rectangle validation.
+            if sideSearchPercent < 50 {
+                let wider=detectViewport(in:raster,singlePhoto:singlePhoto,sideSearchPercent:50,splitAxis:splitAxis)
+                if wider.bounds != nil {
+                    return ViewportDetection(bounds:wider.bounds,verticalDivider:wider.verticalDivider,horizontalDivider:wider.horizontalDivider,
+                        background:wider.background,summary:searchReport+"\nExpanded side search to 50%; all four borders validated.\n"+wider.summary)
+                }
             }
             return failure(searchReport+"\nNo rectangle has four supported borders and a consistent inner surround. Manual calibration is available.")
         }

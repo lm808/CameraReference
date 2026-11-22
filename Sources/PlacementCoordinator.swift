@@ -129,7 +129,7 @@ extension AppDelegate {
             var proposal:AXTrialProposal?,signature:String?
             let mapping=accessibilityMappingReport { host,windows,fullScreen in
                 proposal=axTrialProposal(host:host,windows:windows,settings:adjusted,module:module,fullScreen:fullScreen)
-                signature=AXScreenHints(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),toolbar:toolbar.effectiveState)?.signature
+                signature=AXPanelState(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),toolbar:toolbar.effectiveState)?.signature
             }
             guard !Task.isCancelled,let owner=self else { return }
             let resultProposal=proposal,resultSignature=signature
@@ -172,7 +172,6 @@ extension AppDelegate {
         if previewCapture { lastTiming="" }
         let settings=reloadDetectionConfig()
         let mode=requestedLayout ?? overlayLayout
-        let seed=mode == overlayLayout && mode != .full ? region:nil
         cancelScreenInspection()
         report("Finding the Lightroom viewing area…")
         detectionCompletion=completion
@@ -188,25 +187,11 @@ extension AppDelegate {
             self.lastLayout=result.summary;self.report(result.summary); callback?(result)
         }
         RunLoop.main.add(screenTimeout!,forMode:.common)
-        let assisted=assistedPlacementEnabled && !previewCapture
-        let module=currentModule()
         screenTask=Task.detached(priority:.userInitiated) { [weak self] in
-            let hints=assisted ? Self.screenHints(module:module):nil
-            let result:ScreenProbeResult
-            if assisted {
-                result=await AssistedScreenshotPlacement.inspect(imageSize:imageSize,previewCapture:previewCapture,settings:settings,layout:mode,seed:seed,hints:hints)
-            } else {
-                result=await ScreenshotPlacement.inspect(imageSize:imageSize,previewCapture:previewCapture,settings:settings,layout:mode,seed:seed)
-            }
-            if assisted { await self?.recordAssistedInvocation(hints,id:inspectionID) }
+            let result=await ScreenshotPlacement.inspect(imageSize:imageSize,previewCapture:previewCapture,settings:settings,layout:mode)
             guard !Task.isCancelled else { return }
             await self?.finishScreenInspection(result,id:inspectionID,elapsed:ProcessInfo.processInfo.systemUptime-inspectionStarted)
         }
-    }
-    @MainActor func recordAssistedInvocation(_ hints:AXScreenHints?,id:UUID) {
-        guard screenInspectionID==id else { return }
-        assistedSignature=hints?.signature
-        assistedEvidence=hints == nil ? "AX read unavailable; original screenshot path used.":"Fresh raw AX hints; no calibrated AX offsets used."
     }
     func cancelScreenInspection() {
         let wasRunning=screenInspectionID != nil

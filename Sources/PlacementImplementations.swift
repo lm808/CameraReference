@@ -24,17 +24,10 @@ enum AXPlacement {
     }
 }
 
-// Keep the nil-hint route explicit. Neither adapter modifies the original
-// detector, capture normalization, split scanning or failure metadata.
+// Screenshot placement is pixel-only; AX view selection is resolved by callers.
 enum ScreenshotPlacement {
     @available(macOS 14.0, *)
-    static func inspect(imageSize:CGSize,previewCapture:Bool,settings:DetectionConfig,layout:OverlayLayout,seed:CGRect?) async -> ScreenProbeResult {
-        await inspectScreenLayout(imageSize:imageSize,previewCapture:previewCapture,settings:settings,layout:layout,seed:seed,axHints:nil)
-    }
-}
-enum AssistedScreenshotPlacement {
-    @available(macOS 14.0, *)
-    static func inspect(imageSize:CGSize,previewCapture:Bool,settings:DetectionConfig,layout:OverlayLayout,seed:CGRect?,hints:AXScreenHints?) async -> ScreenProbeResult {
-        await inspectScreenLayout(imageSize:imageSize,previewCapture:previewCapture,settings:settings,layout:layout,seed:seed,axHints:hints)
+    static func inspect(imageSize:CGSize,previewCapture:Bool,settings:DetectionConfig,layout:OverlayLayout) async -> ScreenProbeResult {
+        await inspectScreenLayout(imageSize:imageSize,previewCapture:previewCapture,settings:settings,layout:layout)
     }
 }

@@ -658,3 +658,23 @@ The full-screen ordering fix remains unaccepted: the user reports title-bar occl
 Explorer report `2026-11-21T21-56-16Z-fullscreen-titlebar-controls-pair-81BE3C.txt` completed both targeted probes (42 nodes, no limits/partial result, Lightroom frontmost). Main AXCloseButton/AXMinimizeButton/AXZoomButton share AXGroup N42. Its frame changes from (0,-32,2560,32) to (0,30,2560,32), exactly matching CG window 1993 whose alpha changes 0→1. Control AXWindow and AXTopLevelUIElement still point to the main AX window; the title text frame does not track reveal. This provides semantic parent identification with measured-frame correlation, not a direct AX-to-CG ID API. IDs are session-specific.
 
 Existing saved ordering traces predate commit 4167451's below-chrome action, so they cannot establish whether that action executes, has no effect, or is subsequently reversed. Explorer 1.0.6 adds a read-only timed on-screen-order trace using the named-control shared parent, to pair with the existing app action recorder. No main app code/build/placement change. Full-screen grouping or cross-application ordering constraints are hypotheses, not established causes. Public AppKit ordering documentation does not give a persistence guarantee against subsequent window operations. Do not infer actual ordering from optionAll's array positions; optionOnScreenOnly explicitly specifies front-to-back order in the SDK.
+
+## Screenshot paths before 1.1.11 simplification
+
+Superseded methods are preserved below. The candidate replaces the assisted path and divider scanner with one independent pixel detector and equal splitting.
+
+## Original screenshot detection — protected baseline
+
+Full detection generates candidate UI borders in side/top/bottom search ranges and validates whole rectangles using sustained transitions and consistent inner surround. It does not trace the photograph: a candidate must have supporting evidence on all four sides. This can still confuse photo/status-text structure with UI; known Library status-label failures remain unresolved.
+
+sideSearchPercent defaults to 40; explicit user values survive upgrades. No universal adaptive range is claimed. Full UI bounds determine photo Fit. Do not add separate split outer-bound ranking: earlier attempts selected gaps or covered UI.
+
+Splits first use the same Full outer bounds. Side-by-side scans horizontal traces in the **bottom inset margin** for a vertical divider; stacked views scan the **left margin** for a horizontal divider. Multiple traces at 20–80% of the inset tolerate a divider ending short of the edge. Search is central 20–80% of the viewport; thin contrast, matching surround and support on at least half the traces are required. Missing/ambiguous divider evidence offers manual calibration in the original path. Wipe views are unsupported.
+
+## AX-assisted screenshot search — separate experiment
+
+AXAssisted.swift uses raw visible-panel hints to narrow pixel search ranges (±64 pt horizontally, ±128 pt vertically, clipped to the raster). These are uncertainty bands, not calibrated AX edge corrections. ScreenProbe accepts hints only for matching captured host geometry; nil/stale hints preserve original routing. Pixel evidence determines all four final edges.
+
+Inconclusive guidance falls back to the original outer search, with an assisted-only raw side-panel header check rejecting bounds above the structural top (4 pt sampling tolerance). Its separate validator tolerates at most two compact bottom-surround interruptions, each at most six of forty samples, with at least 75% bottom support. Left/right/top require 90%; distributed transitions are still required. This models Library status labels, but native validation remains pending.
+
+Only after outer-area validation does the existing divider scan run. Assisted mode alone may use a 50/50 fallback when it cannot find a divider. Failed outer validation never permits this fallback. ViewportDetector and the original split scanner remain unchanged. Guided results do not populate the original detector’s internal cache.

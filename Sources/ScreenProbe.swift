@@ -56,9 +56,9 @@ func appKitRect(_ rect:CGRect,primaryHeight:CGFloat)->CGRect {
     CGRect(x:rect.minX,y:primaryHeight-rect.maxY,width:rect.width,height:rect.height)
 }
 @available(macOS 14.0, *)
-func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,seed:CGRect? = nil,maxPixelWidth:CGFloat? = nil,axHints:AXScreenHints? = nil) async -> ScreenProbeResult {
+func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,maxPixelWidth:CGFloat? = nil) async -> ScreenProbeResult {
     for attempt in 0..<3 {
-        let result=await captureStableLayout(imageSize:imageSize,forCalibration:forCalibration,previewCapture:previewCapture,settings:settings,layout:layout,seed:seed,maxPixelWidth:maxPixelWidth,axHints:axHints)
+        let result=await captureStableLayout(imageSize:imageSize,forCalibration:forCalibration,previewCapture:previewCapture,settings:settings,layout:layout,maxPixelWidth:maxPixelWidth)
         if !result.geometryChanged || Task.isCancelled { return result }
         await ScreenGeometryCache.shared.reset()
         if attempt<2 { try? await Task.sleep(nanoseconds:250_000_000) }
@@ -66,7 +66,7 @@ func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
     return ScreenProbeResult(candidate:nil,summary:"Lightroom is still moving or resizing. Wait for the transition to finish, then invoke again. Calibration was not changed.",geometryChanged:true)
 }
 @available(macOS 14.0, *)
-func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,seed:CGRect? = nil,maxPixelWidth:CGFloat? = nil,axHints:AXScreenHints? = nil) async -> ScreenProbeResult {
+func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,maxPixelWidth:CGFloat? = nil) async -> ScreenProbeResult {
     guard CGPreflightScreenCaptureAccess() else { return ScreenProbeResult(candidate:nil,summary:"Screen Recording permission is unavailable. No capture taken. Use AX placement or manual calibration.") }
     let probeStarted=ProcessInfo.processInfo.systemUptime
     let ticket=await ScreenGeometryCache.shared.ticket()
@@ -143,27 +143,19 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         let detectionStarted=ProcessInfo.processInfo.systemUptime
         let detection:ViewportDetection
         let reused:Bool
-        if let hints=axHints, sameWindowGeometry(hints.host,originFrame) {
-            detection=detectAXAssistedViewport(in:raster,hints:hints,layout:layout,settings:settings)
-            reused=false
-        } else if layout == .full {
+        if layout == .full {
             guard let result=await ScreenGeometryCache.shared.inspect(raster,key:"crop:\(captureKey):\(window.windowID):\(window.frame):\(filter.pointPixelScale):\(CGDisplayBounds(CGMainDisplayID()))",ticket:ticket,singlePhoto:true,sideSearchPercent:settings.sideSearchPercent) else {
                 return ScreenProbeResult(candidate:nil,summary:"Window/display geometry was invalidated during capture.",geometryChanged:true)
             }
             (detection,reused)=result
         } else {
-            let sx=CGFloat(raster.width)/window.frame.width,sy=CGFloat(raster.height)/window.frame.height
-            let local=seed.map { seed -> CGRect in
-                let top=appKitRect(seed,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
-                return CGRect(x:(top.minX-window.frame.minX)*sx,y:(top.minY-window.frame.minY)*sy,width:top.width*sx,height:top.height*sy)
-            }
-            detection=detectSplitViewport(in:raster,layout:layout,seed:local,sideSearchPercent:settings.sideSearchPercent,insetPixels:CGSize(width:settings.fitInsetPoints*sx,height:settings.fitInsetPoints*sy))
+            detection=detectSplitViewport(in:raster,layout:layout,sideSearchPercent:settings.sideSearchPercent)
             reused=false
         }
         let childMode:String
         if #available(macOS 14.2,*) { childMode="included" } else { childMode="system default" }
         let timing=String(format:"Stage timing: enumerate %.0f ms; stability/config %.0f ms; capture %.0f ms; raster %.0f ms; detector %.0f ms.\n",(enumerationEnded-probeStarted)*1000,(captureStarted-enumerationEnded)*1000,(captureEnded-captureStarted)*1000,(detectionStarted-captureEnded)*1000,(ProcessInfo.processInfo.systemUptime-detectionStarted)*1000)
-        let header=timing+frameDetail+"\nCapture mode: \(captureMode).\nCapture extent (top-left): \(extent).\nSource crop (capture-local): \(cropDescription).\nSide search: left 0…\(settings.sideSearchPercent)%, right \(100-settings.sideSearchPercent)…100%.\nAnalysis raster: \(raster.width) × \(raster.height).\nChild windows: \(childMode).\nUI-boundary detection (no OCR; no image saved).\nWindow: \(Int(window.frame.width)) × \(Int(window.frame.height)) pt.\nWindow origin (top-left): \(window.frame.origin).\nFilter content rect: \(filter.contentRect).\nPrimary display: \(CGDisplayBounds(CGMainDisplayID())).\nCapture: \(image.width) × \(image.height) pixels.\n"
+        let header=timing+frameDetail+"\nCapture mode: \(captureMode).\nCapture extent (top-left): \(extent).\nSource crop (capture-local): \(cropDescription).\nInitial side search (validated retry to 50% if needed): left 0…\(settings.sideSearchPercent)%, right \(100-settings.sideSearchPercent)…100%.\nAnalysis raster: \(raster.width) × \(raster.height).\nChild windows: \(childMode).\nUI-boundary detection (no OCR; no image saved).\nWindow: \(Int(window.frame.width)) × \(Int(window.frame.height)) pt.\nWindow origin (top-left): \(window.frame.origin).\nFilter content rect: \(filter.contentRect).\nPrimary display: \(CGDisplayBounds(CGMainDisplayID())).\nCapture: \(image.width) × \(image.height) pixels.\n"
         var candidate:CGRect?,photoFrame:CGRect?,uiFrame:CGRect?
         var key:String?
         var placementSummary=""
@@ -189,60 +181,14 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
     catch { return ScreenProbeResult(candidate:nil,summary:captureFailureSummary(error,context:failureContext)) }
 }
 
-// Always obtain the combined viewport through the unchanged Full detector.
-// A previous pane hint must not substitute different outer bounds.
-func detectSplitViewport(in raster:EdgeRaster,layout:OverlayLayout,seed _:CGRect?=nil,sideSearchPercent:Double=45,insetPixels:CGSize=CGSize(width:18,height:18))->ViewportDetection {
+// Both screenshot layouts share the same independently validated outer area.
+// The selected view determines orientation; image details never choose a divider.
+func detectSplitViewport(in raster:EdgeRaster,layout:OverlayLayout,sideSearchPercent:Double=45)->ViewportDetection {
     let full=detectViewport(in:raster,singlePhoto:true,sideSearchPercent:sideSearchPercent)
     guard let viewport=full.bounds else { return full }
-    let scan=scanInsetDivider(in:raster,viewport:viewport,layout:layout,insetPixels:insetPixels)
-    let pane=layout.pane(in:viewport,vertical:layout.group==1 ? scan.position:nil,horizontal:layout.group==2 ? scan.position:nil)
-    return ViewportDetection(bounds:pane,verticalDivider:nil,horizontalDivider:nil,background:full.background,summary:full.summary+"\n"+scan.summary+"\nSelected \(layout.label) pane: \(String(describing:pane)).")
-}
-
-// Pixel coordinates. Scan only the bottom margin for left/right, left margin for
-// upper/lower. Several parallel traces tolerate short divider endpoint gaps.
-func scanInsetDivider(in raster:EdgeRaster,viewport:CGRect,layout:OverlayLayout,insetPixels:CGSize)->(position:CGFloat?,summary:String) {
-    let vertical=layout.group==1
-    let inset=vertical ? insetPixels.height:insetPixels.width
-    let name=vertical ? "bottom":"left"
-    guard layout != .full,inset.isFinite,inset>=4,viewport.width>0,viewport.height>0 else {
-        return (nil,"Configured inset is too small for reliable divider scanning; calibrate manually.")
-    }
-    func rgb(_ x:Int,_ y:Int)->[Int]? {
-        guard x>=0,y>=0,x<raster.width,y<raster.height else { return nil }
-        let i=(y*raster.width+x)*4
-        return (0..<3).map { Int(raster.rgba[i+$0]) }
-    }
-    func difference(_ a:[Int],_ b:[Int])->Int { zip(a,b).map { abs($0-$1) }.max()! }
-    let start=vertical ? viewport.minX:viewport.minY,end=vertical ? viewport.maxX:viewport.maxY
-    let low=Int(start+(end-start)*0.2),high=Int(start+(end-start)*0.8)
-    guard high>low else { return (nil,"No interior divider search interval.") }
-    let first=max(2,Int(ceil(inset*0.2))),last=Int(floor(inset*0.8))
-    guard last>=first else { return (nil,"Inset leaves no usable scan band.") }
-    let offsets=Array(Set((0..<12).map { first+(last-first)*$0/11 })).sorted()
-    // Width allowance scales with the available inset; wider objects are not thin dividers.
-    let flank=max(2,min(8,Int(ceil(inset/6))))
-    var supported=[Int]()
-    for position in low..<high {
-        var hits=0
-        for offset in offsets {
-            let across=vertical ? Int(viewport.maxY)-1-offset:Int(viewport.minX)+offset
-            let c=vertical ? rgb(position,across):rgb(across,position)
-            let a=vertical ? rgb(position-flank,across):rgb(across,position-flank)
-            let b=vertical ? rgb(position+flank,across):rgb(across,position+flank)
-            if let c,let a,let b,difference(a,b)<=6,difference(c,a)>=3,difference(c,b)>=3 { hits+=1 }
-        }
-        if hits>=max(2,Int(ceil(Double(offsets.count)*0.5))) { supported.append(position) }
-    }
-    var groups=[[Int]]()
-    for position in supported {
-        if let last=groups.last?.last,position-last<=2 { groups[groups.count-1].append(position) }
-        else { groups.append([position]) }
-    }
-    let valid=groups.filter { $0.last!-$0.first!<=flank*2 }
-    let detail="Full viewport \(viewport); \(name) inset \(inset) raster pixels, offsets \(first)…\(last), \(offsets.count) traces; \(valid.count) thin-line candidates."
-    guard valid.count==1,groups.count==1 else { return (nil,detail+" Missing/ambiguous divider; calibrate manually.") }
-    return (CGFloat(valid[0].first!+valid[0].last!)/2,detail)
+    let pane=layout.pane(in:viewport,vertical:layout.group==1 ? viewport.midX:nil,horizontal:layout.group==2 ? viewport.midY:nil)
+    return ViewportDetection(bounds:pane,verticalDivider:nil,horizontalDivider:nil,background:full.background,
+        summary:full.summary+"\n50/50 split of validated outer area; selected \(layout.label): \(String(describing:pane)).")
 }
 
 // Map the reported content surface to the parent window, excluding compositor

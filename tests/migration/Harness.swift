@@ -156,6 +156,8 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
             prefs.set(mode.rawValue,forKey:"automaticPlacementMode")
             expect(app.automaticPlacementMode == mode,"Existing saved backend must survive")
         }
+        prefs.set("assisted",forKey:"automaticPlacementMode")
+        expect(app.automaticPlacementMode == .screenshot,"Retired saved assisted mode becomes screenshot")
         prefs.removeObject(forKey:"automaticPlacementMode")
         prefs.set(false,forKey:"experimentalAXPlacement")
         expect(app.automaticPlacementMode == .screenshot,"Explicit legacy screenshot remains screenshot")
@@ -163,7 +165,7 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         prefs.set(true,forKey:"useScreenshotDetection")
         for assist in [false,true] { for infer in [false,true] {
             prefs.set(assist,forKey:"screenshotAXAssistance");prefs.set(infer,forKey:"experimentalAutomaticView")
-            expect(app.assistedPlacementEnabled == assist && app.automaticViewEnabled == infer,"Independent screenshot choices")
+            expect(app.automaticPlacementMode == .screenshot && app.automaticViewEnabled == infer,"Independent screenshot choices")
             expect(app.screenshotAXDismissEnabled == infer,"Screenshot dismiss policy depends on inference, not assistance")
         } }
         prefs.set(false,forKey:"useScreenshotDetection")
@@ -285,13 +287,12 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         try fm.removeItem(at:MigrationEnvironment.bridge.appendingPathComponent("heartbeat.txt"))
         app.lastAXMapping="Synthetic map";app.lastAXToolbar="Synthetic toolbar"
         app.lastPlacementFailure="Retained failure";app.lastTiming="Measured sample"
-        app.assistedChecks=3;app.assistedAXSeconds=0.02;app.assistedCheckSeconds=0.05
         for mode in [false,true] {
             prefs.set(mode,forKey:"useScreenshotDetection")
             let clipLine="\nTitle-bar clip: \(app.overlayController.titlebarClipStatus); top=0.0 pt"
-            let current=diagnosticReport(app.diagnosticSections())
+            let current=diagnosticReport(app.diagnosticSections().filter { $0.title != "Placement method" })
             expect(current.contains(clipLine),"Report includes title-bar clip state")
-            expect(current.replacingOccurrences(of:clipLine,with:"") == diagnosticReport(app.baselineDiagnosticSections()).replacingOccurrences(of:"Screenshot modes retain cache-invalidation behaviour.",with:"Screenshot with AX view detection dismisses on confirmed photo/view/pane/panel changes and Grid. Without AX view detection, existing cache-invalidation behaviour is retained."),"Report matches frozen formatter except the approved screenshot policy description")
+            expect(current.replacingOccurrences(of:clipLine,with:"") == diagnosticReport(app.baselineDiagnosticSections().filter { $0.title != "Placement method & assisted evidence" }).replacingOccurrences(of:"Screenshot modes retain cache-invalidation behaviour.",with:"Screenshot with AX view detection dismisses on confirmed photo/view/pane/panel changes and Grid. Without AX view detection, existing cache-invalidation behaviour is retained."),"Report matches frozen formatter except the approved screenshot policy description")
         }
         let reportURL=MigrationEnvironment.root.appendingPathComponent("Diagnostics/latest.txt")
         var generated=0,failures=0
@@ -337,6 +338,8 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
             }
         }
         verifyTargets(menu)
+        func containsRetired(_ m:NSMenu)->Bool { m.items.contains { $0.title=="AX-assisted placement" || ($0.submenu.map(containsRetired) ?? false) } }
+        expect(!containsRetired(menu),"Retired assistance menu must be absent")
         let developerMenu=menu.items.first { $0.title=="Developer tools" }!.submenu!
         expect(developerMenu.items.contains { $0.title=="Show AX placement preview" && $0.action == #selector(AppDelegate.toggleAXTrial) },"Accepted AX preview is directly accessible in Developer tools")
         expect(!developerMenu.items.contains { $0.title=="Experimental features" },"Empty experimental submenu is removed")
@@ -346,7 +349,7 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
             prefs.set(automatic,forKey:app.regionKey("automaticBounds"))
             app.updateDetectionMenu()
             expect(app.liveUpdateItem!.isHidden==screenshot,"AX live option visible only in Accessibility")
-            expect(app.viewToggleItem!.isHidden == !screenshot && app.assistedToggleItem!.isHidden == !screenshot,"Screenshot options visible only in Screenshot")
+            expect(app.viewToggleItem!.isHidden == !screenshot,"Screenshot options visible only in Screenshot")
             expect(app.liveUpdateItem!.isEnabled == (automatic && !screenshot),"AX option enablement unchanged")
             expect(app.viewToggleItem!.isEnabled == (automatic && screenshot),"Screenshot option enablement unchanged")
             expect(app.screenshotToggleItem!.isEnabled==automatic,"Manual placement disables method submenu")
@@ -380,6 +383,7 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         prefs.set(false,forKey:app.regionKey("automaticBounds"));app.updateLayoutMenu()
         expect(root.isHidden && app.menus.layoutSeparator!.isHidden,"Manual calibration keeps view menu hidden")
         verifyTargets(menu)
+        expect(!containsRetired(menu),"Retired assistance menu must be absent")
         print("PASS migration: settings defaults, menu order/targets, mode/manual visibility and inferred pane states")
     }
 }

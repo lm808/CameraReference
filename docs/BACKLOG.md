@@ -4,10 +4,10 @@ Current source: accepted 1.1.10 / build 69. Migration and its six deferred fixes
 
 ## Screenshot backup modes
 
-- Validate all combinations of AX-assisted placement and AX view detection, preserving the original pure screenshot path.
+- Candidate 1.1.11: validate pixel-only 50/50 splits and wider side search with optional AX view detection on/off.
 - Determine the cause of pure screenshot Library split failures associated with Embedded Preview text, and Develop side-by-side with the right panel hidden. Fix only after establishing the failed stage and separate authorisation.
-- Validate assisted raw-header rejection, bottom-label tolerance and midpoint fallback within validated outer bounds; these do not fix malformed capture surfaces.
-- Measure contribution, elapsed cost and sustained overhead of retained background pixel checks before reducing or removing them.
+- AX-assisted placement is removed in candidate 1.1.11. Confirm Library status labels and extra bottom space do not corrupt the independent outer rectangle; malformed capture surfaces remain separate.
+- Measure elapsed cost and sustained overhead of retained background pixel checks before reducing or removing them. Assisted-only comparison counters have been retired.
 
 ## Continued native use and edge cases
 
@@ -30,7 +30,7 @@ Current source: accepted 1.1.10 / build 69. Migration and its six deferred fixes
 - Additional RAW formats/Sony samples and cropped RAW/JPEG aspect handling.
 - Better screenshot placement across unusual panel widths without personal side-search tuning.
 
-AX placement, view inference, configurable corrections and assisted search are already implemented; they are not future feature proposals. Pinch was deliberately removed in favour of Command-scroll. Historical development tasks belong in HISTORICAL-NOTES.md, not here.
+AX placement, view inference and configurable corrections are implemented. Guided manual-selector AX recalibration is the next separate step. Pinch was deliberately removed in favour of Command-scroll. Historical development tasks belong in HISTORICAL-NOTES.md, not here.
 
 ## Migration closure — 2026-11-21
 

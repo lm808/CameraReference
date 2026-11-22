@@ -2,6 +2,12 @@
 
 Dated build/test records and original user annotations follow. A historical “pending” or “current” statement belongs to that entry, not necessarily today. For current outstanding checks see [TESTING.md](../TESTING.md); for the implemented behaviour see [METHODS.md](METHODS.md).
 
+## 1.1.11 / build 70 — screenshot simplification candidate
+
+Synthetic tests reproduce a 100-pixel working area whose borders fall outside the default 40% search bands; the validated 50% retry succeeds. Tests cover all four equal pane choices with missing/wrong divider pixels, shown/hidden panels, multiple surround colours, fractional midpoint coverage, invalid outer-area rejection, and preservation of panel-signature/preference semantics. Earlier pixel/capture/cache/geometry checks pass. No native claim is made for Library Embedded Preview or extra bottom space.
+
+Core, Lua bridge, detection, viewport, reset, preview, capture, split and config-editor checks passed; the config-editor atomic-save test required an unrestricted rerun in its isolated temporary directory. Migration/coordinator checks passed, including retired assisted preferences, optional AX inference, settings menu removal and late-result guards. Candidate testing app built successfully. AXTrial, Layout, OverlayBehaviour, Views and presentation code are unchanged from accepted main; shared panel signature was extracted without changing its calculation. Recalibration has not started. Native acceptance remains in TESTING.md; main is not rebuilt or merged.
+
 ## 1.1.10 / build 69 — final user acceptance, 2026-11-21
 
 The user confirmed “all tests pass” after title-bar clipping, then authorised documentation cleanup and merge. Original final annotations are preserved verbatim in [clipping response](migration/1.1.10-CLIPPING-TEST-RESPONSE.md); earlier [initial](migration/1.1.10-TEST-RESPONSE.md) and [follow-up](migration/1.1.10-FOLLOW-UP-RESPONSE.md) responses retain their corrections and superseded failures.

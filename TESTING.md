@@ -1,12 +1,14 @@
-# Testing status — 1.1.10 / build 69
+# Screenshot simplification — 1.1.11 / build 70
 
-All migration and deferred-fix tests are accepted. On 2026-11-21 the user confirmed “all tests pass”, including title-bar reveal/hide, unchanged photo size/position, title-bar controls, and windowed/floating regression checks. The slight title-bar clipping delay is accepted; no optimisation is requested.
+Quit the regular app and open this worktree’s `release/CameraReference Testing.app`. Main remains unchanged. Earlier accepted results remain in docs/migration/; this checklist is only for the new changes.
 
-Original annotations are preserved in:
+Use Settings → Detection method → Screenshot. AX-assisted placement should be absent; AX view detection remains available. Reinvoke the overlay after each layout change when checking geometry.
 
-- [Initial backlog tests](docs/migration/1.1.10-TEST-RESPONSE.md)
-- [Follow-up tests and later corrections](docs/migration/1.1.10-FOLLOW-UP-RESPONSE.md)
-- [Final clipping tests](docs/migration/1.1.10-CLIPPING-TEST-RESPONSE.md)
-- [Migration stage 9](docs/migration/STAGE-9-ACCEPTANCE.md)
+- [ ] **Equal splits:** in Develop and Library, check Loupe, left/right (both panes), and top/bottom (both panes where supported). Test with panels shown, then hidden. Compare photo Fit and the selected pane boundary; check Library’s extra bottom space specifically.
+- [ ] **Small working area:** resize Lightroom to its smallest window, with side panels shown. Check Loupe and side-by-side, then hide only the right panel. No false “too narrow” failure; overlay must stay inside the intended pane. Diagnostics should report the expanded side search when used.
+- [ ] **Embedded Preview text:** in Library side-by-side, select a photo showing the label and compare with one without it. Check that the overlay does not extend into the top panel or lower controls. Report any outer-bound failure; 50/50 cannot repair it.
+- [ ] **Optional AX:** with AX view detection off, manually select all five pane/view choices and confirm placement. With it on, change Lightroom view/pane/panel and photo: confirmed changes should dismiss the visible screenshot overlay as before. No automatic reopening.
+- [ ] **Settings/permissions:** if assistance was previously enabled, Screenshot remains selected and the AX view preference remains as set. Without Screen Recording permission, Screenshot and snapping fail gracefully without prompting; manual selection still works.
+- [ ] **AX-only regression:** switch to Accessibility; verify placement, update-on/off behaviour, floating display and full-screen title-bar clipping remain as accepted.
 
-No outstanding checklist remains for this migration. Broader screenshot, compatibility and performance investigations remain in [BACKLOG.md](docs/BACKLOG.md); this acceptance does not claim exhaustive coverage of them.
+If a case fails, leave automatic diagnostics saving enabled, invoke once in that state and tell me the module/view/panel setup. No screenshot need be saved. Candidate geometry tests are synthetic; your native comparison is still required before merging.

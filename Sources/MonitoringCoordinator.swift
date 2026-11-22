@@ -92,17 +92,13 @@ extension AppDelegate {
         let id=UUID();lightroomMonitor.panelCheckID=id
         let settings=detectionSettings.current
         let started=ProcessInfo.processInfo.systemUptime
-        let seed=overlayLayout == .full ? nil:region
-        let assisted=assistedPlacementEnabled,module=currentModule()
         lightroomMonitor.panelCheckTask=Task.detached(priority:.utility) { [weak self] in
-            let hints=assisted ? Self.screenHints(module:module):nil
-            let axElapsed=ProcessInfo.processInfo.systemUptime-started
-            let result=await inspectScreenLayout(imageSize:imageSize,settings:settings,layout:memory.layout,seed:seed,maxPixelWidth:1280,axHints:hints)
+            let result=await inspectScreenLayout(imageSize:imageSize,settings:settings,layout:memory.layout,maxPixelWidth:1280)
             guard !Task.isCancelled else { return }
-            await self?.finishPanelCheck(result,id:id,memory:memory,elapsed:ProcessInfo.processInfo.systemUptime-started,assisted:assisted,hints:hints,axElapsed:axElapsed)
+            await self?.finishPanelCheck(result,id:id,memory:memory,elapsed:ProcessInfo.processInfo.systemUptime-started)
         }
     }
-    @MainActor func finishPanelCheck(_ result:ScreenProbeResult,id:UUID,memory:PlacementMemory,elapsed:TimeInterval,assisted:Bool=false,hints:AXScreenHints?=nil,axElapsed:TimeInterval=0) {
+    @MainActor func finishPanelCheck(_ result:ScreenProbeResult,id:UUID,memory:PlacementMemory,elapsed:TimeInterval) {
         guard lightroomMonitor.panelCheckID==id else { return };lightroomMonitor.panelCheckID=nil;lightroomMonitor.panelCheckTask=nil
         guard !lightroomMonitor.workspaceOverview,!overlayController.overlaySuspended,isLightroom(),pending==nil,screenTask==nil,calibration==nil,
               placementMemory?.epoch==memory.epoch,selectionEpoch()==memory.epoch,
@@ -113,19 +109,7 @@ extension AppDelegate {
             lightroomMonitor.panelCheckStatus="Background check paused: Lightroom is off-screen or spans displays.";return
         }
         let expected=memory.translated(window:window,windowID:memory.windowID,epoch:memory.epoch,settingsKey:memory.settingsKey,layout:memory.layout)
-        var axChanged=false
-        if assisted {
-            assistedChecks += 1;assistedCheckSeconds += elapsed;assistedAXSeconds += axElapsed
-            if let hints,sameWindowGeometry(hints.host,current) {
-                axChanged=assistedSignature != nil && assistedSignature != hints.signature
-                if axChanged { assistedAXChanges += 1 }
-                if result.uiFrame == nil { assistedPixelFailures += 1 }
-                else if assistedSignature == hints.signature && panelBoundsChanged(previous:expected,current:result.uiFrame,tolerance:4) { assistedPixelChanges += 1 }
-                assistedSignature=hints.signature
-            } else { assistedAXFailures += 1 }
-            assistedEvidence="Last comparison: AX changed=\(axChanged); prior=\(String(describing:expected)); screenshot=\(String(describing:result.uiFrame))."
-        }
-        if axChanged || panelBoundsChanged(previous:expected,current:result.uiFrame,tolerance:4) {
+        if panelBoundsChanged(previous:expected,current:result.uiFrame,tolerance:4) {
             let reason=result.uiFrame == nil ? "UI boundaries could not be validated":"UI boundaries changed"
             lightroomMonitor.panelCheckStatus="Background check invalidated cached placement (visible overlay retained): \(reason).\nPrevious UI: \(String(describing:expected)); checked UI: \(String(describing:result.uiFrame)).\n"+result.summary
             invalidateAutomaticGeometry()

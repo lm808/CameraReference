@@ -1,6 +1,6 @@
 # Architecture and source map
 
-Current accepted implementation: 1.1.10 / build 69. This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
+Current candidate: 1.1.11 / build 70; main remains accepted 1.1.10 / build 69. This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
 
 ## Source ownership
 
@@ -15,7 +15,7 @@ Current accepted implementation: 1.1.10 / build 69. This is a map of the code as
 | ViewCoordinator.swift | Explicit pane choices, invocation-time AX inference and live view/photo geometry updates, including existing identity/generation guards. |
 | CalibrationCoordinator.swift | Manual calibration preparation/accept/cancel/reset and failure prompts; uses existing CalibrationController and optional snapping. |
 | ExportCoordinator.swift | Save eligibility, confirmation and asynchronous export completion for the invoking overlay/floating photo view. |
-| PlacementCoordinator.swift / PlacementImplementations.swift | Manual/cache/backend routing and async completion guards; separate Manual/AX/original screenshot/assisted adapters with global-AppKit UIPlacement. |
+| PlacementCoordinator.swift / PlacementImplementations.swift | Manual/cache/backend routing and async completion guards; separate Manual/AX/Screenshot adapters with global-AppKit UIPlacement. |
 | PhotoRequestCoordinator.swift / PhotoRequestPipeline.swift | Qualification/dispatch versus request transport, polling, cancellation, immutable load context and RAM image cache ownership. |
 | LightroomMonitor.swift | Read-only observations, heartbeat/display timers, notification subscriptions, module freshness and monitoring state. Synchronous event signals and optional live AX evidence; no window mutations. |
 | MonitoringCoordinator.swift | Existing eligibility/freshness guards and policy execution in tick order; background screenshot checks retain their original route. Addresses observation state on the monitor. |
@@ -25,8 +25,8 @@ Current accepted implementation: 1.1.10 / build 69. This is a map of the code as
 | ImageSource.swift | JPEG selection/extraction/orientation/decode, fingerprints and the one-selection RAM cache. |
 | Export.swift | Display-specific JPEG snapshots and explicit safe export. |
 | AXTrial.swift | Raw panel/label geometry, view classification, signed corrections and pane geometry shared by AX placement and preview. |
-| AXAssisted.swift | Raw structural hints/signatures, independently maintained guided pixel search and placement preference resolution. |
-| ScreenProbe.swift | Capture/normalisation and points-to-raster mapping; dispatch to original or assisted search; original split-margin scanner. |
+| AXPanelState.swift / PlacementMode.swift | Preserved panel-change signature for view monitoring, and two-backend preference resolution; no AX-guided pixel search. |
+| ScreenProbe.swift | Capture/normalisation and points-to-raster mapping; one pixel-only outer search and equal split selection. |
 | ViewportDetector.swift | Original Full UI rectangle evidence and raster boundary validation. Protected baseline for pure screenshot mode. |
 | PhotoDetector.swift | Legacy/diagnostic photo-edge detection and fixtures, not the normal UI Fit calculation. |
 | Layout.swift | Lightroom host metadata, coordinate conversion, bounded AX mapping/menu readers and lifecycle/overview evidence. |
@@ -47,12 +47,11 @@ Invocation → bridge token/selection epoch → JPEG load or RAM hit
   └─ Automatic
        ├─ Accessibility → AX map + toolbar + corrections → inferred pane → Fit
        └─ Screenshot → eligible cached bounds, otherwise capture
-            ├─ assistance off → original Full detector → original divider scan
-            └─ assistance on → raw AX hints → guided pixel search
-                 → validated outer area → divider scan or assisted midpoint fallback
+            → pixel-validated Full outer bounds (wider side retry if needed)
+                 → Loupe or 50/50 selected pane → Fit
 ```
 
-AX view inference is always enabled for Accessibility, independently optional for Screenshot. Screenshot assistance does not imply AX view inference. Manual placement overrides all of these. Missing AX geometry in Accessibility never triggers automatic screenshot capture. Explicit capture preview and permission-available calibration snapping are separate actions.
+AX view inference is always enabled for Accessibility, independently optional for Screenshot. Screenshot placement never consumes AX panel edges. Manual placement overrides all of these. Missing AX geometry in Accessibility never triggers automatic screenshot capture. Explicit capture preview and permission-available calibration snapping are separate actions.
 
 AX correction values do not enter screenshot search geometry/cache keys. Assisted results do not populate the original detector’s internal raster cache. Mode/selection/config changes prevent inappropriate placement-memory reuse.
 
@@ -89,7 +88,7 @@ The coordinator files are extensions of the same AppDelegate. This is an intenti
 
 Shared placement memory, capture/calibration tasks and invocation-view IDs remain on composition because foreground placement, explicit capture preview and calibration share cancellation rules. Splitting them into separate owners without a replacement lifetime contract could accept stale results or change cancellation order. These are explicit remaining dependencies, not a claim that every target component became an independent object. Do not introduce a second authoritative store.
 
-To change update/dismiss policy, start in OverlayBehaviourPolicy, then check evidence qualification in MonitoringCoordinator and ViewCoordinator. To change calculations, use the specific placement implementation; preserve original screenshot versus assisted separation. Calibration prompts belong in CalibrationCoordinator; floating/overlay ordering belongs in PresentationCoordinator; extraction/format support belongs in ImageSource/Core. This keeps likely follow-up work local without unifying unrelated modes.
+To change update/dismiss policy, start in OverlayBehaviourPolicy, then check evidence qualification in MonitoringCoordinator and ViewCoordinator. To change calculations, use the specific placement implementation; preserve independent AX versus pixel placement. Calibration prompts belong in CalibrationCoordinator; floating/overlay ordering belongs in PresentationCoordinator; extraction/format support belongs in ImageSource/Core. This keeps likely follow-up work local without unifying unrelated modes.
 
 ## Monitoring and performance boundary
 

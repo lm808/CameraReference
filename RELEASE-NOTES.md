@@ -1,12 +1,7 @@
-# Camera Reference 1.1.10
+# Camera Reference 1.1.11 — testing candidate
 
-Accepted migration and usability fixes, build 69:
+Screenshot mode now uses one independent pixel detector. Valid outer areas split 50/50 according to the selected view. If the initial side-search zone finds no valid rectangle, the detector retries to the centre and accepts only a fully validated result.
 
-- Clearer ownership of placement, image requests, monitoring, presentation, settings and diagnostics.
-- Full-screen title-bar reveal clips the overlapping overlay strip without moving or resizing the photo. The slight reveal delay is accepted.
-- Floating reference stays above the overlay after clicks; AX preview borders use the production frame constraints.
-- Screenshot with AX view detection dismisses on confirmed photo/view/pane/panel changes and Grid, matching Accessibility with updating off. Missing evidence retains the overlay. Pure screenshot without AX view detection keeps its previous behaviour.
-- Generic calibration guidance, shorter gesture tooltips and direct developer-menu access to AX preview.
-- Optional delayed window-order diagnostics for future investigations.
+AX-assisted placement is removed. Existing assisted choices use Screenshot; optional AX view detection retains its separate setting and dismissal behaviour. AX-only placement/live updates, manual calibration and capture permission handling are unchanged. Recalibration is deferred to the next step.
 
-Placement algorithms and calibrated offsets remain unchanged. Migration and deferred-fix native tests passed; broader screenshot edge cases and compatibility work remain in docs/BACKLOG.md. No release package was created as part of the documentation cleanup/merge.
+Native checks are in TESTING.md. Main remains accepted 1.1.10 build 69; this candidate is 1.1.11 build 70. No package created.

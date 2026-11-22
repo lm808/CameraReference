@@ -73,8 +73,8 @@ struct DetectionConfig: Equatable {
     bottom = ui
     # Minimum Fit margin, in macOS points (not Retina pixels). Range 0...100.
     fitInsetPoints = 18
-    # Side-border search from each window edge, 5...50 percent.
-    # 40 searches left 0...40% and right 60...100%; 50 reaches the centre.
+    # Initial side-border search from each window edge, 5...50 percent.
+    # 40 searches left 0...40% and right 60...100%; retry to 50 if no valid area.
     sideSearchPercent = 40
     # Minimum sustained edge length as fraction of Lightroom window, 0.05...1.
     verticalSnapFraction = 0.25
@@ -176,7 +176,7 @@ final class DetectionConfigStore {
                 $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces) == "sideSearchPercent"
             }
             if !hasInterval {
-                try (text + "\n# Side-border search from each window edge, 5...50 percent.\n# 40 searches left 0...40% and right 60...100%; 50 reaches the centre.\nsideSearchPercent = 40\n").write(to:url,atomically:true,encoding:.utf8)
+                try (text + "\n# Initial side-border search from each window edge, 5...50 percent.\n# 40 searches left 0...40% and right 60...100%; retry to 50 if no valid area.\nsideSearchPercent = 40\n").write(to:url,atomically:true,encoding:.utf8)
             }
         }
         let existing=try String(contentsOf:url,encoding:.utf8)

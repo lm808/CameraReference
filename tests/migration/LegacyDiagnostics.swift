@@ -18,6 +18,8 @@ extension AppDelegate {
         let date=attributes?[.modificationDate] as? Date
         let age=date.map { "\(max(0,Int(Date().timeIntervalSince($0)))) seconds ago" } ?? "not received"
         let state=(try? String(contentsOf:folder.appendingPathComponent("status.txt"),encoding:.utf8)) ?? "No plugin status received."
+        let assistedChecks=0,assistedAXChanges=0,assistedAXFailures=0,assistedPixelChanges=0,assistedPixelFailures=0
+        let assistedAXSeconds=0.0,assistedCheckSeconds=0.0,assistedEvidence="No assisted comparison yet."
         return [
             DiagnosticSection(title:"App & permissions",body:"\(versionTitle)\nAccessibility: \(AXIsProcessTrusted() ? "granted":"not granted — request through Inspect Accessibility layout")\nScreen Recording: \(CGPreflightScreenCaptureAccess() ? "granted":"not granted")\nExifTool: \(findExifTool(custom:CameraPreferences.shared.string(forKey:"exiftool")) == nil ? "not found":"available")\nApp: \(Bundle.main.bundleURL.path)\nBundle ID: \(Bundle.main.bundleIdentifier ?? "unknown")\n\(storageStatus)"),
             DiagnosticSection(title:"Accessibility & display map",body:lastAXMapping),
