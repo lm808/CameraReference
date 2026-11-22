@@ -2,6 +2,8 @@
 
 ## 1.1.12 — final usability candidate
 
+- Accept number-row and numeric-keypad equivalents for numeric view shortcuts; order shortcut settings Loupe, Left, Right, Top, Bottom.
+
 - Right-align menu shortcut hints in the system disabled-item grey; bindings and actions are unchanged. Use full Reference View (Top/Bottom/Left/Right) names in shortcut settings, separated from invocation bindings with Loupe first.
 
 - Add default-on Developer tools “Reuse screenshot working area”: retain valid geometry across photos/movement and Develop layouts; off restores earlier cache use. Library Loupe/Compare, resize/panel changes and explicit clearing still invalidate geometry. AX-only remains unchanged.

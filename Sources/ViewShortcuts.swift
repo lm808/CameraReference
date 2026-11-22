@@ -12,6 +12,19 @@ struct ViewShortcut {
         .init(layout:.right,key:UInt32(kVK_ANSI_6),label:"6"),
         .init(layout:.lower,key:UInt32(kVK_ANSI_2),label:"2"),
         .init(layout:.full,key:UInt32(kVK_ANSI_5),label:"5")]
+    // Presentation order is separate from persisted bindings and Carbon event IDs.
+    static let settingsOrder:[OverlayLayout] = [.full,.left,.right,.upper,.lower]
+    // Numeric view bindings accept either physical keyboard location, including
+    // bindings recorded on the keypad. Invocation bindings remain literal.
+    static func equivalentKeys(_ key:UInt32)->[UInt32] {
+        let pairs=[(kVK_ANSI_0,kVK_ANSI_Keypad0),(kVK_ANSI_1,kVK_ANSI_Keypad1),
+                   (kVK_ANSI_2,kVK_ANSI_Keypad2),(kVK_ANSI_3,kVK_ANSI_Keypad3),
+                   (kVK_ANSI_4,kVK_ANSI_Keypad4),(kVK_ANSI_5,kVK_ANSI_Keypad5),
+                   (kVK_ANSI_6,kVK_ANSI_Keypad6),(kVK_ANSI_7,kVK_ANSI_Keypad7),
+                   (kVK_ANSI_8,kVK_ANSI_Keypad8),(kVK_ANSI_9,kVK_ANSI_Keypad9)]
+        guard let pair=pairs.first(where:{UInt32($0.0)==key || UInt32($0.1)==key}) else { return [key] }
+        return [UInt32(pair.0),UInt32(pair.1)]
+    }
     static func available(_ choice:OverlayLayout,automatic:Bool,inferred:OverlayLayout?,enabled:Bool)->Bool {
         enabled && (!automatic || (inferred != nil && choice.group != 0 && choice.group==inferred!.group))
     }
@@ -37,9 +50,11 @@ extension AppDelegate {
         for (index,item) in ViewShortcut.defaults.enumerated() {
             let value=values?[index] ?? viewShortcut(item.layout)
             if value.1==0 { continue }
-            var ref:EventHotKeyRef?
-            if RegisterEventHotKey(value.0,value.1,EventHotKeyID(signature:0x43524546,id:UInt32(index+10)),GetApplicationEventTarget(),OptionBits(kEventHotKeyExclusive),&ref)==noErr,let ref { viewHotKeys.append(ref) }
-            else { success=false }
+            for key in ViewShortcut.equivalentKeys(value.0) {
+                var ref:EventHotKeyRef?
+                if RegisterEventHotKey(key,value.1,EventHotKeyID(signature:0x43524546,id:UInt32(index+10)),GetApplicationEventTarget(),OptionBits(kEventHotKeyExclusive),&ref)==noErr,let ref { viewHotKeys.append(ref) }
+                else { success=false }
+            }
         }
         return success
     }

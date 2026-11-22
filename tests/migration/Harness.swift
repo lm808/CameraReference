@@ -401,6 +401,13 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
             expect(ViewShortcut.available(mode,automatic:true,inferred:.left,enabled:true)==(mode.group==1),"Only matching horizontal panes")
             expect(ViewShortcut.available(mode,automatic:true,inferred:.upper,enabled:true)==(mode.group==2),"Only matching vertical panes")
         }
+        expect(ViewShortcut.settingsOrder == [.full,.left,.right,.upper,.lower],"Settings follow menu pane order")
+        for key:UInt32 in [18,19,20,21,23,22,26,28,25,29] {
+            let aliases=ViewShortcut.equivalentKeys(key)
+            expect(aliases.count==2 && Set(aliases).count==2 && aliases.contains(key),"Digits register two distinct locations")
+            expect(ViewShortcut.equivalentKeys(aliases[1])==aliases,"Keypad recordings share number-row aliases")
+        }
+        expect(ViewShortcut.equivalentKeys(38)==[38],"Non-numeric bindings remain literal")
         let emptyRecorder=ShortcutRecorder(shortcut:(38,6400),label:"J")
         emptyRecorder.finishRecording();expect(emptyRecorder.candidate.1==6400,"Untouched binding retained")
         emptyRecorder.capturing=true;emptyRecorder.finishRecording();expect(emptyRecorder.candidate.1==0,"Empty recording clears binding")

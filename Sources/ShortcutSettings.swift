@@ -23,14 +23,15 @@ extension AppDelegate {
         let names=["Overlay","Floating display"]+ViewShortcut.defaults.map {
             $0.layout == .full ? "Loupe View":"Reference View (\($0.layout.label))"
         }
-        let help=NSTextField(wrappingLabelWithString:"Click a binding to record it. Save while waiting for a key clears that binding; untouched bindings stay unchanged. Clear also removes a binding. Escape stops recording. View shortcuts follow the available menu choices.")
+        let help=NSTextField(wrappingLabelWithString:"Click a binding to record it. Save while waiting for a key clears that binding; untouched bindings stay unchanged. Clear also removes a binding. Escape stops recording. View shortcuts follow the available menu choices. Number keys also work on the numeric keypad.")
         let rows=zip(names,recorders).map { name,recorder -> [NSView] in
             recorder.help=help;recorder.setAccessibilityLabel(name+" shortcut");recorder.font = .systemFont(ofSize:14)
             return [NSTextField(labelWithString:name),recorder,NSButton(title:"Default",target:recorder,action:#selector(ShortcutRecorder.useDefault)),NSButton(title:"Clear",target:recorder,action:#selector(ShortcutRecorder.clearShortcut))]
         }
         // Reorder presentation only; recording/save order and hotkey IDs stay fixed.
-        let loupeRow=2+ViewShortcut.defaults.firstIndex(where:{$0.layout == .full})!
-        let displayOrder=[0,1,loupeRow]+rows.indices.filter{$0>=2 && $0 != loupeRow}
+        let displayOrder=[0,1]+ViewShortcut.settingsOrder.map { mode in
+            2+ViewShortcut.defaults.firstIndex(where:{$0.layout == mode})!
+        }
         let grid=NSGridView(views:displayOrder.map{rows[$0]});grid.columnSpacing=12;grid.rowSpacing=8;grid.yPlacement = .center
         grid.row(at:1).bottomPadding=12
         grid.column(at:0).width=175;grid.column(at:1).width=145
@@ -51,7 +52,12 @@ extension AppDelegate {
                 if !a || !b || !c { report("A previous shortcut is unavailable; reopen Keyboard shortcuts.") };return
             }
             recorders.forEach{$0.finishRecording()}
-            let assigned=recorders.filter{$0.candidate.1 != 0}.map{"\($0.candidate.0):\($0.candidate.1)"}
+            let assigned=recorders.enumerated().flatMap { index,recorder -> [String] in
+                let value=recorder.candidate
+                guard value.1 != 0 else { return [] }
+                let keys=index<2 ? [value.0]:ViewShortcut.equivalentKeys(value.0)
+                return keys.map{"\($0):\(value.1)"}
+            }
             guard Set(assigned).count==assigned.count else { help.stringValue="Each assigned shortcut must be different.";continue }
             clearRegistrations()
             let values=views.map{($0.candidate.0,$0.candidate.1,$0.keyLabel)}

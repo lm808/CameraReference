@@ -25,3 +25,5 @@ Expanded screenshot reuse (same 1.1.12 / build 71):
 - [ ] Develop: switch Loupe/Left-Right/Top-Bottom (and selected pane) without changing surrounding panels. Reuse the whole area and derive the correct new pane. Library Loupe ↔ Compare must detect again.
 - [ ] Clear overlay region setting forces fresh detection but leaves the auto/manual choice unchanged. Toggle the reuse option off/on and confirm geometry is cleared in both directions.
 - [ ] Off: a repeated toggle for the same photo/pane may still reuse placement; changing photo or pane restores the earlier cache eligibility. Split captures search outer bounds afresh; Loupe keeps its earlier raster cache. AX and photo caching are unchanged.
+
+- [ ] View shortcuts work with both number-row and keypad digits (also after recording a keypad binding). Conflicting aliases are rejected on Save. Settings order is Loupe, Left, Right, Top, Bottom; invocation shortcuts remain separate.
