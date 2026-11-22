@@ -1,7 +1,7 @@
-# Camera Reference 1.1.11 — testing candidate
+# Camera Reference 1.1.12 — testing candidate
 
-Screenshot mode now uses one independent pixel detector. Valid outer areas split 50/50 according to the selected view. If the initial side-search zone finds no valid rectangle, the detector retries to the centre and accepts only a fully validated result.
+Build 71 corrects screenshot Compare selection-frame validation, shares the outer-bound raster cache and reuses opposite equal panes. Photo changes dismiss Screenshot overlays with or without AX view detection. Explicit screenshot placement can request Screen Recording; AX-only and manual snapping do not.
 
-AX-assisted placement is removed. Existing assisted choices use Screenshot; optional AX view detection retains its separate setting and dismissal behaviour. AX-only placement/live updates, manual calibration and capture permission handling are unchanged. Recalibration is deferred to the next step.
+Keyboard shortcuts now include Top/Left/Right/Bottom/Loupe on Control+Option+Command+8/4/6/2/5. Defaults use number-row keys; recordings can use other keys. Active choices follow view detection. Existing overlay/floating bindings are preserved. Save an empty recording or use Clear to remove a binding.
 
-Native checks are in TESTING.md. Main remains accepted 1.1.10 build 69; this candidate is 1.1.11 build 70. No package created.
+Native acceptance is pending. Main remains accepted 1.1.10 build 69. No package created.

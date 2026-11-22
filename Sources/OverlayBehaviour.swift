@@ -31,8 +31,8 @@ enum OverlayBehaviourPolicy {
         return accessibility && live ? .adjust:.dismiss
     }
 
-    static func photoSelectionChange(accessibility:Bool,automatic:Bool,overlayOpen:Bool,previous:String?,current:String?,live:Bool,screenshotAXDetection:Bool=false)->AXOverlayChangeAction {
-        guard (accessibility || screenshotAXDetection),automatic,overlayOpen,let previous,let current,previous != current else { return .retain }
+    static func photoSelectionChange(accessibility:Bool,automatic:Bool,overlayOpen:Bool,previous:String?,current:String?,live:Bool,screenshot:Bool=false)->AXOverlayChangeAction {
+        guard (accessibility || screenshot),automatic,overlayOpen,let previous,let current,previous != current else { return .retain }
         return accessibility && live ? .adjust:.dismiss
     }
 

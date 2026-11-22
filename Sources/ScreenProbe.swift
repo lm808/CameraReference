@@ -143,15 +143,11 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         let detectionStarted=ProcessInfo.processInfo.systemUptime
         let detection:ViewportDetection
         let reused:Bool
-        if layout == .full {
-            guard let result=await ScreenGeometryCache.shared.inspect(raster,key:"crop:\(captureKey):\(window.windowID):\(window.frame):\(filter.pointPixelScale):\(CGDisplayBounds(CGMainDisplayID()))",ticket:ticket,singlePhoto:true,sideSearchPercent:settings.sideSearchPercent) else {
-                return ScreenProbeResult(candidate:nil,summary:"Window/display geometry was invalidated during capture.",geometryChanged:true)
-            }
-            (detection,reused)=result
-        } else {
-            detection=detectSplitViewport(in:raster,layout:layout,sideSearchPercent:settings.sideSearchPercent)
-            reused=false
+        guard let result=await ScreenGeometryCache.shared.inspect(raster,key:"crop:\(captureKey):\(window.windowID):\(window.frame):\(filter.pointPixelScale):\(CGDisplayBounds(CGMainDisplayID()))",ticket:ticket,singlePhoto:true,sideSearchPercent:settings.sideSearchPercent) else {
+            return ScreenProbeResult(candidate:nil,summary:"Window/display geometry was invalidated during capture.",geometryChanged:true)
         }
+        reused=result.1
+        detection=splitViewport(result.0,layout:layout)
         let childMode:String
         if #available(macOS 14.2,*) { childMode="included" } else { childMode="system default" }
         let timing=String(format:"Stage timing: enumerate %.0f ms; stability/config %.0f ms; capture %.0f ms; raster %.0f ms; detector %.0f ms.\n",(enumerationEnded-probeStarted)*1000,(captureStarted-enumerationEnded)*1000,(captureEnded-captureStarted)*1000,(detectionStarted-captureEnded)*1000,(ProcessInfo.processInfo.systemUptime-detectionStarted)*1000)
@@ -184,7 +180,10 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
 // Both screenshot layouts share the same independently validated outer area.
 // The selected view determines orientation; image details never choose a divider.
 func detectSplitViewport(in raster:EdgeRaster,layout:OverlayLayout,sideSearchPercent:Double=45)->ViewportDetection {
-    let full=detectViewport(in:raster,singlePhoto:true,sideSearchPercent:sideSearchPercent)
+    splitViewport(detectViewport(in:raster,singlePhoto:true,sideSearchPercent:sideSearchPercent),layout:layout)
+}
+func splitViewport(_ full:ViewportDetection,layout:OverlayLayout)->ViewportDetection {
+    if layout == .full { return full }
     guard let viewport=full.bounds else { return full }
     let pane=layout.pane(in:viewport,vertical:layout.group==1 ? viewport.midX:nil,horizontal:layout.group==2 ? viewport.midY:nil)
     return ViewportDetection(bounds:pane,verticalDivider:nil,horizontalDivider:nil,background:full.background,

@@ -20,6 +20,7 @@ extension AppDelegate {
     @objc func selectLayout(_ sender:NSMenuItem) {
         guard let raw=sender.representedObject as? String,let mode=OverlayLayout(rawValue:raw),mode != overlayLayout else { return }
         if automaticViewEnabled && (mode.group==0 || mode.group != overlayLayout.group) { return }
+        let retainedMemory=screenshotDetectionEnabled && mode.group==overlayLayout.group ? placementMemory:nil
         cancelScreenInspection();cancelRequest();calibration?.finish(nil)
         if OverlayBehaviourPolicy.dismissForExplicitSelection(screenshot:screenshotDetectionEnabled) { hide() }
         if automaticViewEnabled {
@@ -27,7 +28,8 @@ extension AppDelegate {
             lightroomMonitor.detectedLayout=mode
         } else { overlayLayout=mode }
         CameraPreferences.shared.set(true,forKey:regionKey("automaticBounds"))
-        invalidateAutomaticGeometry();updateLayoutMenu()
+        if let retainedMemory { cancelPanelCheck();lastProbe=nil;placementMemory=retainedMemory } else { invalidateAutomaticGeometry() }
+        updateLayoutMenu()
         autoItem.state=CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) ? .on:.off
         report(mode == .full ? "Loupe View selected.":"\(mode.label) pane selected.")
         followLiveOverlayView(mode,module:currentModule(),requiresViewDetection:false)

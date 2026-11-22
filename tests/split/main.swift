@@ -175,10 +175,10 @@ for enabled in [false,true] { for auto in [false,true] { for live in [false,true
     assert(OverlayBehaviourPolicy.geometryChange(accessibility:false,automatic:auto,displayed:nil,selected:.left,panelsChanged:true,live:live,screenshotAXDetection:enabled) == .retain)
     for open in [false,true] { for previous in [nil,"A"] as [String?] { for current in [nil,"A","B"] as [String?] {
         let changed=enabled && auto && open && previous != nil && current != nil && previous != current
-        assert(OverlayBehaviourPolicy.photoSelectionChange(accessibility:false,automatic:auto,overlayOpen:open,previous:previous,current:current,live:live,screenshotAXDetection:enabled)==(changed ? .dismiss:.retain))
+        assert(OverlayBehaviourPolicy.photoSelectionChange(accessibility:false,automatic:auto,overlayOpen:open,previous:previous,current:current,live:live,screenshot:enabled)==(changed ? .dismiss:.retain))
     } } }
 } } }
-print("PASS: screenshot AX detection dismisses confirmed changes only; manual/off/unknown and inference-off retain")
+print("PASS: screenshot photo dismissal is independent of AX inference; view/panel dismissal remains inference-gated")
 
 let clipOverlay=CGRect(x:306,y:182,width:970,height:1242)
 let revealedBar=CGRect(x:0,y:1378,width:2560,height:32)
@@ -189,3 +189,9 @@ assert(OverlayBehaviourPolicy.titlebarClipHeight(overlay:clipOverlay,titlebar:re
 assert(OverlayBehaviourPolicy.titlebarClipHeight(overlay:clipOverlay.offsetBy(dx:-2560,dy:400),titlebar:revealedBar.offsetBy(dx:-2560,dy:400))==46)
 assert(OverlayBehaviourPolicy.titlebarClipHeight(overlay:CGRect(x:306,y:182,width:970,height:600),titlebar:revealedBar)==0)
 print("PASS: top shaving uses actual overlap, excludes lower panes/other displays, and has no calibrated dimensions")
+let leftMemory=PlacementMemory(ui:CGRect(x:100,y:200,width:300,height:400),window:window,windowID:42,epoch:"A",settingsKey:config.key,layout:.left)
+assert(leftMemory.translated(window:window,windowID:42,epoch:"A",settingsKey:config.key,layout:.right)==CGRect(x:400,y:200,width:300,height:400))
+let upperMemory=PlacementMemory(ui:CGRect(x:100,y:500,width:600,height:200),window:window,windowID:42,epoch:"A",settingsKey:config.key,layout:.upper)
+assert(upperMemory.translated(window:window,windowID:42,epoch:"A",settingsKey:config.key,layout:.lower)==CGRect(x:100,y:300,width:600,height:200))
+assert(upperMemory.translated(window:window,windowID:42,epoch:"A",settingsKey:config.key,layout:.left)==nil)
+print("PASS: equal-pane cache reuse preserves AppKit vertical orientation and rejects layout-group changes")

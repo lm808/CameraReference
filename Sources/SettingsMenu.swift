@@ -147,7 +147,7 @@ final class SettingsMenuController {
         let inferred=detectedLayoutModule == currentModule() ? detectedLayout:nil
         let mode=overlayLayout
         let unknown=automaticViewEnabled && inferred == nil
-        root.title=unknown ? "View detected on next invocation":layoutSymbol(mode)+"  "+layoutTitle(mode)
+        root.title=unknown ? "View detected on next invocation":layoutSymbol(mode)+"  "+layoutTitle(mode)+owner.viewShortcutSuffix(mode)
         root.image=unknown ? nil:layoutItems[mode]?.image
         let hasChoices = !unknown && (!automaticViewEnabled || mode != .full)
         if hasChoices {
@@ -157,7 +157,7 @@ final class SettingsMenuController {
         }
         root.isEnabled = !unknown
         for (choice,item) in layoutItems {
-            item.title=layoutSymbol(choice)+"  "+(automaticViewEnabled ? paneTitle(choice):layoutTitle(choice))
+            item.title=layoutSymbol(choice)+"  "+(automaticViewEnabled ? paneTitle(choice):layoutTitle(choice))+owner.viewShortcutSuffix(choice)
             item.isHidden=automaticViewEnabled && (unknown || choice.group != mode.group)
             item.state=choice==mode ? .on:.off
         }

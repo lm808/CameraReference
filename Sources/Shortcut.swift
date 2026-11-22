@@ -2,6 +2,7 @@ import AppKit
 import Carbon
 
 func shortcutText(key: String, modifiers: UInt32) -> String {
+    guard modifiers != 0 else { return "" }
     var text=""
     for (flag,symbol) in [(controlKey,"⌃"),(optionKey,"⌥"),(shiftKey,"⇧"),(cmdKey,"⌘")] {
         if modifiers & UInt32(flag) != 0 { text += symbol }
@@ -25,7 +26,9 @@ final class ShortcutRecorder: NSButton {
     }
     required init?(coder:NSCoder) { fatalError("init(coder:) has not been implemented") }
     override var acceptsFirstResponder: Bool { true }
-    func updateTitle() { title=capturing ? "Press shortcut…" : shortcutText(key:keyLabel,modifiers:candidate.1) }
+    func updateTitle() { title=capturing ? "Press shortcut…" : (candidate.1 == 0 ? "None":shortcutText(key:keyLabel,modifiers:candidate.1)) }
+    func finishRecording() { if capturing { candidate=(0,0);keyLabel="";capturing=false;updateTitle() } }
+    @objc func clearShortcut() { candidate=(0,0);keyLabel="";capturing=false;updateTitle() }
     @objc func beginCapture() {
         capturing=true; window?.makeFirstResponder(self); updateTitle()
         help?.stringValue="Press Command or Control plus a key. Escape stops recording."

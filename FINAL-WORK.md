@@ -16,3 +16,5 @@ Baseline: accepted 1.1.10 build 69, commit ab92404. Keep main accepted; implemen
 Existing screenshot caching, permission handling and background checks stay unchanged unless explicitly agreed. Broader performance work remains deferred. The inherited testing app is the accepted baseline, not a build of these planned changes. No implementation changes made during worktree setup.
 
 1.1.11 candidate: search-zone failure reproduced synthetically; fully validated 50% retry now accepted. Equal splitting implemented, native layout/margin acceptance pending. AX-only logic and optional inference signature preserved. Recalibration has not started.
+
+1.1.12 fixes: border-tolerant screenshot validation, shared outer raster cache/opposite-pane reuse, screenshot photo dismissal independent of inference, explicit placement permission request and configurable numeric view shortcuts. Prior native responses preserved. New candidate needs native acceptance.

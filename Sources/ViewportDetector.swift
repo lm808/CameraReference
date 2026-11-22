@@ -67,26 +67,32 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
     }
     func rectangleScore(_ r:CGRect)->Double? {
         guard r.width>12,r.height>12 else { return nil }
-        let corners=[rgb(Int(r.minX)+4,Int(r.minY)+4),rgb(Int(r.maxX)-5,Int(r.minY)+4),rgb(Int(r.minX)+4,Int(r.maxY)-5),rgb(Int(r.maxX)-5,Int(r.maxY)-5)]
-        guard corners.allSatisfy({distance($0,corners[0])<=8}) else { return nil }
-        var sides=[[[Double]]]()
-        for side in 0..<4 {
-            var samples=[[Double]]()
-            for j in 0..<40 {
-                let f=0.03+0.94*Double(j)/39
-                let x=Int(r.minX+r.width*f),y=Int(r.minY+r.height*f)
-                switch side {
-                case 0:samples.append(rgb(Int(r.minX)+4,y))
-                case 1:samples.append(rgb(Int(r.maxX)-5,y))
-                case 2:samples.append(rgb(x,Int(r.minY)+4))
-                default:samples.append(rgb(x,Int(r.maxY)-5))
+        // Selection outlines can occupy several raster pixels on just one pane.
+        // Validate parallel inner lines beyond a thin border, never a single corner.
+        let depths=[4,6,8,10,12].filter { CGFloat($0)*2 < min(r.width,r.height) }
+        var bestSupport:[Double]=[]
+        for depth in depths {
+            var sides=[[[Double]]]()
+            for side in 0..<4 {
+                var samples=[[Double]]()
+                for j in 0..<40 {
+                    let f=0.03+0.94*Double(j)/39
+                    let x=Int(r.minX+r.width*f),y=Int(r.minY+r.height*f)
+                    switch side {
+                    case 0:samples.append(rgb(Int(r.minX)+depth,y))
+                    case 1:samples.append(rgb(Int(r.maxX)-depth-1,y))
+                    case 2:samples.append(rgb(x,Int(r.minY)+depth))
+                    default:samples.append(rgb(x,Int(r.maxY)-depth-1))
+                    }
                 }
+                sides.append(samples)
             }
-            sides.append(samples)
+            let (background,_)=representative(sides.flatMap{$0})
+            let support=sides.map { Double($0.filter { distance($0,background)<=8 }.count)/40 }
+            if support.min()! > (bestSupport.min() ?? 0) { bestSupport=support }
         }
-        let (background,_)=representative(sides.flatMap{$0})
-        let support=sides.map { Double($0.filter { distance($0,background)<=8 }.count)/40 }
-        guard support.min()!>=0.90 else { return nil }
+        let support=bestSupport
+        guard support.count==4,support.min()!>=0.90 else { return nil }
         // All four lines must have distributed transition evidence over their actual span.
         var strengths=[Double]()
         for side in 0..<4 {
@@ -140,8 +146,8 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
         // Nested header rails may bound the same uniform surround. Prefer the innermost supported rectangle.
         let supported=accepted.filter { strongest.1-$0.1<0.08 }
         let outer=supported.max { $0.0.width*$0.0.height<$1.0.width*$1.0.height }!
-        let surround=rgb(Int(outer.0.minX)+4,Int(outer.0.minY)+4)
-        let best=supported.filter { distance(rgb(Int($0.0.minX)+4,Int($0.0.minY)+4),surround)<=8 }.min { $0.0.width*$0.0.height<$1.0.width*$1.0.height }!
+        let surround=rgb(Int(outer.0.minX)+12,Int(outer.0.minY)+12)
+        let best=supported.filter { distance(rgb(Int($0.0.minX)+12,Int($0.0.minY)+12),surround)<=8 }.min { $0.0.width*$0.0.height<$1.0.width*$1.0.height }!
         let distinct=accepted.first { candidate in
             let intersection=candidate.0.intersection(best.0)
             let overlap=intersection.isNull ? 0:intersection.width*intersection.height

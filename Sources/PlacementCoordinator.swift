@@ -62,7 +62,7 @@ extension AppDelegate {
             };return
         }
         if let ui=cachedUI(epoch:epoch,settings:settings,layout:.full) { show(ui);return }
-        guard supportedLightroomModule(currentModule()),#available(macOS 14.0,*),FeaturePermission.screenCapture.granted else { report("Screenshot sizing unavailable. Screen Recording permission and macOS 14 are required. Use AX placement or manual calibration.");return }
+        guard supportedLightroomModule(currentModule()),#available(macOS 14.0,*),FeaturePermission.screenCapture.ensure() else { report("Screenshot sizing unavailable. Screen Recording permission and macOS 14 are required. Use AX placement or manual calibration.");return }
         startPhotoDetection(imageSize:imageSize,layout:.full) { [weak self] probe in
             guard let self else { return }
             if let epoch,self.selectionEpoch() != epoch { self.report("Selection changed during capture; invoke again.");return }
@@ -102,7 +102,7 @@ extension AppDelegate {
             showUI(image,ui:ui,snapshot:snapshot,settings:settings)
             return
         }
-        guard #available(macOS 14.0,*), FeaturePermission.screenCapture.granted else {
+        guard #available(macOS 14.0,*), FeaturePermission.screenCapture.ensure() else {
             report("Screenshot detection unavailable: Screen Recording permission and macOS 14 are required. Use AX placement or manual calibration."); return
         }
         startPhotoDetection(imageSize:CGSize(width:image.width,height:image.height)) { [weak self] result in

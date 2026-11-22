@@ -49,9 +49,14 @@ struct PlacementMemory {
     let ui:CGRect,window:CGRect,windowID:UInt32,epoch:String,settingsKey:String,layout:OverlayLayout
     var background:[Double]=[0,0,0]
     func translated(window current:CGRect,windowID id:UInt32,epoch next:String?,settingsKey key:String,layout mode:OverlayLayout)->CGRect? {
-        guard id==windowID,next==epoch,key==settingsKey,mode==layout,
+        guard id==windowID,next==epoch,key==settingsKey,mode.group==layout.group,
               abs(current.width-window.width)<0.5,abs(current.height-window.height)<0.5 else { return nil }
-        return ui.offsetBy(dx:current.minX-window.minX,dy:current.minY-window.minY)
+        var area=ui
+        if mode != layout {
+            if layout.group==1 { area=area.offsetBy(dx:layout == .left ? ui.width : -ui.width,dy:0) }
+            else if layout.group==2 { area=area.offsetBy(dx:0,dy:layout == .upper ? -ui.height : ui.height) }
+        }
+        return area.offsetBy(dx:current.minX-window.minX,dy:current.minY-window.minY)
     }
 }
 

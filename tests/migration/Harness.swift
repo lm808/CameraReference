@@ -361,14 +361,14 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         expect(menu.items.first?.isEnabled == false,"Version heading remains disabled")
         let root=app.menus.layoutRoot!
         func visibleChoices()->[String] { root.submenu?.items.filter { !$0.isHidden }.map(\.title) ?? [] }
-        expect(root.title=="◧  Reference View (Left)" && root.state == .off,"Root shows pane without checkmark")
+        expect(root.title=="◧  Reference View (Left)"+app.viewShortcutSuffix(.left) && root.state == .off,"Root shows pane without checkmark")
         expect(root.image === app.layoutItems[.left]!.image,"Root uses selected pane icon")
-        expect(visibleChoices()==["◧  Left","◨  Right"],"Auto side-by-side offers two panes")
+        expect(visibleChoices()==["◧  Left"+app.viewShortcutSuffix(.left),"◨  Right"+app.viewShortcutSuffix(.right)],"Auto side-by-side offers two panes")
         expect(app.layoutItems[.left]!.state == .on,"Detected pane checked in submenu")
         for mode in OverlayLayout.allCases {
             app.lightroomMonitor.detectedLayout=mode;app.updateLayoutMenu()
             expect(root.state == .off && root.image === app.layoutItems[mode]!.image,"Each root icon follows selection without a tick")
-            if mode == .full { expect(root.title=="▣  Loupe View" && root.submenu==nil && root.action==nil && root.isEnabled && !menu.autoenablesItems,"Automatic Loupe is normal but has no submenu/action") }
+            if mode == .full { expect(root.title=="▣  Loupe View"+app.viewShortcutSuffix(.full) && root.submenu==nil && root.action==nil && root.isEnabled && !menu.autoenablesItems,"Automatic Loupe is normal but has no submenu/action") }
             else { expect(visibleChoices().count==2,"Automatic split has two choices") }
         }
         app.lightroomMonitor.detectedLayoutModule="library";app.updateLayoutMenu()
@@ -377,13 +377,23 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         let expectedTitles=["▣  Loupe View","◧  Reference View (Left)","◨  Reference View (Right)","⬒  Reference View (Top)","⬓  Reference View (Bottom)"]
         for mode in OverlayLayout.allCases {
             app.overlayLayout=mode; prefs.set(true,forKey:app.regionKey("automaticBounds"));app.updateLayoutMenu()
-            expect(visibleChoices()==expectedTitles && root.title==app.layoutItems[mode]!.title,"Manual screenshot selection always offers all five")
+            expect(visibleChoices()==zip(expectedTitles,OverlayLayout.allCases).map { $0+app.viewShortcutSuffix($1) } && root.title==app.layoutItems[mode]!.title,"Manual screenshot selection always offers all five")
             expect(root.state == .off && app.layoutItems[mode]!.state == .on,"Only child selection checked")
         }
         prefs.set(false,forKey:app.regionKey("automaticBounds"));app.updateLayoutMenu()
         expect(root.isHidden && app.menus.layoutSeparator!.isHidden,"Manual calibration keeps view menu hidden")
         verifyTargets(menu)
         expect(!containsRetired(menu),"Retired assistance menu must be absent")
+        for mode in OverlayLayout.allCases {
+            expect(ViewShortcut.available(mode,automatic:false,inferred:nil,enabled:true),"Manual screenshot allows every shortcut")
+            expect(!ViewShortcut.available(mode,automatic:true,inferred:nil,enabled:true),"Unknown inference cannot select views")
+            expect(!ViewShortcut.available(mode,automatic:true,inferred:.full,enabled:true),"Loupe has no pane alternatives")
+            expect(ViewShortcut.available(mode,automatic:true,inferred:.left,enabled:true)==(mode.group==1),"Only matching horizontal panes")
+            expect(ViewShortcut.available(mode,automatic:true,inferred:.upper,enabled:true)==(mode.group==2),"Only matching vertical panes")
+        }
+        let emptyRecorder=ShortcutRecorder(shortcut:(38,6400),label:"J")
+        emptyRecorder.finishRecording();expect(emptyRecorder.candidate.1==6400,"Untouched binding retained")
+        emptyRecorder.capturing=true;emptyRecorder.finishRecording();expect(emptyRecorder.candidate.1==0,"Empty recording clears binding")
         print("PASS migration: settings defaults, menu order/targets, mode/manual visibility and inferred pane states")
     }
 }

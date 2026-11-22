@@ -78,7 +78,7 @@ extension AppDelegate {
         guard #available(macOS 14.0,*),ProcessInfo.processInfo.systemUptime>=lightroomMonitor.nextPanelCheck,
               lightroomMonitor.panelCheckTask==nil,screenTask==nil,pending==nil,calibration==nil,!recording,!regionResetting,
               !lightroomMonitor.workspaceOverview,!overlayController.overlaySuspended,isLightroom(),supportedLightroomModule(currentModule()),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
-              let memory=placementMemory,memory.layout==overlayLayout,let imageSize=lastImageSize,
+              let memory=placementMemory,memory.layout.group==overlayLayout.group,let imageSize=lastImageSize,
               selectionEpoch()==memory.epoch else { return }
         guard let host=hostWindowSnapshot(memory.windowID),host.onScreen,
               NSScreen.screens.contains(where:{$0.frame.contains(host.frame)}) else {
@@ -102,7 +102,7 @@ extension AppDelegate {
         guard lightroomMonitor.panelCheckID==id else { return };lightroomMonitor.panelCheckID=nil;lightroomMonitor.panelCheckTask=nil
         guard !lightroomMonitor.workspaceOverview,!overlayController.overlaySuspended,isLightroom(),pending==nil,screenTask==nil,calibration==nil,
               placementMemory?.epoch==memory.epoch,selectionEpoch()==memory.epoch,
-              overlayLayout==memory.layout,detectionSettings.current.key==memory.settingsKey,
+              overlayLayout.group==memory.layout.group,detectionSettings.current.key==memory.settingsKey,
               let current=currentCaptureWindowFrame(memory.windowID),sameWindowGeometry(current,result.windowFrame) else { return }
         let window=appKitRect(current,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
         guard NSScreen.screens.contains(where:{$0.frame.contains(window)}) else {
@@ -167,11 +167,11 @@ extension AppDelegate {
         }
     }
     func checkOverlaySelection(_ epoch:String?) {
-        guard (axPlacementEnabled || screenshotAXDismissEnabled),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
+        guard (axPlacementEnabled || screenshotDetectionEnabled),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
               let existing=panel,isLightroom(),supportedLightroomModule(currentModule()),
               overlayController.displayedOverlayModule==currentModule(),let epoch else { return }
         guard let previous=overlayController.overlayEpoch else { overlayController.overlayEpoch=epoch;return }
-        let action=OverlayBehaviourPolicy.photoSelectionChange(accessibility:axPlacementEnabled,automatic:true,overlayOpen:true,previous:previous,current:epoch,live:axLiveUpdate,screenshotAXDetection:screenshotAXDismissEnabled)
+        let action=OverlayBehaviourPolicy.photoSelectionChange(accessibility:axPlacementEnabled,automatic:true,overlayOpen:true,previous:previous,current:epoch,live:axLiveUpdate,screenshot:screenshotDetectionEnabled)
         if action == .dismiss {
             cancelScreenInspection();hide();report("Photo selection changed; overlay dismissed.");return
         }

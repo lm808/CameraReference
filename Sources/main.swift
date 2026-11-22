@@ -67,6 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var floatingShortcut=(UInt32(kVK_ANSI_F),UInt32(controlKey | optionKey | cmdKey))
     var floatingKeyLabel="F"
     var hotKey: EventHotKeyRef?
+    var viewHotKeys=[EventHotKeyRef]()
     var handler: EventHandlerRef?
     var calibration: CalibrationController?
     var screenTask: Task<Void, Never>?
@@ -124,7 +125,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             var identifier=EventHotKeyID()
             guard let event, GetEventParameter(event,EventParamName(kEventParamDirectObject),EventParamType(typeEventHotKeyID),nil,MemoryLayout<EventHotKeyID>.size,nil,&identifier) == noErr else { return OSStatus(eventNotHandledErr) }
             let owner=Unmanaged<AppDelegate>.fromOpaque(context).takeUnretainedValue()
-            if identifier.id == 2 { owner.openFloating() } else { owner.toggle() }
+            if identifier.id >= 10 { owner.handleViewShortcut(identifier.id) } else if identifier.id == 2 { owner.openFloating() } else { owner.toggle() }
             return noErr
         }, 1, &spec, Unmanaged.passUnretained(self).toOpaque(), &handler)
         let prefs = CameraPreferences.shared
@@ -140,12 +141,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             floatingKeyLabel=prefs.string(forKey:"floatingKeyLabel") ?? "F"
         }
         if !register(floatingShortcut,floatingTarget:true) { report("Floating display shortcut unavailable.") }
+        if !registerViewShortcuts() { report("A view shortcut is unavailable. Check Keyboard shortcuts.") }
         updateToggleTitle()
         lightroomMonitor.start(workspaceCenter:NSWorkspace.shared.notificationCenter) { [weak self] event in
             self?.handleLightroomEvent(event)
         }
     }
     func register(_ shortcut: (UInt32, UInt32), floatingTarget:Bool=false) -> Bool {
+        if shortcut.1==0 {
+            if floatingTarget { if let floatingHotKey { UnregisterEventHotKey(floatingHotKey) };floatingHotKey=nil;floatingShortcut=shortcut }
+            else { if let hotKey { UnregisterEventHotKey(hotKey) };hotKey=nil;currentShortcut=shortcut }
+            return true
+        }
         var replacement: EventHotKeyRef?
         let result = RegisterEventHotKey(shortcut.0, shortcut.1, EventHotKeyID(signature: 0x43524546, id: floatingTarget ? 2:1), GetApplicationEventTarget(), OptionBits(kEventHotKeyExclusive), &replacement)
         guard result == noErr else { return false }
@@ -203,54 +210,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let alert = NSAlert();alert.icon=NSApp.applicationIconImage; alert.messageText = "Camera Reference"; alert.informativeText = lastResult + "\n\n" + lastTiming; alert.runModal()
     }
     // MARK: - Shortcut recording
-    @objc func changeShortcut() {
-        hide();calibration?.finish(nil);recording=true
-        let oldOverlay=currentShortcut,oldFloating=floatingShortcut
-        if let hotKey { UnregisterEventHotKey(hotKey);self.hotKey=nil }
-        if let floatingHotKey { UnregisterEventHotKey(floatingHotKey);self.floatingHotKey=nil }
-        defer { recording=false;updateToggleTitle() }
-        let overlay=ShortcutRecorder(shortcut:oldOverlay,label:keyLabel)
-        let floating=ShortcutRecorder(shortcut:oldFloating,label:floatingKeyLabel)
-        floating.defaultShortcut=(UInt32(kVK_ANSI_F),UInt32(controlKey|optionKey|cmdKey));floating.defaultLabel="F"
-        overlay.setAccessibilityLabel("Overlay shortcut");floating.setAccessibilityLabel("Floating display shortcut")
-        let help=NSTextField(wrappingLabelWithString:"Click either shortcut to record it. Both shortcuts must be different.")
-        overlay.help=help;floating.help=help
-        let grid=NSGridView(views:[
-            [NSTextField(labelWithString:"Overlay"),overlay,NSButton(title:"Use Default",target:overlay,action:#selector(ShortcutRecorder.useDefault))],
-            [NSTextField(labelWithString:"Floating display"),floating,NSButton(title:"Use Default",target:floating,action:#selector(ShortcutRecorder.useDefault))]])
-        grid.columnSpacing=14;grid.rowSpacing=8;grid.yPlacement = .center
-        grid.column(at:0).width=110;grid.column(at:1).width=125;grid.column(at:2).width=105
-        overlay.font = .systemFont(ofSize:14);floating.font = .systemFont(ofSize:14)
-        overlay.widthAnchor.constraint(equalToConstant:125).isActive=true
-        floating.widthAnchor.constraint(equalToConstant:125).isActive=true
-        overlay.heightAnchor.constraint(equalToConstant:28).isActive=true
-        floating.heightAnchor.constraint(equalToConstant:28).isActive=true
-        let stack=NSStackView(views:[grid,help]);stack.orientation = .vertical;stack.alignment = .leading;stack.spacing=12
-        stack.frame=CGRect(x:0,y:0,width:370,height:105)
-        help.widthAnchor.constraint(equalToConstant:370).isActive=true
-        let alert=NSAlert();alert.icon=NSApp.applicationIconImage;alert.messageText="Keyboard shortcuts";alert.accessoryView=stack
-        alert.addButton(withTitle:"Save");alert.addButton(withTitle:"Cancel")
-        NSApp.activate(ignoringOtherApps:true)
-        while true {
-            guard alert.runModal() == .alertFirstButtonReturn else {
-                let a=register(oldOverlay),b=register(oldFloating,floatingTarget:true)
-                if !a || !b { report("A previous shortcut is unavailable; reopen Keyboard shortcuts.") };return
-            }
-            guard overlay.candidate != floating.candidate else { help.stringValue="Choose two different shortcuts.";continue }
-            let a=register(overlay.candidate)
-            let b=a && register(floating.candidate,floatingTarget:true)
-            if a && b {
-                keyLabel=overlay.keyLabel;floatingKeyLabel=floating.keyLabel
-                let prefs=CameraPreferences.shared
-                prefs.set(currentShortcut.0,forKey:"key");prefs.set(currentShortcut.1,forKey:"modifiers");prefs.set(keyLabel,forKey:"keyLabel")
-                prefs.set(floatingShortcut.0,forKey:"floatingKey");prefs.set(floatingShortcut.1,forKey:"floatingModifiers");prefs.set(floatingKeyLabel,forKey:"floatingKeyLabel")
-                report("Shortcuts saved.");return
-            }
-            if let hotKey { UnregisterEventHotKey(hotKey);self.hotKey=nil }
-            if let floatingHotKey { UnregisterEventHotKey(floatingHotKey);self.floatingHotKey=nil }
-            help.stringValue="A shortcut is unavailable. Choose another combination or Cancel."
-        }
-    }
     // MARK: - Cancellation and shutdown
     @objc func cancel() { calibration?.finish(nil); hide(); report("Ready.") }
     @objc func quit() { cancelPanelCheck();imageCache.clear(); calibration?.finish(nil); cancelScreenInspection(); hide(); cancelRequest(); diagnosticsWindow?.close(); captureBaseline?.close(); capturePreview?.close(); floating?.close(); NSApp.terminate(nil) }

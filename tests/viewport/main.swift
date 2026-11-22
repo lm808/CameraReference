@@ -255,3 +255,20 @@ expect(AutomaticPlacementMode.accessibility.usesAXViewDetection(screenshotOption
 expect(!AutomaticPlacementMode.screenshot.usesAXViewDetection(screenshotOption:false),"Screenshot inference remains optional")
 expect(AutomaticPlacementMode.screenshot.usesAXViewDetection(screenshotOption:true),"Screenshot inference honoured")
 print("PASS: preserved AX panel signatures and retired backend migration")
+
+// One selected Compare pane has a bright thin inner frame; its neighbour does not.
+for thickness in [3,5,7] {
+    let base=fixture(bg:[0,0,0],split:1)
+    var pixels=base.rgba
+    for y in 60..<580 { for x in 120..<450 {
+        if x<120+thickness || y<60+thickness || y>=580-thickness {
+            let i=(y*base.width+x)*4
+            pixels[i]=145;pixels[i+1]=145;pixels[i+2]=145
+        }
+    } }
+    let framed=EdgeRaster(width:base.width,height:base.height,rgba:pixels)
+    let result=detectViewport(in:framed,singlePhoto:true)
+    expect(result.bounds != nil,"Selection frame rejected working area: \(result.summary)")
+    expect(abs(result.bounds!.minY-60)<=CGFloat(thickness+2),"Selection frame picked a header")
+}
+print("PASS: asymmetric thin Compare selection frames retain working-area detection")

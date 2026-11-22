@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.12 — final usability candidate
+
+- Validate screenshot surrounds beyond thin Compare selection frames, avoiding false header bounds.
+- Share outer-bound raster caching across Loupe/split detection and reuse equal opposite panes within a split layout.
+- Dismiss screenshot overlays on confirmed photo changes even with AX inference off.
+- Request Screen Recording for explicit screenshot placement only.
+- Add configurable numeric view shortcuts, menu labels and explicit/empty-recording clearing.
+- Native acceptance pending; main remains unchanged.
+
 ## 1.1.11 — screenshot simplification candidate
 
 - Divide validated screenshot working areas equally for split views; remove divider scanning.

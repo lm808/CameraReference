@@ -25,7 +25,7 @@ See [installation](docs/INSTALL.md) for the app and bridge, or [building from so
 | Screenshot | Finds viewport boundaries in captured pixels. With both AX options off, uses your menu view selection and the original detector. |
 | Screenshot + AX view detection | Infers the view for the menu and screenshot detector. Placement still comes from pixels. |
 
-Choose the desired pane for split views. These choices do not change Lightroom’s own view. Accessibility needs macOS Accessibility permission. Screenshot features need Screen Recording permission, which the app **does not request**: grant it yourself if wanted. Existing preferences are preserved when upgrading.
+Choose the desired pane for split views. These choices do not change Lightroom’s own view. Accessibility needs macOS Accessibility permission. Explicit screenshot placement requests Screen Recording permission when needed. Accessibility placement, background checks and manual snapping do not request it. Existing preferences are preserved when upgrading.
 
 For manual placement, choose **Set overlay region…** and drag around the entire desired photo backdrop, including its inset margins. Hold **Option** for edge snapping if Screen Recording permission is already available; otherwise free dragging still works. Accepting switches to manual mode. Cancelling changes nothing. **Clear overlay region setting** clears bounds without changing auto/manual mode. Calibration and layout state are kept separately for Library and Develop.
 
@@ -40,7 +40,7 @@ In automatic Accessibility mode, **Update overlay with LrC view** defaults on:
 
 Confirmed module changes dismiss in every mode. Accessibility mode also checks the direct **View → Grid** menu selection to dismiss/block overlays in Library Grid; selection-mark reliability still needs native confirmation. Missing menu evidence is treated as unknown.
 
-Screenshot with AX view detection now matches Accessibility with updating off: confirmed photo/view/pane/panel changes dismiss; positive Library Grid dismisses and blocks invocation. Missing evidence retains the overlay. Screenshot with inference off, manual and floating behaviour are unchanged. Screenshot placement uses pixel-validated outer bounds and equal splits; AX view detection never supplies placement edges. Background screenshot checks still invalidate cached placement only. Nothing automatically opens a dismissed overlay.
+Screenshot with AX view detection now matches Accessibility with updating off: confirmed photo/view/pane/panel changes dismiss; positive Library Grid dismisses and blocks invocation. Missing evidence retains the overlay. Screenshot without inference also dismisses on a confirmed photo-selection change; panel pixel checks only invalidate the cache. Manual and floating behaviour are unchanged. Screenshot placement uses pixel-validated outer bounds and equal splits; AX view detection never supplies placement edges. Background screenshot checks still invalidate cached placement only. Nothing automatically opens a dismissed overlay.
 
 The overlay follows Lightroom movement and can be covered by other apps. Overview, minimise and Space transitions temporarily suspend it; a brief linger during minimise is a known limitation. Intermittent off-screen capture failures remain under investigation.
 
@@ -73,3 +73,5 @@ Run `bash test.sh` for automated checks. `bash scripts/stage.sh` builds and refr
 Licensing remains undecided. No open-source licence has been selected.
 
 For window-stacking investigations, **Developer tools → Record window ordering (5-second delay)…** records fifteen seconds of window metadata after a five-second delay. Reports are saved separately under `~/Library/Application Support/CameraReference/Diagnostics/WindowOrdering/`; no screenshots or window titles are collected. See TESTING.md for the current reproduction steps.
+
+View shortcuts are configurable in **Settings → Keyboard shortcuts…**. Defaults use Control+Option+Command with 8 (Top), 4 (Left), 6 (Right), 2 (Bottom), and 5 (Loupe), using number-row keys. They choose this app’s view/pane, not Lightroom’s view. Automatic view detection permits only the matching pane choices; manual Screenshot view selection permits all five. Assigned bindings appear in the menu. Save while a recorder is waiting for a key clears that binding; untouched bindings remain. Clear explicitly removes a binding. The existing overlay shortcut stays Control+Option+Command+J.
