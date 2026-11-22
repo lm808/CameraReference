@@ -152,6 +152,7 @@ final class SettingsMenuController {
         let mode=overlayLayout
         let unknown=automaticViewEnabled && inferred == nil
         root.title=unknown ? "View detected on next invocation":layoutSymbol(mode)+"  "+layoutTitle(mode)+owner.viewShortcutSuffix(mode)
+        styleShortcut(root,suffix:unknown ? "":owner.viewShortcutSuffix(mode))
         root.image=unknown ? nil:layoutItems[mode]?.image
         let hasChoices = !unknown && (!automaticViewEnabled || mode != .full)
         if hasChoices {
@@ -162,6 +163,7 @@ final class SettingsMenuController {
         root.isEnabled = !unknown
         for (choice,item) in layoutItems {
             item.title=layoutSymbol(choice)+"  "+(automaticViewEnabled ? paneTitle(choice):layoutTitle(choice))+owner.viewShortcutSuffix(choice)
+            styleShortcut(item,suffix:owner.viewShortcutSuffix(choice))
             item.isHidden=automaticViewEnabled && (unknown || choice.group != mode.group)
             item.state=choice==mode ? .on:.off
         }
@@ -185,8 +187,20 @@ final class SettingsMenuController {
     }
     func updateToggleTitle() {
         floatingMenuItem?.title=(floating?.isVisible == true ? "Hide floating display" : "Show floating display") + "   " + shortcutText(key:floatingKeyLabel,modifiers:floatingShortcut.1)
+        styleShortcut(floatingMenuItem,suffix:shortcutText(key:floatingKeyLabel,modifiers:floatingShortcut.1))
         let active=panel != nil || destination == .overlay || viewProbeID != nil || detectionCompletion != nil
         toggleItem?.title=(active ? "Hide overlay" : "Show overlay") + "   " + shortcutText(key:keyLabel,modifiers:currentShortcut.1)
+        styleShortcut(toggleItem,suffix:shortcutText(key:keyLabel,modifiers:currentShortcut.1))
+    }
+    // Presentation only: keep plain titles and native actions/bindings intact.
+    private func styleShortcut(_ item:NSMenuItem?,suffix:String) {
+        guard let item else { return }
+        guard !suffix.isEmpty,item.title.hasSuffix(suffix) else { item.attributedTitle=nil;return }
+        let title=NSMutableAttributedString(string:item.title)
+        let length=(suffix as NSString).length
+        title.addAttribute(.foregroundColor,value:NSColor.secondaryLabelColor,
+                           range:NSRange(location:title.length-length,length:length))
+        item.attributedTitle=title
     }
     func validateMenuItem(_ item:NSMenuItem) -> Bool {
         if item === screenshotReuseItem { return screenshotDetectionEnabled }

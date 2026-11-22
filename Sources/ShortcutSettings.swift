@@ -20,16 +20,18 @@ extension AppDelegate {
             return recorder
         }
         let recorders=[overlay,floating]+views
-        let names=["Overlay","Floating display"]+ViewShortcut.defaults.map { $0.layout.label }
+        let names=["Overlay","Floating display"]+ViewShortcut.defaults.map {
+            $0.layout == .full ? "Loupe View":"Reference View (\($0.layout.label))"
+        }
         let help=NSTextField(wrappingLabelWithString:"Click a binding to record it. Save while waiting for a key clears that binding; untouched bindings stay unchanged. Clear also removes a binding. Escape stops recording. View shortcuts follow the available menu choices.")
         let rows=zip(names,recorders).map { name,recorder -> [NSView] in
             recorder.help=help;recorder.setAccessibilityLabel(name+" shortcut");recorder.font = .systemFont(ofSize:14)
             return [NSTextField(labelWithString:name),recorder,NSButton(title:"Default",target:recorder,action:#selector(ShortcutRecorder.useDefault)),NSButton(title:"Clear",target:recorder,action:#selector(ShortcutRecorder.clearShortcut))]
         }
         let grid=NSGridView(views:rows);grid.columnSpacing=12;grid.rowSpacing=8;grid.yPlacement = .center
-        grid.column(at:0).width=115;grid.column(at:1).width=145
+        grid.column(at:0).width=175;grid.column(at:1).width=145
         let stack=NSStackView(views:[grid,help]);stack.orientation = .vertical;stack.alignment = .leading;stack.spacing=12
-        stack.frame=CGRect(x:0,y:0,width:480,height:330);help.widthAnchor.constraint(equalToConstant:480).isActive=true
+        stack.frame=CGRect(x:0,y:0,width:540,height:330);help.widthAnchor.constraint(equalToConstant:540).isActive=true
         let alert=NSAlert();alert.icon=NSApp.applicationIconImage;alert.messageText="Keyboard shortcuts";alert.accessoryView=stack
         alert.addButton(withTitle:"Save");alert.addButton(withTitle:"Cancel")
         NSApp.activate(ignoringOtherApps:true)

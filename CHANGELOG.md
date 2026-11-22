@@ -2,6 +2,8 @@
 
 ## 1.1.12 — final usability candidate
 
+- Render menu shortcut hints in the system secondary label colour; bindings and actions are unchanged. Use full Reference View (Top/Bottom/Left/Right) names in shortcut settings.
+
 - Add default-on Developer tools “Reuse screenshot working area”: retain valid geometry across photos/movement and Develop layouts; off restores earlier cache use. Library Loupe/Compare, resize/panel changes and explicit clearing still invalidate geometry. AX-only remains unchanged.
 
 - Validate screenshot surrounds beyond thin Compare selection frames, avoiding false header bounds.
