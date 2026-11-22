@@ -16,3 +16,12 @@ Guided calibration (Developer tools):
 - [ ] Cancel a measurement, retry, close/reopen, and restart. Manual region and auto/manual choice must remain unchanged. Wrong module/view/panels/toolbar or changed window during selection must reject the measurement.
 - [ ] Apply: verify a backup is reported, comments and unrelated settings survive, and no recording permission is requested. Editing the config externally during the guide must block Apply.
 - [ ] Verify resulting AX placement in Loupe, Left/Right and Top/Bottom, panel shown/hidden cases and a resized window. Full-screen allowance is deliberately not recalibrated.
+
+Expanded screenshot reuse (same 1.1.12 / build 71):
+
+- [ ] Developer tools → Reuse screenshot working area defaults on, is unavailable in Accessibility, and persists its setting.
+- [ ] Detect a good Screenshot area, change photos without resizing/changing panels, then invoke again. Diagnostics should report a placement-cache hit and capture skipped unless a background check invalidated it. Test the previously troublesome photos.
+- [ ] Move Lightroom without resizing; cached geometry follows its new origin. Resize or change panels/toolbar and verify fresh placement rather than stale geometry.
+- [ ] Develop: switch Loupe/Left-Right/Top-Bottom (and selected pane) without changing surrounding panels. Reuse the whole area and derive the correct new pane. Library Loupe ↔ Compare must detect again.
+- [ ] Clear overlay region setting forces fresh detection but leaves the auto/manual choice unchanged. Toggle the reuse option off/on and confirm geometry is cleared in both directions.
+- [ ] Off: a repeated toggle for the same photo/pane may still reuse placement; changing photo or pane restores the earlier cache eligibility. Split captures search outer bounds afresh; Loupe keeps its earlier raster cache. AX and photo caching are unchanged.

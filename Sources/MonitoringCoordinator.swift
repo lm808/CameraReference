@@ -20,7 +20,7 @@ extension AppDelegate {
             let epoch=self.selectionEpoch()
             self.imageCache.observe(epoch)
             let module=self.currentModule()
-            if let memory=self.placementMemory,memory.epoch != epoch || !supportedLightroomModule(module) { self.placementMemory=nil }
+            if let memory=self.placementMemory,(!self.expandedScreenshotReuse && memory.epoch != epoch) || !supportedLightroomModule(module) { self.placementMemory=nil }
             if OverlayBehaviourPolicy.moduleChanged(previous:self.lightroomMonitor.observedModule,current:module) {
                 self.hide();self.cancelRequest();self.cancelScreenInspection()
                 self.calibration?.finish(nil);self.calibrationTask?.cancel()
@@ -55,6 +55,8 @@ extension AppDelegate {
         if panel != nil { reconcileOverlayHost();return }
         guard lightroomMonitor.hasObservedWindow else { return }
         if current == nil && lightroomMonitor.observedWindowFrame == nil { return }
+        if expandedScreenshotReuse,let current,let previous=lightroomMonitor.observedWindowFrame,
+           abs(current.width-previous.width)<0.5,abs(current.height-previous.height)<0.5 { return }
         if !sameWindowGeometry(current,lightroomMonitor.observedWindowFrame) { invalidateAutomaticGeometry() }
     }
     @objc func spaceChanged() {
@@ -78,8 +80,8 @@ extension AppDelegate {
         guard #available(macOS 14.0,*),ProcessInfo.processInfo.systemUptime>=lightroomMonitor.nextPanelCheck,
               lightroomMonitor.panelCheckTask==nil,screenTask==nil,pending==nil,calibration==nil,!recording,!regionResetting,
               !lightroomMonitor.workspaceOverview,!overlayController.overlaySuspended,isLightroom(),supportedLightroomModule(currentModule()),CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")),
-              let memory=placementMemory,memory.layout.group==overlayLayout.group,let imageSize=lastImageSize,
-              selectionEpoch()==memory.epoch else { return }
+              let memory=placementMemory,memory.supportsLayout(overlayLayout,module:currentModule(),expandedReuse:expandedScreenshotReuse),let imageSize=lastImageSize,
+              let observedEpoch=selectionEpoch(),(expandedScreenshotReuse || observedEpoch==memory.epoch) else { return }
         guard let host=hostWindowSnapshot(memory.windowID),host.onScreen,
               NSScreen.screens.contains(where:{$0.frame.contains(host.frame)}) else {
             cancelPanelCheck();lightroomMonitor.panelCheckStatus="Background check paused: Lightroom is off-screen or spans displays.";return
@@ -92,17 +94,18 @@ extension AppDelegate {
         let id=UUID();lightroomMonitor.panelCheckID=id
         let settings=detectionSettings.current
         let started=ProcessInfo.processInfo.systemUptime
+        let expandedReuse=expandedScreenshotReuse
         lightroomMonitor.panelCheckTask=Task.detached(priority:.utility) { [weak self] in
-            let result=await inspectScreenLayout(imageSize:imageSize,settings:settings,layout:memory.layout,maxPixelWidth:1280)
+            let result=await inspectScreenLayout(imageSize:imageSize,settings:settings,layout:memory.layout,maxPixelWidth:1280,reuseOuterBoundsForSplits:expandedReuse)
             guard !Task.isCancelled else { return }
-            await self?.finishPanelCheck(result,id:id,memory:memory,elapsed:ProcessInfo.processInfo.systemUptime-started)
+            await self?.finishPanelCheck(result,id:id,memory:memory,observedEpoch:observedEpoch,expandedReuse:expandedReuse,elapsed:ProcessInfo.processInfo.systemUptime-started)
         }
     }
-    @MainActor func finishPanelCheck(_ result:ScreenProbeResult,id:UUID,memory:PlacementMemory,elapsed:TimeInterval) {
+    @MainActor func finishPanelCheck(_ result:ScreenProbeResult,id:UUID,memory:PlacementMemory,observedEpoch:String,expandedReuse:Bool,elapsed:TimeInterval) {
         guard lightroomMonitor.panelCheckID==id else { return };lightroomMonitor.panelCheckID=nil;lightroomMonitor.panelCheckTask=nil
         guard !lightroomMonitor.workspaceOverview,!overlayController.overlaySuspended,isLightroom(),pending==nil,screenTask==nil,calibration==nil,
-              placementMemory?.epoch==memory.epoch,selectionEpoch()==memory.epoch,
-              overlayLayout.group==memory.layout.group,detectionSettings.current.key==memory.settingsKey,
+              placementMemory==memory,selectionEpoch()==observedEpoch,expandedScreenshotReuse==expandedReuse,
+              memory.supportsLayout(overlayLayout,module:currentModule(),expandedReuse:expandedReuse),detectionSettings.current.key==memory.settingsKey,
               let current=currentCaptureWindowFrame(memory.windowID),sameWindowGeometry(current,result.windowFrame) else { return }
         let window=appKitRect(current,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
         guard NSScreen.screens.contains(where:{$0.frame.contains(window)}) else {

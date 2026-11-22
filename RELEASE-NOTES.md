@@ -7,3 +7,5 @@ Keyboard shortcuts now include Top/Left/Right/Bottom/Loupe on Control+Option+Com
 Developer tools now includes guided AX calibration using five manual region selections. It reviews signed offset replacements, rejects inconsistent measurements and backs up the config before applying. It neither changes manual-placement preferences nor captures screenshots.
 
 Native acceptance is pending. Main remains accepted 1.1.10 build 69. No package created.
+
+Developer tools → Reuse screenshot working area (default on) controls expanded geometry reuse across photos, moves and Develop view layouts. Off restores the earlier caching behaviour, not a cache-free detector. Clear overlay region setting forces fresh detection. AX-only is unaffected. Version/build remain 1.1.12/71.

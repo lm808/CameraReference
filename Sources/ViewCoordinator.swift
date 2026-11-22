@@ -20,7 +20,7 @@ extension AppDelegate {
     @objc func selectLayout(_ sender:NSMenuItem) {
         guard let raw=sender.representedObject as? String,let mode=OverlayLayout(rawValue:raw),mode != overlayLayout else { return }
         if automaticViewEnabled && (mode.group==0 || mode.group != overlayLayout.group) { return }
-        let retainedMemory=screenshotDetectionEnabled && mode.group==overlayLayout.group ? placementMemory:nil
+        let retainedMemory=expandedScreenshotReuse && placementMemory?.supportsLayout(mode,module:currentModule(),expandedReuse:true)==true ? placementMemory:nil
         cancelScreenInspection();cancelRequest();calibration?.finish(nil)
         if OverlayBehaviourPolicy.dismissForExplicitSelection(screenshot:screenshotDetectionEnabled) { hide() }
         if automaticViewEnabled {
@@ -76,6 +76,7 @@ extension AppDelegate {
               let module,module==overlayController.displayedOverlayModule,(overlayController.displayedOverlayLayout != mode || panelChange),
               let existing=panel else { return }
         if OverlayBehaviourPolicy.geometryChange(accessibility:axPlacementEnabled,automatic:true,displayed:overlayController.displayedOverlayLayout,selected:mode,panelsChanged:panelChange,live:axLiveUpdate,screenshotAXDetection:screenshotAXDismissEnabled) == .dismiss {
+            if expandedScreenshotReuse && (panelChange || placementMemory?.supportsLayout(mode,module:module,expandedReuse:true)==false) { invalidateAutomaticGeometry() }
             cancelScreenInspection();cancelRequest();hide()
             report("View, pane or panels changed; overlay dismissed.");return
         }

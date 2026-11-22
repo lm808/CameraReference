@@ -11,6 +11,7 @@ final class SettingsMenuController {
     var shortcutItem: NSMenuItem!
     var screenshotToggleItem:NSMenuItem?
     var viewToggleItem:NSMenuItem?
+    var screenshotReuseItem:NSMenuItem?
     var detectionMethodItems=[NSMenuItem]()
     var liveUpdateItem:NSMenuItem?
     var layoutItems=[OverlayLayout:NSMenuItem]()
@@ -89,6 +90,8 @@ final class SettingsMenuController {
         let copy=add("Save diagnostics after invocation", #selector(AppDelegate.toggleAutoDiagnostics), to: developer)
         copy.state = autoDiagnostics ? .on:.off
         developer.addItem(.separator())
+        screenshotReuseItem=add("Reuse screenshot working area",#selector(AppDelegate.toggleScreenshotWorkingAreaReuse(_:)),to:developer)
+        updateDetectionMenu()
         let trial=add("Show AX placement preview",#selector(AppDelegate.toggleAXTrial),to:developer)
         trial.state=axTrialEnabled ? .on:.off
         add("Guided AX calibration…",#selector(AppDelegate.guidedAXCalibration),to:developer)
@@ -165,6 +168,8 @@ final class SettingsMenuController {
     }
     func updateDetectionMenu() {
         let automatic=CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
+        screenshotReuseItem?.state=owner.settings.reuseScreenshotWorkingArea ? .on:.off
+        screenshotReuseItem?.isEnabled=screenshotDetectionEnabled
         screenshotToggleItem?.title="Detection method: " + (screenshotDetectionEnabled ? "Screenshot":"Accessibility")
         screenshotToggleItem?.isEnabled=automatic
         for item in detectionMethodItems {
@@ -184,6 +189,7 @@ final class SettingsMenuController {
         toggleItem?.title=(active ? "Hide overlay" : "Show overlay") + "   " + shortcutText(key:keyLabel,modifiers:currentShortcut.1)
     }
     func validateMenuItem(_ item:NSMenuItem) -> Bool {
+        if item === screenshotReuseItem { return screenshotDetectionEnabled }
         if item === liveUpdateItem { return axPlacementEnabled && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) }
         if item === viewToggleItem {
             return screenshotDetectionEnabled && CameraPreferences.shared.bool(forKey:regionKey("automaticBounds"))
@@ -198,6 +204,7 @@ final class SettingsMenuController {
 
 extension AppDelegate {
     var screenshotDetectionEnabled:Bool { settings.screenshotDetectionEnabled }
+    var expandedScreenshotReuse:Bool { settings.expandedScreenshotReuse }
     var legacyPlacementMode:AutomaticPlacementMode { settings.legacyPlacementMode }
     var automaticPlacementMode:AutomaticPlacementMode { settings.automaticPlacementMode }
     var axPlacementEnabled:Bool { settings.axPlacementEnabled }

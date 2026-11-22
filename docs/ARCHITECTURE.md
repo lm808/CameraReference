@@ -59,7 +59,7 @@ Invocation → bridge token/selection epoch → JPEG load or RAM hit
 
 AX view inference is always enabled for Accessibility, independently optional for Screenshot. Screenshot placement never consumes AX panel edges. Manual placement overrides all of these. Missing AX geometry in Accessibility never triggers automatic screenshot capture. Explicit capture preview and permission-available calibration snapping are separate actions.
 
-AX correction values do not enter screenshot search geometry/cache keys. The raster cache stores the full outer area for both Loupe and split callers; splitting happens afterwards. Placement memory reuses the equivalent opposite half within a split group, with AppKit vertical orientation respected. Module/selection/config, host size and layout-group guards remain; this is not a permanent geometry cache across photo changes.
+AX correction values do not enter screenshot search geometry/cache keys. The raster cache stores the full outer area for both Loupe and split callers; splitting happens afterwards. The default-on developer reuse option lets placement memory reconstruct the combined area and derive the selected pane, with AppKit vertical orientation respected. It survives photo changes and movement; Develop permits all layout choices while Library Loupe/Compare transitions invalidate it. Module/config/display/host-size and background-validation guards remain. Off restores same-photo/same-pane placement and Loupe-only raster reuse. Settings are interpreted in AppSettings and passed as explicit cache inputs; detectors never read preferences.
 
 ## Display and update ownership
 

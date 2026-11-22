@@ -19,10 +19,10 @@ extension AppDelegate {
     func cachedUI(epoch:String?,settings:DetectionConfig,layout:OverlayLayout)->CGRect? {
         guard placementModule==currentModule(),let memory=placementMemory,let current=lightroomWindowFrame(),
               let cg=currentCaptureWindowFrame(memory.windowID),sameWindowGeometry(current,appKitRect(cg,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)),
-              let ui=memory.translated(window:current,windowID:memory.windowID,epoch:epoch,settingsKey:settings.key,layout:layout),
+              let ui=memory.translated(window:current,windowID:memory.windowID,epoch:epoch,settingsKey:settings.key,layout:layout,expandedReuse:expandedScreenshotReuse,module:currentModule()),
               NSScreen.screens.contains(where:{$0.frame.intersects(ui)}) else { return nil }
         lastTiming += "; placement cache hit; capture skipped"
-        lastLayout="Reused \(layout.label) UI bounds (AppKit): \(ui). Window size unchanged; position translated. Clear region setting after internal panel changes."
+        lastLayout="Reused \(layout.label) UI bounds (AppKit): \(ui). Window size unchanged; position translated. Expanded working-area reuse: \(expandedScreenshotReuse). Clear overlay region setting forces fresh detection."
         return ui
     }
     func rememberPlacement(_ result:ScreenProbeResult,epoch:String?,settings:DetectionConfig,layout:OverlayLayout) {
@@ -187,8 +187,9 @@ extension AppDelegate {
             self.lastLayout=result.summary;self.report(result.summary); callback?(result)
         }
         RunLoop.main.add(screenTimeout!,forMode:.common)
+        let expandedReuse=expandedScreenshotReuse
         screenTask=Task.detached(priority:.userInitiated) { [weak self] in
-            let result=await ScreenshotPlacement.inspect(imageSize:imageSize,previewCapture:previewCapture,settings:settings,layout:mode)
+            let result=await ScreenshotPlacement.inspect(imageSize:imageSize,previewCapture:previewCapture,settings:settings,layout:mode,reuseOuterBoundsForSplits:expandedReuse)
             guard !Task.isCancelled else { return }
             await self?.finishScreenInspection(result,id:inspectionID,elapsed:ProcessInfo.processInfo.systemUptime-inspectionStarted)
         }

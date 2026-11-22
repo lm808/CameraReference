@@ -39,6 +39,12 @@ extension AppDelegate {
         CameraPreferences.shared.set(screenshot,forKey:"useScreenshotDetection")
         placementOptionsChanged()
     }
+    @objc func toggleScreenshotWorkingAreaReuse(_ item:NSMenuItem) {
+        guard screenshotDetectionEnabled else { return }
+        CameraPreferences.shared.set(!settings.reuseScreenshotWorkingArea,forKey:"developerReuseScreenshotWorkingArea")
+        cancelScreenInspection();invalidateAutomaticGeometry();updateDetectionMenu()
+        report(settings.reuseScreenshotWorkingArea ? "Expanded screenshot working-area reuse enabled. Fresh detection on next invocation.":"Earlier screenshot caching restored: same photo/pane placement and Loupe raster reuse only. Fresh detection on next invocation.")
+    }
     @objc func toggleAXTrial(_ item:NSMenuItem) {
         if !axTrialEnabled && !FeaturePermission.accessibility.ensure() { return }
         CameraPreferences.shared.set(!axTrialEnabled,forKey:"developerAXTrial")

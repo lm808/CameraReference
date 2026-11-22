@@ -56,9 +56,9 @@ func appKitRect(_ rect:CGRect,primaryHeight:CGFloat)->CGRect {
     CGRect(x:rect.minX,y:primaryHeight-rect.maxY,width:rect.width,height:rect.height)
 }
 @available(macOS 14.0, *)
-func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,maxPixelWidth:CGFloat? = nil) async -> ScreenProbeResult {
+func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,maxPixelWidth:CGFloat? = nil,reuseOuterBoundsForSplits:Bool=false) async -> ScreenProbeResult {
     for attempt in 0..<3 {
-        let result=await captureStableLayout(imageSize:imageSize,forCalibration:forCalibration,previewCapture:previewCapture,settings:settings,layout:layout,maxPixelWidth:maxPixelWidth)
+        let result=await captureStableLayout(imageSize:imageSize,forCalibration:forCalibration,previewCapture:previewCapture,settings:settings,layout:layout,maxPixelWidth:maxPixelWidth,reuseOuterBoundsForSplits:reuseOuterBoundsForSplits)
         if !result.geometryChanged || Task.isCancelled { return result }
         await ScreenGeometryCache.shared.reset()
         if attempt<2 { try? await Task.sleep(nanoseconds:250_000_000) }
@@ -66,7 +66,7 @@ func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
     return ScreenProbeResult(candidate:nil,summary:"Lightroom is still moving or resizing. Wait for the transition to finish, then invoke again. Calibration was not changed.",geometryChanged:true)
 }
 @available(macOS 14.0, *)
-func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,maxPixelWidth:CGFloat? = nil) async -> ScreenProbeResult {
+func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,maxPixelWidth:CGFloat? = nil,reuseOuterBoundsForSplits:Bool=false) async -> ScreenProbeResult {
     guard CGPreflightScreenCaptureAccess() else { return ScreenProbeResult(candidate:nil,summary:"Screen Recording permission is unavailable. No capture taken. Use AX placement or manual calibration.") }
     let probeStarted=ProcessInfo.processInfo.systemUptime
     let ticket=await ScreenGeometryCache.shared.ticket()
@@ -143,11 +143,16 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         let detectionStarted=ProcessInfo.processInfo.systemUptime
         let detection:ViewportDetection
         let reused:Bool
-        guard let result=await ScreenGeometryCache.shared.inspect(raster,key:"crop:\(captureKey):\(window.windowID):\(window.frame):\(filter.pointPixelScale):\(CGDisplayBounds(CGMainDisplayID()))",ticket:ticket,singlePhoto:true,sideSearchPercent:settings.sideSearchPercent) else {
-            return ScreenProbeResult(candidate:nil,summary:"Window/display geometry was invalidated during capture.",geometryChanged:true)
+        if layout == .full || reuseOuterBoundsForSplits {
+            guard let result=await ScreenGeometryCache.shared.inspect(raster,key:"crop:\(captureKey):\(window.windowID):\(window.frame):\(filter.pointPixelScale):\(CGDisplayBounds(CGMainDisplayID()))",ticket:ticket,singlePhoto:true,sideSearchPercent:settings.sideSearchPercent) else {
+                return ScreenProbeResult(candidate:nil,summary:"Window/display geometry was invalidated during capture.",geometryChanged:true)
+            }
+            reused=result.1
+            detection=splitViewport(result.0,layout:layout)
+        } else {
+            detection=detectSplitViewport(in:raster,layout:layout,sideSearchPercent:settings.sideSearchPercent)
+            reused=false
         }
-        reused=result.1
-        detection=splitViewport(result.0,layout:layout)
         let childMode:String
         if #available(macOS 14.2,*) { childMode="included" } else { childMode="system default" }
         let timing=String(format:"Stage timing: enumerate %.0f ms; stability/config %.0f ms; capture %.0f ms; raster %.0f ms; detector %.0f ms.\n",(enumerationEnded-probeStarted)*1000,(captureStarted-enumerationEnded)*1000,(captureEnded-captureStarted)*1000,(detectionStarted-captureEnded)*1000,(ProcessInfo.processInfo.systemUptime-detectionStarted)*1000)

@@ -18,6 +18,8 @@ final class AppSettings {
     var axPlacementEnabled:Bool { !screenshotDetectionEnabled }
     var automaticViewEnabled:Bool { automaticPlacementMode.usesAXViewDetection(screenshotOption:preferences.bool(forKey:"experimentalAutomaticView")) }
     var axLiveUpdate:Bool { (preferences.object(forKey:"axLiveUpdate") as? Bool) ?? true }
+    var reuseScreenshotWorkingArea:Bool { (preferences.object(forKey:"developerReuseScreenshotWorkingArea") as? Bool) ?? true }
+    var expandedScreenshotReuse:Bool { screenshotDetectionEnabled && reuseScreenshotWorkingArea }
     var axTrialEnabled:Bool { preferences.bool(forKey:"developerAXTrial") }
     var autoDiagnostics:Bool {
         (preferences.object(forKey:"developerAutoSaveDiagnostics") as? Bool) ?? preferences.bool(forKey:"developerAutoCopyDiagnostics")

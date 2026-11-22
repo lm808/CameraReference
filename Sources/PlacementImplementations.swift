@@ -27,7 +27,7 @@ enum AXPlacement {
 // Screenshot placement is pixel-only; AX view selection is resolved by callers.
 enum ScreenshotPlacement {
     @available(macOS 14.0, *)
-    static func inspect(imageSize:CGSize,previewCapture:Bool,settings:DetectionConfig,layout:OverlayLayout) async -> ScreenProbeResult {
-        await inspectScreenLayout(imageSize:imageSize,previewCapture:previewCapture,settings:settings,layout:layout)
+    static func inspect(imageSize:CGSize,previewCapture:Bool,settings:DetectionConfig,layout:OverlayLayout,reuseOuterBoundsForSplits:Bool=false) async -> ScreenProbeResult {
+        await inspectScreenLayout(imageSize:imageSize,previewCapture:previewCapture,settings:settings,layout:layout,reuseOuterBoundsForSplits:reuseOuterBoundsForSplits)
     }
 }

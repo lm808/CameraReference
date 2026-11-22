@@ -2,6 +2,8 @@
 
 ## 1.1.12 — final usability candidate
 
+- Add default-on Developer tools “Reuse screenshot working area”: retain valid geometry across photos/movement and Develop layouts; off restores earlier cache use. Library Loupe/Compare, resize/panel changes and explicit clearing still invalidate geometry. AX-only remains unchanged.
+
 - Validate screenshot surrounds beyond thin Compare selection frames, avoiding false header bounds.
 - Share outer-bound raster caching across Loupe/split detection and reuse equal opposite panes within a split layout.
 - Dismiss screenshot overlays on confirmed photo changes even with AX inference off.

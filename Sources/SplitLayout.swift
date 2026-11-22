@@ -45,17 +45,41 @@ func floatingPhotoSize(viewport:CGSize,image:CGSize,settings:DetectionConfig)->C
     settings.placement(ui:CGRect(x:0,y:0,width:viewport.width/2,height:viewport.height),image:image)?.photo.size
 }
 // Window-local UI bounds can move with the window, but cannot survive a resize.
-struct PlacementMemory {
+struct PlacementMemory:Equatable {
     let ui:CGRect,window:CGRect,windowID:UInt32,epoch:String,settingsKey:String,layout:OverlayLayout
     var background:[Double]=[0,0,0]
-    func translated(window current:CGRect,windowID id:UInt32,epoch next:String?,settingsKey key:String,layout mode:OverlayLayout)->CGRect? {
-        guard id==windowID,next==epoch,key==settingsKey,mode.group==layout.group,
+    // Equal panes encode the complete working area without a second cache owner.
+    // Coordinates are AppKit: the upper pane occupies the higher y half.
+    var workingArea:CGRect {
+        switch layout {
+        case .full:return ui
+        case .left:return CGRect(x:ui.minX,y:ui.minY,width:ui.width*2,height:ui.height)
+        case .right:return CGRect(x:ui.minX-ui.width,y:ui.minY,width:ui.width*2,height:ui.height)
+        case .upper:return CGRect(x:ui.minX,y:ui.minY-ui.height,width:ui.width,height:ui.height*2)
+        case .lower:return CGRect(x:ui.minX,y:ui.minY,width:ui.width,height:ui.height*2)
+        }
+    }
+    func supportsLayout(_ mode:OverlayLayout,module:String?,expandedReuse:Bool)->Bool {
+        if !expandedReuse { return mode==layout }
+        // Library Compare adds lower controls; Develop uses the same outer area.
+        return module != "library" || (mode == .full)==(layout == .full)
+    }
+    func translated(window current:CGRect,windowID id:UInt32,epoch next:String?,settingsKey key:String,layout mode:OverlayLayout,expandedReuse:Bool=false,module:String?=nil)->CGRect? {
+        guard id==windowID,next != nil,(expandedReuse || next==epoch),key==settingsKey,
+              supportsLayout(mode,module:module,expandedReuse:expandedReuse),
               abs(current.width-window.width)<0.5,abs(current.height-window.height)<0.5 else { return nil }
         var area=ui
-        if mode != layout {
-            if layout.group==1 { area=area.offsetBy(dx:layout == .left ? ui.width : -ui.width,dy:0) }
-            else if layout.group==2 { area=area.offsetBy(dx:0,dy:layout == .upper ? -ui.height : ui.height) }
+        if expandedReuse {
+            let whole=workingArea
+            switch mode {
+            case .full:area=whole
+            case .left:area=CGRect(x:whole.minX,y:whole.minY,width:whole.width/2,height:whole.height)
+            case .right:area=CGRect(x:whole.midX,y:whole.minY,width:whole.width/2,height:whole.height)
+            case .upper:area=CGRect(x:whole.minX,y:whole.midY,width:whole.width,height:whole.height/2)
+            case .lower:area=CGRect(x:whole.minX,y:whole.minY,width:whole.width,height:whole.height/2)
+            }
         }
+        guard mode == .full || (area.width>100 && area.height>100) else { return nil }
         return area.offsetBy(dx:current.minX-window.minX,dy:current.minY-window.minY)
     }
 }

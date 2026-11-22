@@ -315,6 +315,15 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         expect(app.diagnostics.lastResult=="Replacement result","Adapter and service share one state owner")
         print("PASS migration: frozen report equivalence, save off/on/replace/failure and preview invalidation")
 
+        prefs.removeObject(forKey:"developerReuseScreenshotWorkingArea")
+        expect(app.settings.reuseScreenshotWorkingArea,"Expanded screenshot reuse defaults on")
+        prefs.set(false,forKey:"useScreenshotDetection")
+        expect(!app.expandedScreenshotReuse,"AX never enters expanded screenshot reuse")
+        prefs.set(true,forKey:"useScreenshotDetection")
+        expect(app.expandedScreenshotReuse,"Screenshot uses expanded reuse by default")
+        prefs.set(false,forKey:"developerReuseScreenshotWorkingArea")
+        expect(!app.expandedScreenshotReuse,"Explicit off restores earlier cache eligibility")
+        prefs.removeObject(forKey:"developerReuseScreenshotWorkingArea")
         // Build menus without creating a status item, launching NSApplication,
         // invoking actions, or touching Lightroom. The targets remain AppDelegate.
         prefs.set(true,forKey:"migrated03") // avoid reading an external legacy suite
@@ -394,6 +403,31 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         let emptyRecorder=ShortcutRecorder(shortcut:(38,6400),label:"J")
         emptyRecorder.finishRecording();expect(emptyRecorder.candidate.1==6400,"Untouched binding retained")
         emptyRecorder.capturing=true;emptyRecorder.finishRecording();expect(emptyRecorder.candidate.1==0,"Empty recording clears binding")
+        prefs.set(true,forKey:"useScreenshotDetection")
+        prefs.set(true,forKey:app.regionKey("automaticBounds"))
+        prefs.set(true,forKey:"developerReuseScreenshotWorkingArea")
+        app.updateDetectionMenu()
+        let reuseItem=app.menus.screenshotReuseItem!
+        expect(reuseItem.state == .on && reuseItem.isEnabled,"Developer reuse defaults on in screenshot mode")
+        let remembered=PlacementMemory(ui:CGRect(x:20,y:20,width:500,height:400),window:CGRect(x:0,y:0,width:900,height:700),windowID:42,epoch:"A",settingsKey:"test",layout:.full)
+        app.placementMemory=remembered
+        let cacheGeneration=await ScreenGeometryCache.shared.ticket()
+        app.toggleScreenshotWorkingAreaReuse(reuseItem)
+        expect(!app.expandedScreenshotReuse && app.placementMemory==nil,"Switch off clears placement memory and disables expanded reuse")
+        for _ in 0..<100 {
+            if await ScreenGeometryCache.shared.ticket() != cacheGeneration { break }
+            await Task.yield()
+        }
+        let resetGeneration=await ScreenGeometryCache.shared.ticket()
+        expect(resetGeneration != cacheGeneration,"Switch clears raster geometry generation too")
+        prefs.set(false,forKey:"useScreenshotDetection");app.updateDetectionMenu()
+        app.placementMemory=remembered
+        app.toggleScreenshotWorkingAreaReuse(reuseItem)
+        expect(!reuseItem.isEnabled && app.placementMemory==remembered && !app.settings.reuseScreenshotWorkingArea,"AX ignores the screenshot-only action")
+        prefs.set(true,forKey:"useScreenshotDetection")
+        prefs.set(true,forKey:"developerReuseScreenshotWorkingArea")
+        app.clearAllRegionData()
+        expect(app.placementMemory==nil && prefs.bool(forKey:app.regionKey("automaticBounds")),"Explicit clear invalidates expanded geometry without switching automatic placement off")
         print("PASS migration: settings defaults, menu order/targets, mode/manual visibility and inferred pane states")
     }
 }
