@@ -41,7 +41,11 @@ final class AXCalibrationCoordinator:NSWindowController,NSWindowDelegate {
     @objc private func closeGuide() { close() }
     func windowWillClose(_ notification:Notification) {
         generation=UUID();busy=false
-        if let selector,appCoordinator.calibration === selector { appCoordinator.calibration=nil;selector.finish(nil) }
+        if let selector,appCoordinator.calibration === selector {
+            appCoordinator.calibrationTask?.cancel();appCoordinator.calibrationTask=nil
+            appCoordinator.calibrationTimer?.invalidate();appCoordinator.calibrationTimer=nil
+            appCoordinator.calibration=nil;selector.finish(nil)
+        }
         selector=nil
     }
     @objc private func startOver() {
@@ -71,6 +75,8 @@ final class AXCalibrationCoordinator:NSWindowController,NSWindowDelegate {
                 let controller=CalibrationController();self.selector=controller;self.appCoordinator.calibration=controller
                 controller.completed = { [weak self] rect in
                     guard let self,self.generation==token else { return }
+                    self.appCoordinator.calibrationTask?.cancel();self.appCoordinator.calibrationTask=nil
+                    self.appCoordinator.calibrationTimer?.invalidate();self.appCoordinator.calibrationTimer=nil
                     self.appCoordinator.calibration=nil;self.selector=nil
                     guard let rect else { self.failed("Measurement cancelled. Retry this step.");return }
                     self.readEvidence { [weak self] after in
@@ -85,7 +91,7 @@ final class AXCalibrationCoordinator:NSWindowController,NSWindowDelegate {
                         self.showWindow(nil);NSApp.activate(ignoringOtherApps:true)
                     }
                 }
-                controller.start(snapAvailable:false,instruction:"Select the entire combined working area, including both panes in split view. Exclude toolbars; include photo margins. Esc cancels this measurement.")
+                self.appCoordinator.prepareCalibrationSelection(controller,settings:self.appCoordinator.reloadDetectionConfig(),instruction:"Select the entire combined working area, including both panes in split view. Exclude toolbars; include photo margins.")
             }
         }
     }

@@ -2,6 +2,8 @@
 
 ## 1.1.12 — final usability candidate
 
+- Enable Option edge snapping in guided AX calibration using the shared manual-selector preparation, without requesting Screen Recording permission.
+
 - Accept number-row and numeric-keypad equivalents for numeric view shortcuts; order shortcut settings Loupe, Left, Right, Top, Bottom.
 
 - Right-align menu shortcut hints in the system disabled-item grey; bindings and actions are unchanged. Use full Reference View (Top/Bottom/Left/Right) names in shortcut settings, separated from invocation bindings with Loupe first.

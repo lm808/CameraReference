@@ -120,7 +120,10 @@ final class CalibrationController {
             if !snapAvailable && permissionUnavailable {
                 v.hint += "\nFor edge snapping, enable Screen Recording in macOS System Settings."
             }
-            if let instruction { v.hint=instruction }
+            if let instruction {
+                v.hint=instruction + (snapAvailable ? " Hold ⌥ Option to snap to edges.":" Snapping unavailable.") + " Esc cancels this measurement."
+                if !snapAvailable && permissionUnavailable { v.hint += "\nFor edge snapping, enable Screen Recording in macOS System Settings." }
+            }
             v.finish = { [weak self, weak p] rect in
                 guard let self, let p else { return }; self.finish(p.convertToScreen(rect))
             }

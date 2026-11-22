@@ -35,8 +35,15 @@ extension AppDelegate {
             }
             else { self.report("Calibration cancelled. Previous region retained.") }
         }
+        prepareCalibrationSelection(controller,proposal:proposal,settings:settings)
+    }
+    // Shared selection preparation only. Each workflow owns its completion,
+    // interpretation and persistence; no placement preference is changed here.
+    func prepareCalibrationSelection(_ controller:CalibrationController,proposal:CGRect?=nil,settings:DetectionConfig,instruction:String?=nil) {
+        guard calibration === controller else { return }
+        controller.snapRadius=settings.snapDistancePoints
         guard #available(macOS 14.0,*),FeaturePermission.screenCapture.granted else {
-            if calibration === controller { controller.start(proposal:proposal,snapAvailable:false,permissionUnavailable:!FeaturePermission.screenCapture.granted) }; return
+            if calibration === controller { controller.start(proposal:proposal,snapAvailable:false,permissionUnavailable:!FeaturePermission.screenCapture.granted,instruction:instruction) }; return
         }
         guard calibration === controller else { return }
         report("Preparing calibration edges…")
@@ -44,20 +51,20 @@ extension AppDelegate {
         calibrationTimer=Timer(timeInterval:3,repeats:false) { [weak self,weak controller] _ in
             guard let self,let controller,self.calibration === controller else { return }
             self.calibrationTask?.cancel();self.calibrationTask=nil;self.calibrationTimer=nil
-            controller.start(proposal:proposal,snapAvailable:false)
+            controller.start(proposal:proposal,snapAvailable:false,instruction:instruction)
         }
         RunLoop.main.add(calibrationTimer!,forMode:.common)
         calibrationTask=Task.detached(priority:.userInitiated) { [weak self,weak controller] in
             let result=await inspectScreenLayout(imageSize:.zero,forCalibration:true,settings:settings)
             guard !Task.isCancelled,let controller else { return }
-            await self?.finishCalibrationPreparation(result,controller:controller,proposal:proposal)
+            await self?.finishCalibrationPreparation(result,controller:controller,proposal:proposal,instruction:instruction)
         }
     }
-    @MainActor func finishCalibrationPreparation(_ result:ScreenProbeResult,controller:CalibrationController,proposal:CGRect?) {
+    @MainActor func finishCalibrationPreparation(_ result:ScreenProbeResult,controller:CalibrationController,proposal:CGRect?,instruction:String?=nil) {
         guard calibration === controller,calibrationTimer != nil else { return }
         calibrationTimer?.invalidate();calibrationTimer=nil;calibrationTask=nil
         lastLayout=result.summary
-        controller.start(proposal:proposal,edges:result.snapEdges,snapAvailable:!result.snapEdges.isEmpty,permissionUnavailable:result.summary.hasPrefix("Screen Recording permission unavailable"))
+        controller.start(proposal:proposal,edges:result.snapEdges,snapAvailable:!result.snapEdges.isEmpty,permissionUnavailable:result.summary.hasPrefix("Screen Recording permission unavailable"),instruction:instruction)
     }
     @objc func clearAllRegionData() {
         guard !regionResetting else { return };regionResetting=true

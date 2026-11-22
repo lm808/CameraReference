@@ -27,3 +27,5 @@ Expanded screenshot reuse (same 1.1.12 / build 71):
 - [ ] Off: a repeated toggle for the same photo/pane may still reuse placement; changing photo or pane restores the earlier cache eligibility. Split captures search outer bounds afresh; Loupe keeps its earlier raster cache. AX and photo caching are unchanged.
 
 - [ ] View shortcuts work with both number-row and keypad digits (also after recording a keypad binding). Conflicting aliases are rejected on Save. Settings order is Loupe, Left, Right, Top, Bottom; invocation shortcuts remain separate.
+
+- [ ] Guided AX calibration: with Screen Recording already granted, hold Option while dragging each measurement and verify edge snapping. Cancel/retry must work; no manual region or auto/manual setting changes. Without permission, show the snapping-unavailable guidance without prompting.
