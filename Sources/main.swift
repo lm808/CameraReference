@@ -68,6 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var floatingKeyLabel="F"
     var hotKey: EventHotKeyRef?
     var viewHotKeys=[EventHotKeyRef]()
+    var guidedCalibration:AXCalibrationCoordinator?
     var handler: EventHandlerRef?
     var calibration: CalibrationController?
     var screenTask: Task<Void, Never>?

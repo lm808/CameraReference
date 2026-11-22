@@ -7,6 +7,7 @@
 - Dismiss screenshot overlays on confirmed photo changes even with AX inference off.
 - Request Screen Recording for explicit screenshot placement only.
 - Add configurable numeric view shortcuts, menu labels and explicit/empty-recording clearing.
+- Add Developer tools guided AX calibration: five manual measurements, consistency checks, review, config conflict protection and backup; manual placement preferences unchanged.
 - Native acceptance pending; main remains unchanged.
 
 ## 1.1.11 — screenshot simplification candidate

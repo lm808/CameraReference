@@ -24,3 +24,7 @@ xcrun swiftc -swift-version 5 -module-cache-path build/module-cache Sources/Dete
 
 # Coordinator characterisation; isolated bridge/preferences, no app or live AX.
 bash tests/migration/run.sh
+
+# Pure guided calibration calculations, no AX or UI interaction.
+xcrun swiftc -swift-version 5 -module-cache-path build/module-cache Sources/AXCalibration.swift tests/ax-calibration/main.swift -o build/ax-calibration-tests
+./build/ax-calibration-tests

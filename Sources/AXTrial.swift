@@ -9,11 +9,16 @@ struct AXTrialWindow {
     let frame:CGRect
     let visible:Bool
 }
+struct AXPanelVisibility:Equatable {
+    let left:Bool,right:Bool,top:Bool,bottom:Bool
+}
 struct AXTrialProposal {
     let host:CGRect
     let panes:[CGRect]
     let layout:String
     let summary:String
+    var rawArea:CGRect? = nil
+    var panelVisibility:AXPanelVisibility? = nil
 }
 func axTrialProposal(host:CGRect, windows:[AXTrialWindow], settings:DetectionConfig = DetectionConfig(), module:String? = nil, fullScreen:Bool? = nil)->AXTrialProposal? {
     guard host.width>200,host.height>200 else { return nil }
@@ -82,7 +87,7 @@ func axTrialProposal(host:CGRect, windows:[AXTrialWindow], settings:DetectionCon
         panes=[CGRect(x:left,y:top,width:area.width,height:splitY-top),CGRect(x:left,y:splitY,width:area.width,height:bottom-splitY)]
     } else { panes=[area] }
     let summary="AX trial: \(layout). Top-left global points.\nHost: \(host)\nRaw combined area: \(rawArea)\nAdjusted area: \(area)\nProposed panes: \(panes)\nVisible label candidates: \(labels)\n"+notes.joined(separator:"\n")+"\nAX config corrections applied. Toolbar annotation: \(settings.axToolbarState) (effective preview state; see toolbar diagnostics). No menu layout/pane preference used."
-    return AXTrialProposal(host:host,panes:panes,layout:layout,summary:summary)
+    return AXTrialProposal(host:host,panes:panes,layout:layout,summary:summary,rawArea:rawArea,panelVisibility:AXPanelVisibility(left:leftPanel != nil,right:rightPanel != nil,top:topPanel != nil,bottom:bottomPanel != nil))
 }
 final class AXTrialBorder:NSView {
     let tint:NSColor

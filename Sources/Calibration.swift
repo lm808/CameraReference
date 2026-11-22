@@ -99,7 +99,7 @@ final class CalibrationController {
     private var escapeMonitor: Any?
     var completed: ((CGRect?) -> Void)?
     var snapRadius:CGFloat=8
-    func start(proposal: CGRect? = nil,edges:[SnapEdge]=[],snapAvailable:Bool=true,permissionUnavailable:Bool=false) {
+    func start(proposal: CGRect? = nil,edges:[SnapEdge]=[],snapAvailable:Bool=true,permissionUnavailable:Bool=false,instruction:String?=nil) {
         for screen in NSScreen.screens {
             let p=CalibrationPanel(contentRect:screen.frame,styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
             p.level = .screenSaver; p.isOpaque=false; p.backgroundColor = .clear
@@ -120,6 +120,7 @@ final class CalibrationController {
             if !snapAvailable && permissionUnavailable {
                 v.hint += "\nFor edge snapping, enable Screen Recording in macOS System Settings."
             }
+            if let instruction { v.hint=instruction }
             v.finish = { [weak self, weak p] rect in
                 guard let self, let p else { return }; self.finish(p.convertToScreen(rect))
             }

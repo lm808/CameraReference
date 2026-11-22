@@ -91,6 +91,7 @@ final class SettingsMenuController {
         developer.addItem(.separator())
         let trial=add("Show AX placement preview",#selector(AppDelegate.toggleAXTrial),to:developer)
         trial.state=axTrialEnabled ? .on:.off
+        add("Guided AX calibration…",#selector(AppDelegate.guidedAXCalibration),to:developer)
         let actions=NSMenu();let actionsItem=NSMenuItem(title:"Capture / bridge actions",action:nil,keyEquivalent:"")
         actionsItem.submenu=actions;developer.addItem(actionsItem)
         add("Check selected photo", #selector(AppDelegate.checkPhoto), to: actions)
