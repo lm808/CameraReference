@@ -1,6 +1,10 @@
 # Architecture and source map
 
-Current candidate: 1.1.11 / build 70; main remains accepted 1.1.10 / build 69. This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
+Current candidate: 1.1.12 / build 71; main remains accepted 1.1.10 / build 69. This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
+
+## Required contributor contract
+
+Both humans and agents must follow [CONTRIBUTING-STRUCTURE.md](CONTRIBUTING-STRUCTURE.md). These ownership boundaries are a maintenance contract: do not bypass them with UI side effects, copied policies or misleading flags. Keep new behaviours local to their owner and check neighbouring paths.
 
 ## Source ownership
 
@@ -13,6 +17,8 @@ Current candidate: 1.1.11 / build 70; main remains accepted 1.1.10 / build 69. T
 | main.swift | Composition/startup/shutdown, hotkeys, invocation entry points and contextual region preferences. Owns shared placement/cache/calibration operation state; keeps native selector/delegate identity. |
 | SettingsActions.swift | Preference, backend, diagnostic-option and config-editor actions; no changes to settings storage or action policy. |
 | ViewCoordinator.swift | Explicit pane choices, invocation-time AX inference and live view/photo geometry updates, including existing identity/generation guards. |
+| AXCalibration.swift / AXCalibrationCoordinator.swift | Pure signed offset recovery and a separate guided Developer tools workflow: confirmed AX evidence, reused rectangle selector, consistency/review/backup/conflict checks. No manual-region preference changes. |
+| ShortcutSettings.swift / ViewShortcuts.swift | Transactional shortcut editing and guarded view-action dispatch through selectLayout; menu and shortcut paths share behaviour. |
 | CalibrationCoordinator.swift | Manual calibration preparation/accept/cancel/reset and failure prompts; uses existing CalibrationController and optional snapping. |
 | ExportCoordinator.swift | Save eligibility, confirmation and asynchronous export completion for the invoking overlay/floating photo view. |
 | PlacementCoordinator.swift / PlacementImplementations.swift | Manual/cache/backend routing and async completion guards; separate Manual/AX/Screenshot adapters with global-AppKit UIPlacement. |
@@ -27,13 +33,13 @@ Current candidate: 1.1.11 / build 70; main remains accepted 1.1.10 / build 69. T
 | AXTrial.swift | Raw panel/label geometry, view classification, signed corrections and pane geometry shared by AX placement and preview. |
 | AXPanelState.swift / PlacementMode.swift | Preserved panel-change signature for view monitoring, and two-backend preference resolution; no AX-guided pixel search. |
 | ScreenProbe.swift | Capture/normalisation and points-to-raster mapping; one pixel-only outer search and equal split selection. |
-| ViewportDetector.swift | Original Full UI rectangle evidence and raster boundary validation. Protected baseline for pure screenshot mode. |
+| ViewportDetector.swift | Pixel-only Full UI rectangle evidence, thin-frame-tolerant surround validation and raster cache; no calibrated AX input. |
 | PhotoDetector.swift | Legacy/diagnostic photo-edge detection and fixtures, not the normal UI Fit calculation. |
 | Layout.swift | Lightroom host metadata, coordinate conversion, bounded AX mapping/menu readers and lifecycle/overview evidence. |
 | SplitLayout.swift | Pane geometry, floating half-viewport fit, placement memory and pure overlay action policies. |
 | Interaction.swift | Navigation/display geometry and placement checks. |
 | Views.swift | Photo view, overlay/floating panels, chrome, previews, diagnostics UI, toasts and menu diagrams. |
-| Calibration.swift / Snapping.swift | Manual selection, optional pixel edge snapping and region clearing. |
+| Calibration.swift / Snapping.swift | Reusable rectangle/cancellation UI and optional edge snapping. Callers own persistence and interpretation. |
 | DetectionConfig.swift / ConfigEditor.swift | Advanced schema/parser/cache/migration and file-driven value editor. |
 | Shortcut.swift / Permissions.swift | Shortcut recording and permission helpers. |
 
@@ -53,7 +59,7 @@ Invocation → bridge token/selection epoch → JPEG load or RAM hit
 
 AX view inference is always enabled for Accessibility, independently optional for Screenshot. Screenshot placement never consumes AX panel edges. Manual placement overrides all of these. Missing AX geometry in Accessibility never triggers automatic screenshot capture. Explicit capture preview and permission-available calibration snapping are separate actions.
 
-AX correction values do not enter screenshot search geometry/cache keys. Assisted results do not populate the original detector’s internal raster cache. Mode/selection/config changes prevent inappropriate placement-memory reuse.
+AX correction values do not enter screenshot search geometry/cache keys. The raster cache stores the full outer area for both Loupe and split callers; splitting happens afterwards. Placement memory reuses the equivalent opposite half within a split group, with AppKit vertical orientation respected. Module/selection/config, host size and layout-group guards remain; this is not a permanent geometry cache across photo changes.
 
 ## Display and update ownership
 
@@ -61,7 +67,7 @@ OverlayController owns the active panel and displayed host/layout/module/selecti
 
 | Event | Automatic Accessibility | Automatic Screenshot + AX view detection | Screenshot without inference / manual |
 |---|---|---|---|
-| Photo selection | Update on: reload at Fit; off: dismiss | Dismiss | Keep previous photo |
+| Photo selection | Update on: reload at Fit; off: dismiss | Dismiss | Screenshot: dismiss; manual: keep previous photo |
 | Inferred view / panel change | On: reposition preserving zoom; off: dismiss | Dismiss on confirmed change | Retain; screenshot checks invalidate cache |
 | Explicit view/pane selection | On: reposition; off: dismiss | Dismiss | Existing dismissal behaviour |
 | Confirmed module change | Dismiss | Dismiss | Dismiss |
@@ -75,7 +81,7 @@ The Grid policy is implemented but native selection-mark reliability remains an 
 
 - The 0.2-second bridge/window maintenance loop observes module/selection and host state. It is not a screenshot loop.
 - Eligible live AX view/panel reads run about every two seconds while Lightroom is active; menus change only when inference changes.
-- Screenshot background validation defaults to three seconds (`panelCheckIntervalSeconds`), uses a 1280px-wide capture and invalidates reuse only. Zero disables this loop, not window tracking. Assisted mode retains it for measurement.
+- Screenshot background validation defaults to three seconds (`panelCheckIntervalSeconds`), uses a 1280px-wide capture and invalidates reuse only. Zero disables this loop, not window tracking. AX-only does not use this capture loop.
 - Diagnostics gather bounded AX evidence after invocation when saving is enabled. Exhaustive tree exploration is kept out of the app.
 
 Initial invocation uses request tokens, cancellation and selection epochs. Screen work uses inspection IDs/tasks; live view work uses probe IDs/generations; diagnostics have their own generation. Completions check relevant panel/host, module, selection, backend and preference state before applying. Explicit dismissal must defeat late completions. Failed selection refresh attempts are limited per epoch; failure retains the old photo without repeated calibration prompts. View/panel refresh preserves zoom, whereas a new image resets Fit.
@@ -109,3 +115,7 @@ AXTrialPanel shares production frame constraints and cannot become key. Floating
 ### Opt-in window-order recording
 
 `WindowOrderDiagnostics.swift` owns a bounded five-second-delay/fifteen-second trace, started only by the developer menu. It samples CG metadata and existing AppKit/cached AX state on the main run loop every 100 ms, observes own-window focus notifications, and accepts observational action markers from PresentationCoordinator. It never captures pixels, reads new AX geometry, activates an app or orders a window. Disk output is asynchronous and separate from latest.txt. When inactive, action messages are not evaluated and there is no recording timer. Reports retain all owners without window titles, and identify our overlay/floating/border/host IDs.
+
+## Guided calibration boundary
+
+The existing CalibrationController returns a global AppKit rectangle or cancellation. Manual CalibrationCoordinator saves a region and switches auto placement off; AXCalibrationCoordinator instead converts the rectangle to top-left points and collects it with raw AX evidence. AXCalibrationPlan calculates ten replacements from five observations and checks repeated edges. ConfigEditorDocument validates/preserves the file and refuses external-edit conflicts; the coordinator creates a backup and saves only after explicit review. AXTrial exposes raw bounds and named panel visibility as additional metadata; its placement arithmetic is unchanged. The guide does not calibrate hidden base insets or full-screen allowance and never captures pixels.
