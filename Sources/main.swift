@@ -181,7 +181,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         Task { await ScreenGeometryCache.shared.reset() }
     }
 
-    func menuNeedsUpdate(_ menu:NSMenu) { updateToggleTitle();updateLayoutMenu();updateDetectionMenu() }
+    func menuNeedsUpdate(_ menu:NSMenu) {
+        refreshAdvancedSettingsForMenu()
+        updateToggleTitle();updateLayoutMenu();updateDetectionMenu()
+    }
     @objc func menuToggle() { toggle() }
     func toggle() {
         if recording || calibration != nil { return }

@@ -392,6 +392,11 @@ func selection(_ epoch:String) throws { try writeBridge("selection.txt","\(epoch
         }
         prefs.set(false,forKey:app.regionKey("automaticBounds"));app.updateLayoutMenu()
         expect(root.isHidden && app.menus.layoutSeparator!.isHidden,"Manual calibration keeps view menu hidden")
+        expect(app.menus.developerItem?.isHidden == true,"Developer tools hidden by default")
+        let configURL=app.detectionSettings.url
+        try "showDeveloperTools = true\n".write(to:configURL,atomically:true,encoding:.utf8)
+        _ = try app.detectionSettings.reload();app.menus.updateDeveloperVisibility()
+        expect(app.menus.developerItem?.isHidden == false,"Developer tools can be enabled without rebuilding menus")
         verifyTargets(menu)
         expect(!containsRetired(menu),"Retired assistance menu must be absent")
         for mode in OverlayLayout.allCases {

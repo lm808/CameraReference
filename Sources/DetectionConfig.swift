@@ -3,6 +3,7 @@ import CoreGraphics
 
 struct DetectionConfig: Equatable {
     enum Bound:String { case ui,photo }
+    var showDeveloperTools=false
     var axToolbarState="unknown"
     var toolbarUnknownFallback="shown"
     // Accepted geometry corrections: right/up positive.
@@ -23,27 +24,30 @@ struct DetectionConfig: Equatable {
     var axFullScreenTitleBarAllowancePoints:CGFloat=32
     var axBaseHiddenBottomInsetPoints:CGFloat=0
     static let axGeometryTemplate="""
-    # Geometry corrections — macOS points, not pixels.
-    # Signed OFFSETS: right/up positive; left/down negative.
-    # Corrections start at raw panel edges, or the base hidden insets below.
+    # Accessibility — shown-panel corrections (points; right/up positive)
     axShownLeftOffsetPoints = -17
-    axHiddenLeftOffsetPoints = -1
     axShownRightOffsetPoints = 17
-    axHiddenRightOffsetPoints = 1
     axShownTopOffsetPoints = 11
+
+    # Accessibility — hidden-panel corrections (applied after base insets)
+    axHiddenLeftOffsetPoints = -1
+    axHiddenRightOffsetPoints = 1
     axHiddenTopOffsetPoints = 1
-    axFilmstripShownOffsetPoints = -11 # inferred for filmstrip shown / toolbar hidden
+
+    # Accessibility — bottom boundary and toolbar
+    axFilmstripShownOffsetPoints = -11 # filmstrip shown, before toolbar allowance
     axFilmstripHiddenOffsetPoints = 17
-    axToolbarHeightPoints = 43
-    axLibraryBottomOffsetPoints = 25 # extra upward allowance for Library split views only
-    # Unknown toolbar visibility: shown, hidden, or lastKnown (no history assumes shown).
-    toolbarUnknownFallback = shown
-    # Base hidden insets measure inward from the window; offsets apply afterwards.
+    axToolbarHeightPoints = 43 # additional upward shift when toolbar is shown
+    axLibraryBottomOffsetPoints = 25 # additional upward shift in Library split views only
+    toolbarUnknownFallback = shown # shown, hidden, lastKnown; no history assumes shown
+
+    # Accessibility — hidden base insets, inward from window edges (points)
+    # Guided calibration adjusts corrections above; these are fixed reference values.
     axBaseHiddenLeftInsetPoints = 18
     axBaseHiddenRightInsetPoints = 18
     axBaseHiddenTopInsetPoints = 50
-    axFullScreenTitleBarAllowancePoints = 32 # calibrated allowance removed from hidden-top base in confirmed macOS full screen; 0 disables; range 0...200 pt
     axBaseHiddenBottomInsetPoints = 0
+    axFullScreenTitleBarAllowancePoints = 32 # removed from hidden-top base in macOS full screen; 0...200
     """
     // Classification uses raw geometry, not placement offsets. Carry only the
     // configurable full-screen allowance into its otherwise unchanged defaults.
@@ -61,30 +65,56 @@ struct DetectionConfig: Equatable {
     var snapContrast=4
     var key:String { "\(left.rawValue),\(right.rawValue),\(top.rawValue),\(bottom.rawValue),\(fitInsetPoints),\(sideSearchPercent)" }
     var needsPhoto:Bool { [left,right,top,bottom].contains(.photo) }
+    static let organizationMarker="# Config layout 1.1.13"
     static let template="""
-    # Camera Reference advanced settings. Save as plain text.
-    # Reloaded only when this file changes. No restart required.
-    # Background UI checks in seconds; 0 disables checks. Range 0...3600.
-    panelCheckIntervalSeconds = 3
-    # Each side: ui or photo. Photo bounds are calculated, not edge-detected.
-    left = ui
+    # Camera Reference advanced settings. Save as plain text; changes reload automatically.
+    # Config layout 1.1.13
+
+    # Interface
+    showDeveloperTools = false # show Developer tools in the menu; true or false
+
+    # Overlay region and photo Fit (shared by placement methods)
+    left = ui # ui or photo; photo bounds are calculated from the Fit inset
     right = ui
     top = ui
     bottom = ui
-    # Minimum Fit margin, in macOS points (not Retina pixels). Range 0...100.
-    fitInsetPoints = 18
-    # Initial side-border search from each window edge, 5...50 percent.
-    # 40 searches left 0...40% and right 60...100%; retry to 50 if no valid area.
-    sideSearchPercent = 40
-    # Minimum sustained edge length as fraction of Lightroom window, 0.05...1.
-    verticalSnapFraction = 0.25
-    horizontalSnapFraction = 0.25
-    # Attraction radius 1...30 points; permitted small edge gaps 0...12 points.
-    snapDistancePoints = 8
-    snapGapPoints = 4
-    # Minimum RGB contrast, 1...64. Raise to reject faint edges.
-    snapContrast = 4
-    """ + "\n\n" + axGeometryTemplate
+    fitInsetPoints = 18 # minimum photo Fit margin, macOS points; 0...100
+
+    # Screenshot detection and background validation
+    sideSearchPercent = 40 # initial search from each edge, 5...50%; retry to 50 if needed
+    panelCheckIntervalSeconds = 3 # background check interval; 0 disables; 0...3600 seconds
+
+    # Region selector — Option edge snapping
+    verticalSnapFraction = 0.25 # minimum edge length relative to window height; 0.05...1
+    horizontalSnapFraction = 0.25 # minimum edge length relative to window width; 0.05...1
+    snapDistancePoints = 8 # attraction radius; 1...30 points
+    snapGapPoints = 4 # permitted edge gaps; 0...12 points
+    snapContrast = 4 # minimum RGB contrast; integer 1...64
+    """ + "\n\n" + axGeometryTemplate + "\n"
+
+    // One-time presentation migration. Existing assignment text (including inline
+    // comments) and all standalone comments survive; the store backs up the source.
+    static func organized(_ original:String)throws->String {
+        _ = try parse(original)
+        var assignments=[String:String](),comments=[String]()
+        for line in original.components(separatedBy:.newlines) {
+            let body=line.components(separatedBy:"#")[0]
+            if let equals=body.firstIndex(of:"=") {
+                assignments[String(body[..<equals]).trimmingCharacters(in:.whitespaces)]=line
+            } else if line.trimmingCharacters(in:.whitespaces).hasPrefix("#"),!comments.contains(line) { comments.append(line) }
+        }
+        var lines=template.components(separatedBy:.newlines).map { line -> String in
+            let body=line.components(separatedBy:"#")[0]
+            guard let equals=body.firstIndex(of:"=") else { return line }
+            let key=String(body[..<equals]).trimmingCharacters(in:.whitespaces)
+            return assignments.removeValue(forKey:key) ?? line
+        }
+        if !assignments.isEmpty { lines += ["# Retained legacy settings"]+assignments.keys.sorted().map{assignments[$0]!} }
+        let notes=comments.filter{!lines.contains($0)}
+        if !notes.isEmpty { lines += ["", "# Preserved notes from the previous config layout"]+notes }
+        let result=lines.joined(separator:"\n")
+        _ = try parse(result);return result
+    }
     static func parse(_ text:String) throws -> DetectionConfig {
         var c=DetectionConfig(),seen=Set<String>()
         func invalid(_ line:Int)->NSError { NSError(domain:"CameraReference",code:1,userInfo:[NSLocalizedDescriptionKey:"Invalid config.conf setting on line \(line). Check the name, value and allowed range."]) }
@@ -94,6 +124,10 @@ struct DetectionConfig: Equatable {
             let parts=line.components(separatedBy:"=").map{$0.trimmingCharacters(in:.whitespaces)}
             guard parts.count==2,seen.insert(parts[0]).inserted else { throw invalid(index+1) }
             let k=parts[0],v=parts[1]
+            if k == "showDeveloperTools" {
+                guard v == "true" || v == "false" else { throw invalid(index+1) }
+                c.showDeveloperTools = v == "true";continue
+            }
             if k == "overlayAnimation" {
                 guard v == "true" || v == "false" else { throw invalid(index+1) }
                 continue // Legacy 0.9.11 option: accepted but animation is always disabled.
@@ -166,33 +200,25 @@ final class DetectionConfigStore {
                 try FileManager.default.copyItem(at:legacy,to:url)
             } else { try DetectionConfig.template.write(to:url,atomically:true,encoding:.utf8) }
             try ensureFile()
-        } else {
-            var text=try String(contentsOf:url,encoding:.utf8)
-            if !text.components(separatedBy:.newlines).contains(where:{ $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces)=="panelCheckIntervalSeconds" }) {
-                text += "\n# Background panel checks in seconds; 0 disables (range 0...3600).\npanelCheckIntervalSeconds = 3\n"
-                try text.write(to:url,atomically:true,encoding:.utf8)
-            }
-            let hasInterval=text.components(separatedBy:.newlines).contains {
-                $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces) == "sideSearchPercent"
-            }
-            if !hasInterval {
-                try (text + "\n# Initial side-border search from each window edge, 5...50 percent.\n# 40 searches left 0...40% and right 60...100%; retry to 50 if no valid area.\nsideSearchPercent = 40\n").write(to:url,atomically:true,encoding:.utf8)
-            }
         }
         let existing=try String(contentsOf:url,encoding:.utf8)
-        let keys=Set(existing.components(separatedBy:.newlines).map { $0.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces) })
-        let missing=DetectionConfig.axGeometryTemplate.components(separatedBy:.newlines).filter { line in
-            let key=line.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces)
-            return !key.isEmpty && !keys.contains(key)
+        func assignmentKeys(_ text:String)->Set<String> {
+            Set(text.components(separatedBy:.newlines).compactMap { line in
+                let body=line.components(separatedBy:"#")[0]
+                guard let equals=body.firstIndex(of:"=") else { return nil }
+                return String(body[..<equals]).trimmingCharacters(in:.whitespaces)
+            })
         }
-        if !missing.isEmpty {
-            let addition=DetectionConfig.axGeometryTemplate.components(separatedBy:.newlines).filter { line in
-                let key=line.components(separatedBy:"#")[0].components(separatedBy:"=")[0].trimmingCharacters(in:.whitespaces)
-                return key.isEmpty || !keys.contains(key)
-            }.joined(separator:"\n")
-            try (existing+"\n\n# Geometry settings (new keys only; existing values preserved).\n"+addition+"\n").write(to:url,atomically:true,encoding:.utf8)
+        let missingDefaults = !assignmentKeys(DetectionConfig.template).isSubset(of:assignmentKeys(existing))
+        if missingDefaults || !existing.components(separatedBy:.newlines).contains(DetectionConfig.organizationMarker) {
+            let organized=try DetectionConfig.organized(existing)
+            let backup=url.deletingLastPathComponent().appendingPathComponent("config.before-layout-1.1.13-\(UUID().uuidString).conf")
+            try Data(existing.utf8).write(to:backup,options:.withoutOverwriting)
+            guard try String(contentsOf:url,encoding:.utf8)==existing else { throw NSError(domain:"Config",code:1,userInfo:[NSLocalizedDescriptionKey:"Config changed during organization; retry."]) }
+            try organized.write(to:url,atomically:true,encoding:.utf8)
         }
     }
+
     func reload() throws -> DetectionConfig {
         if let stamp,stamp == (try? fileStamp()) { return current }
         try ensureFile()

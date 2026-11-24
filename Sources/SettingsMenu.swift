@@ -5,6 +5,8 @@ import AppKit
 final class SettingsMenuController {
     unowned let owner:AppDelegate
     init(owner:AppDelegate) { self.owner=owner }
+    var developerItem:NSMenuItem?
+    func updateDeveloperVisibility() { developerItem?.isHidden = !owner.detectionSettings.current.showDeveloperTools }
     var preferItem: NSMenuItem!
     var autoItem: NSMenuItem!
     var detail: NSMenuItem!
@@ -84,6 +86,7 @@ final class SettingsMenuController {
         settings.addItem(.separator())
         add("Advanced settings…", #selector(AppDelegate.editAdvancedSettings), to: settings)
         let developer = submenu("Developer tools")
+        developerItem=menu.items.last;updateDeveloperVisibility()
         developer.addItem(detail); developer.addItem(.separator())
         add("Diagnostics…", #selector(AppDelegate.showDiagnostics), to: developer)
         add("Record window ordering (5-second delay)…", #selector(AppDelegate.recordWindowOrdering), to: developer)

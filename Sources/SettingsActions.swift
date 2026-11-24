@@ -75,10 +75,20 @@ extension AppDelegate {
         }
         catch { report("Could not open config.conf: \(error.localizedDescription)");showResult() }
     }
+    // Menu opening must not present a modal parse-error alert. Keep the last
+    // valid settings; explicit settings/invocation paths report invalid files.
+    func refreshAdvancedSettingsForMenu() {
+        let oldKey=detectionSettings.current.key
+        if let next=try? detectionSettings.reload() {
+            menus.updateDeveloperVisibility()
+            if oldKey != next.key { invalidateAutomaticGeometry() }
+        }
+    }
     func reloadDetectionConfig()->DetectionConfig {
         do {
             let old=detectionSettings.current
             let next=try detectionSettings.reload()
+            menus.updateDeveloperVisibility()
             if old.key != next.key { invalidateAutomaticGeometry() }
             return next
         }

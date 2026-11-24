@@ -219,3 +219,14 @@ assert(!invalidateScreenshotArea(previous:viewport,current:nil,expandedReuse:tru
 assert(invalidateScreenshotArea(previous:viewport,current:nil,expandedReuse:false))
 assert(invalidateScreenshotArea(previous:viewport,current:viewport.insetBy(dx:40,dy:0),expandedReuse:true))
 assert(!invalidateScreenshotArea(previous:viewport,current:viewport,expandedReuse:true))
+
+assert(!DetectionConfig().showDeveloperTools)
+assert(try! DetectionConfig.parse("showDeveloperTools = true").showDeveloperTools)
+let personal="# My measured value\nfitInsetPoints = 23 # keep this\naxHiddenLeftOffsetPoints = -4\n"
+let organized=try DetectionConfig.organized(personal)
+assert(organized.contains("# My measured value") && organized.contains("fitInsetPoints = 23 # keep this"))
+let organizedSettings=try DetectionConfig.parse(organized)
+assert(organizedSettings.fitInsetPoints==23 && organizedSettings.axHiddenLeftOffsetPoints == -4 && !organizedSettings.showDeveloperTools)
+assert(try! DetectionConfig.parse(DetectionConfig.template)==DetectionConfig())
+
+assert(try! String(contentsOfFile:"config/config.example.conf",encoding:.utf8)==DetectionConfig.template)
