@@ -6,7 +6,7 @@ The user accepted every 1.1.15 test. Exact annotations are preserved in [1.1.15-
 
 ## Follow-up status — 1.1.16
 
-A1 and A2 are now fixed in code, with native confirmation pending in TESTING.md. `axRawGeometry` owns the single existing raw panel/layout calculation; `axTrialProposal` applies unchanged corrections/guards to its result; the guide consumes the raw result directly. `ScreenProbeResult.failureReason` carries typed capture failure state, and selection preparation uses that state for guidance. No second classifier or permission-check implementation was introduced. Production AX geometry matched the prior function in 1,728 synthetic cases. The original findings below describe the audited 1.1.15 state and remain as history.
+A1 and A2 are now fixed in code, with all three focused native checks completed in [1.1.16-TEST-RESPONSE.md](1.1.16-TEST-RESPONSE.md). `axRawGeometry` owns the single existing raw panel/layout calculation; `axTrialProposal` applies unchanged corrections/guards to its result; the guide consumes the raw result directly. `ScreenProbeResult.failureReason` carries typed capture failure state, and selection preparation uses that state for guidance. No second classifier or permission-check implementation was introduced. Production AX geometry matched the prior function in 1,728 synthetic cases. The original findings below describe the audited 1.1.15 state and remain as history.
 
 ## Conclusion at the time of audit
 

@@ -1,9 +1,7 @@
-# 1.1.16 / build 75 — boundary fixes
+# Accepted main — 1.1.16 / build 75
 
-1.1.15 remains user-accepted; its exact annotations are in [1.1.15 test response](docs/1.1.15-TEST-RESPONSE.md). This candidate fixes the two audit findings without changing placement formulas or screenshot detection. Main remains untouched.
+All three focused 1.1.16 native checks passed. Exact user annotations are preserved in [1.1.16 test response](docs/1.1.16-TEST-RESPONSE.md); broader feature acceptance is preserved in the 1.1.14 and 1.1.15 responses.
 
-- [x ] Accessibility placement and AX preview still agree in Loupe and both split orientations, including a hidden top panel in macOS full screen. Existing update/dismiss behaviour remains correct.
-- [x ] Guided calibration: select a normal working area and its photo bounds, cancel another selection, then close/reopen. Accepted measurements remain and Option-snapping works as before. No need to repeat all seven measurements or Apply unless something differs.
-- [x ] Manual calibration still supports Option-snapping when available and cancellation retains the previous region/mode. If Screen Recording is already unavailable, freehand selection includes the settings guidance and does not prompt for permission.
+There is no outstanding release-specific checklist. Continued environment, timing and edge-case work is listed in [BACKLOG.md](docs/BACKLOG.md). Automated and native evidence are distinguished in [VALIDATION.md](docs/VALIDATION.md).
 
-Automated checks cover invalid signed offsets leaving raw calibration evidence available, both permission-denial routes and unrelated error classification. They also compare 1,728 synthetic old/new production AX results. You do not need to deliberately damage your config or revoke permissions to reproduce those artificial cases.
+Older annotations recovered during worktree cleanup are preserved verbatim in [AX-assist worktree response](docs/migration/AX-ASSIST-WORKTREE-TEST-RESPONSE.md). These describe the older build and are not a current regression report.

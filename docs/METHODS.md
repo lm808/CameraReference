@@ -1,6 +1,6 @@
 # Current implementation methods
 
-Current candidate implementation: 1.1.10; accepted main remains 1.0.32. This file describes operative methods. [Research findings](AX-ASSISTANCE.md) distinguishes observations from assumptions; [historical notes](HISTORICAL-NOTES.md) preserves superseded implementations and experiments. [Architecture](ARCHITECTURE.md) maps source ownership and update routing.
+Current accepted implementation: main 1.1.16 / build 75. This file describes operative methods. [Research findings](AX-ASSISTANCE.md) distinguishes observations from assumptions; [historical notes](HISTORICAL-NOTES.md) preserves superseded implementations and experiments. [Architecture](ARCHITECTURE.md) maps source ownership and update routing.
 
 ## Selection, extraction and Fit
 
@@ -76,7 +76,7 @@ GUI settings use the shared macOS preference domain; advanced config uses config
 
 ## Screenshot refinement and guided offsets (1.1.12 candidate)
 
-Screenshot surround validation tests parallel inner lines 4–12 raster pixels from each border and requires at least 90% support on each side at one common depth; distributed edge transitions remain required. This allows a thin selection frame on one Compare pane without accepting a single corner as representative. The supplied Library crop reproduced the former false top-header boundary and now selects the inner working-area top. Native acceptance remains pending.
+Screenshot surround validation tests parallel inner lines 4–12 raster pixels from each border and requires at least 90% support on each side at one common depth; distributed edge transitions remain required. This allows a thin selection frame on one Compare pane without accepting a single corner as representative. The supplied Library crop reproduced the former false top-header boundary and now selects the inner working-area top. The reported case subsequently passed native testing; see VALIDATION.md and the preserved 1.1.15 response.
 
 Full outer detection uses the same raster cache before optional 50/50 splitting. The developer switch Reuse screenshot working area (default on) also allows whole-area placement reuse across photo changes, movement and Develop layouts; Library Loupe versus Compare stays a geometry boundary. Host identity/size, module, config, display and pixel validation remain guards. Off restores the pre-expansion caches: exact photo/pane placement plus Loupe-only raster caching. Changing the switch or clearing the overlay region invalidates both geometry layers.
 

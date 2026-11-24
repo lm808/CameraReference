@@ -1,6 +1,6 @@
 # Outstanding work
 
-Current candidate: 1.1.16 / build 75, awaiting a short native check; 1.1.15 / build 74 is user-accepted. Main remains 1.1.10 / build 69 until a separately authorised merge. Migration and its six deferred fixes are complete; wider checks below remain separate. [TESTING.md](../TESTING.md) holds the actionable checklist; [research findings](AX-ASSISTANCE.md) and [validation](VALIDATION.md) retain evidence.
+Current accepted main: 1.1.16 / build 75. All three focused native checks passed; the exact response is preserved in [1.1.16-TEST-RESPONSE.md](1.1.16-TEST-RESPONSE.md). Migration and its six deferred fixes are complete; wider checks below remain separate. [TESTING.md](../TESTING.md) holds the actionable checklist; [research findings](AX-ASSISTANCE.md) and [validation](VALIDATION.md) retain evidence.
 
 ## Screenshot fallback
 
@@ -10,7 +10,7 @@ Current candidate: 1.1.16 / build 75, awaiting a short native check; 1.1.15 / bu
 
 ## Boundary-audit fixes
 
-A1 (raw calibration dependent on corrected placement) and A2 (permission guidance matching diagnostic text) are implemented in 1.1.16 without duplicate algorithms. Focused checks and 1,728 old/new AX geometry comparisons passed; the short native checklist is in TESTING.md. The [audit](BOUNDARY-AUDIT.md) retains the original findings and resolution. No other boundary violation was identified in that review; shared AppDelegate operation state remains the documented maintenance compromise.
+A1 (raw calibration dependent on corrected placement) and A2 (permission guidance matching diagnostic text) are implemented in 1.1.16 without duplicate algorithms. Focused checks and 1,728 old/new AX geometry comparisons passed; the completed native checklist is preserved in 1.1.16-TEST-RESPONSE.md. The [audit](BOUNDARY-AUDIT.md) retains the original findings and resolution. No other boundary violation was identified in that review; shared AppDelegate operation state remains the documented maintenance compromise.
 
 ## Continued native use and edge cases
 

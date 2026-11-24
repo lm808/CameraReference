@@ -94,13 +94,13 @@ Do not commit build/release/dist artifacts, personal config, bridge runtime file
 
 ## Screenshot fallback
 
-Screenshot placement is independent of AX geometry; optional AX view detection supplies layout only. AXPanelState retains the prior signature for view/panel-change policy. Preserve background pixel checks, permission preflights and cache guards. Retired assisted preferences resolve to Screenshot; never reintroduce a third placement path. Current work is tracked in FINAL-WORK.md; guided recalibration and the final candidate are user-accepted through 1.1.15. Main remains unchanged until an explicit merge instruction.
+Screenshot placement is independent of AX geometry; optional AX view detection supplies layout only. AXPanelState retains the prior signature for view/panel-change policy. Preserve background pixel checks, permission preflights and cache guards. Retired assisted preferences resolve to Screenshot; never reintroduce a third placement path. Completed work is tracked in FINAL-WORK.md; guided recalibration and the audit follow-up are user-accepted through 1.1.16 and merged to main.
 
-## Structure migration worktree
+## Completed structure migration
 
-This branch follows MIGRATION.md and docs/migration/TARGET-STRUCTURE.md. Keep the checklist and docs/migration/FINDINGS.md current at each stage. Preserve current user-visible behaviour and timing; prioritise the default Accessibility workflow. Record issues and proposed fixes separately rather than fixing edge cases during extraction. Current architecture docs describe existing code; the target map is a proposal until stages actually move it. Stage 0 is documentation-only: no build, version change or release staging.
+Migration is complete and accepted on main. MIGRATION.md and docs/migration/TARGET-STRUCTURE.md preserve the historical staged plan. Keep the checklist and docs/migration/FINDINGS.md current at each stage. Preserve current user-visible behaviour and timing; prioritise the default Accessibility workflow. Record issues and proposed fixes separately rather than fixing edge cases during extraction. Current architecture docs describe existing code; the target map is a proposal until stages actually move it. Stage 0 is documentation-only: no build, version change or release staging.
 
-For the current migration round, user-directed candidate versions are 1.1.<stage> (stage 3: 1.1.3). Preserve completed stage annotations separately when replacing the lean current checklist.
+For the completed migration round, user-directed candidate versions were 1.1.<stage> (stage 3: 1.1.3); this is historical, not the version rule for future updates. Preserve completed stage annotations separately when replacing the lean current checklist.
 
 Current coordinator files are AppDelegate extensions sharing one composition surface. Native selectors and weak callbacks retain the same targets. Request/panel aliases and diagnostic/menu adapters remain intentionally; most state accesses name their owner. Shared placement/cache/calibration IDs remain on composition because their cancellation lifetimes overlap. See docs/ARCHITECTURE.md and docs/migration/FINAL-REVIEW.md before changing these boundaries. Stage 9 code consolidation does not imply native acceptance or permission to merge.
 
