@@ -112,11 +112,13 @@ extension AppDelegate {
             lightroomMonitor.panelCheckStatus="Background check paused: Lightroom is off-screen or spans displays.";return
         }
         let expected=memory.translated(window:window,windowID:memory.windowID,epoch:memory.epoch,settingsKey:memory.settingsKey,layout:memory.layout)
-        if panelBoundsChanged(previous:expected,current:result.uiFrame,tolerance:4) {
+        if invalidateScreenshotArea(previous:expected,current:result.uiFrame,expandedReuse:expandedReuse) {
             let reason=result.uiFrame == nil ? "UI boundaries could not be validated":"UI boundaries changed"
             lightroomMonitor.panelCheckStatus="Background check invalidated cached placement (visible overlay retained): \(reason).\nPrevious UI: \(String(describing:expected)); checked UI: \(String(describing:result.uiFrame)).\n"+result.summary
             invalidateAutomaticGeometry()
             if panel != nil { overlayController.overlayVisibilityStatus="Overlay retained; cached placement invalidated: \(reason.lowercased())." }
+        } else if result.uiFrame == nil {
+            lightroomMonitor.panelCheckStatus="Background check inconclusive; retained successful working area because expanded reuse is enabled.\n"+result.summary
         } else { lightroomMonitor.panelCheckStatus="Background check: UI boundaries unchanged. Repeated toggle can skip capture." }
         lightroomMonitor.panelCheckStatus += String(format:" 1280px check: %.0f ms elapsed.",elapsed*1000)
     }

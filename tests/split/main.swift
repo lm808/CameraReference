@@ -214,3 +214,8 @@ print("PASS: expanded reuse spans photos/movement/panes; legacy cache and resize
 
 let shortArea=PlacementMemory(ui:CGRect(x:0,y:0,width:600,height:150),window:window,windowID:42,epoch:"A",settingsKey:config.key,layout:.full)
 assert(shortArea.translated(window:window,windowID:42,epoch:"B",settingsKey:config.key,layout:.upper,expandedReuse:true,module:"develop")==nil)
+
+assert(!invalidateScreenshotArea(previous:viewport,current:nil,expandedReuse:true))
+assert(invalidateScreenshotArea(previous:viewport,current:nil,expandedReuse:false))
+assert(invalidateScreenshotArea(previous:viewport,current:viewport.insetBy(dx:40,dy:0),expandedReuse:true))
+assert(!invalidateScreenshotArea(previous:viewport,current:viewport,expandedReuse:true))

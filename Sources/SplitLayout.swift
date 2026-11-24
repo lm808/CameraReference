@@ -123,3 +123,10 @@ func axOverlayChangeAction(accessibility:Bool,automatic:Bool,displayed:OverlayLa
 func axSelectionChangeAction(accessibility:Bool,automatic:Bool,overlayOpen:Bool,previous:String?,current:String?,live:Bool)->AXOverlayChangeAction {
     OverlayBehaviourPolicy.photoSelectionChange(accessibility:accessibility,automatic:automatic,overlayOpen:overlayOpen,previous:previous,current:current,live:live)
 }
+
+// An inconclusive pixel check is not evidence of changed geometry when expanded
+// reuse is enabled. Host/config/layout invalidation remains with its observers.
+func invalidateScreenshotArea(previous:CGRect?,current:CGRect?,expandedReuse:Bool,tolerance:CGFloat=4)->Bool {
+    if expandedReuse && previous != nil && current == nil { return false }
+    return panelBoundsChanged(previous:previous,current:current,tolerance:tolerance)
+}
