@@ -1,6 +1,6 @@
 # Architecture and source map
 
-User-accepted candidate: 1.1.15 / build 74; main remains accepted 1.1.10 / build 69, awaiting a separately authorised merge. This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
+Current candidate: 1.1.16 / build 75 (native check pending); 1.1.15 / build 74 is user-accepted; main remains accepted 1.1.10 / build 69, awaiting a separately authorised merge. This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
 
 ## Required contributor contract
 
@@ -120,7 +120,7 @@ AXTrialPanel shares production frame constraints and cannot become key. Floating
 
 ## Guided calibration boundary
 
-The existing CalibrationController returns a global AppKit rectangle or cancellation. Manual CalibrationCoordinator saves a region and switches auto placement off; AXCalibrationCoordinator instead converts the rectangle to top-left points and collects it with raw AX evidence. AXCalibrationPlan calculates twelve replacements from six working-area observations and one photo rectangle; it checks repeated edges and reports the conflicting setup numbers. ConfigEditorDocument validates/preserves the file and refuses external-edit conflicts; the coordinator creates a backup and saves only after explicit review. AXTrial exposes raw bounds and named panel visibility as additional metadata; its placement arithmetic is unchanged. The guide keeps hidden base insets fixed, calibrates full-screen allowance and photo Fit inset and uses the shared permission-gated, in-memory edge capture only for Option snapping. `prepareCalibrationSelection` owns preparation and its timeout; each workflow owns completion and cancels its preparation when finished or closed. The selector still returns coordinates without deciding how to save them.
+The existing CalibrationController returns a global AppKit rectangle or cancellation. Manual CalibrationCoordinator saves a region and switches auto placement off; AXCalibrationCoordinator instead converts the rectangle to top-left points and collects it with raw AX evidence. AXCalibrationPlan calculates twelve replacements from six working-area observations and one photo rectangle; it checks repeated edges and reports the conflicting setup numbers. ConfigEditorDocument validates/preserves the file and refuses external-edit conflicts; the coordinator creates a backup and saves only after explicit review. AXTrial exposes AXRawGeometry through axRawGeometry, the single raw panel/label classifier. The guide reads it directly; axTrialProposal applies production corrections and validation afterward. Placement arithmetic is unchanged. The guide keeps hidden base insets fixed, calibrates full-screen allowance and photo Fit inset and uses the shared permission-gated, in-memory edge capture only for Option snapping. `prepareCalibrationSelection` owns preparation and its timeout; each workflow owns completion and cancels its preparation when finished or closed. The selector still returns coordinates without deciding how to save them.
 
 
 ### 1.1.13 ownership additions
@@ -135,4 +135,4 @@ PresentationCoordinator binds an overlay-only host-activation callback on the sh
 
 ## Boundary audit status
 
-The [2026-11-24 audit](BOUNDARY-AUDIT.md) reviewed this branch through 1.1.15. Primary boundaries remain intact; raw calibration evidence still depends on corrected-proposal validity, and snapping permission guidance still matches diagnostic text. These nonblocking follow-ups are explicit in BACKLOG.md. Shared Fit settings intentionally affect both backends after guided calibration; AX-only geometric corrections do not.
+The [2026-11-24 audit](BOUNDARY-AUDIT.md) reviewed this branch through 1.1.15. Primary boundaries remain intact; its two findings are fixed in 1.1.16: raw calibration reads the shared AXRawGeometry before correction validation, and snapping permission guidance consumes ScreenProbeResult.failureReason rather than diagnostic text. Native confirmation is tracked in TESTING.md. Shared Fit settings intentionally affect both backends after guided calibration; AX-only geometric corrections do not.

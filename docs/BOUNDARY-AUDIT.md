@@ -4,7 +4,11 @@ Reviewed candidate source at `1624d65` (1.1.15 / build 74), with the branch diff
 
 The user accepted every 1.1.15 test. Exact annotations are preserved in [1.1.15-TEST-RESPONSE.md](1.1.15-TEST-RESPONSE.md); earlier feature acceptance is in [1.1.14-TEST-RESPONSE.md](1.1.14-TEST-RESPONSE.md). Existing automated evidence is in [VALIDATION.md](VALIDATION.md). No executable, version, staged app or main-branch change was made during this audit.
 
-## Conclusion
+## Follow-up status — 1.1.16
+
+A1 and A2 are now fixed in code, with native confirmation pending in TESTING.md. `axRawGeometry` owns the single existing raw panel/layout calculation; `axTrialProposal` applies unchanged corrections/guards to its result; the guide consumes the raw result directly. `ScreenProbeResult.failureReason` carries typed capture failure state, and selection preparation uses that state for guidance. No second classifier or permission-check implementation was introduced. Production AX geometry matched the prior function in 1,728 synthetic cases. The original findings below describe the audited 1.1.15 state and remain as history.
+
+## Conclusion at the time of audit
 
 The principal ownership boundaries are maintained. No blocking cross-backend dependency or new duplicate authoritative state was found in the reviewed paths. Two smaller couplings remain below; they are documented follow-ups, not silently fixed as part of this review. Shared AppDelegate operation state remains the previously documented structural compromise.
 

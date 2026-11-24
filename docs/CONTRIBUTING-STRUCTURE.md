@@ -49,4 +49,4 @@ Keep independent work in separate commits. Calibration, screenshot corrections a
 
 ## Accepted audit and known seams
 
-See [BOUNDARY-AUDIT.md](BOUNDARY-AUDIT.md) for the 1.1.15 review and its two open findings. Prefer raw observation results independent of corrected-placement success. Pass typed failure/permission reasons across layers rather than testing diagnostic sentences. Keep shared Fit settings explicitly distinguished from backend-specific AX corrections. Overlay input may emit an activation request; the presentation coordinator activates the host and the existing lifecycle owns ordering.
+See [BOUNDARY-AUDIT.md](BOUNDARY-AUDIT.md) for the 1.1.15 review and its two findings resolved in 1.1.16. Prefer raw observation results independent of corrected-placement success. Pass typed failure/permission reasons across layers rather than testing diagnostic sentences. Keep shared Fit settings explicitly distinguished from backend-specific AX corrections. Overlay input may emit an activation request; the presentation coordinator activates the host and the existing lifecycle owns ordering.

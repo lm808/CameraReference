@@ -1,6 +1,6 @@
 # Outstanding work
 
-Current candidate: user-accepted 1.1.15 / build 74. Main remains 1.1.10 / build 69 until a separately authorised merge. Migration and its six deferred fixes are complete; wider checks below remain separate. [TESTING.md](../TESTING.md) holds the actionable checklist; [research findings](AX-ASSISTANCE.md) and [validation](VALIDATION.md) retain evidence.
+Current candidate: 1.1.16 / build 75, awaiting a short native check; 1.1.15 / build 74 is user-accepted. Main remains 1.1.10 / build 69 until a separately authorised merge. Migration and its six deferred fixes are complete; wider checks below remain separate. [TESTING.md](../TESTING.md) holds the actionable checklist; [research findings](AX-ASSISTANCE.md) and [validation](VALIDATION.md) retain evidence.
 
 ## Screenshot fallback
 
@@ -8,10 +8,9 @@ Current candidate: user-accepted 1.1.15 / build 74. Main remains 1.1.10 / build 
 - Continue collecting genuinely new ambiguous/wrong outer-bound cases, including unusual panel widths, status text and image content. Preserve candidate scores and coordinate context before changing heuristics. Malformed/off-screen capture surfaces remain a separate issue.
 - Measure elapsed cost and sustained overhead of retained background pixel checks before reducing or removing them. AX-assisted placement and its comparison counters are retired.
 
-## Boundary-audit follow-ups (not implemented)
+## Boundary-audit fixes
 
-- **A1 — medium:** expose raw AX panel/layout evidence independently of corrected-placement validity. The guide currently obtains rawArea only when axTrialProposal passes corrected bounds/divider guards, so extreme valid offsets can block repair in a small window. Preserve production guards and avoid duplicating classification. See [audit](BOUNDARY-AUDIT.md#a1--raw-calibration-evidence-depends-on-corrected-placement-validity-medium-nonblocking).
-- **A2 — low:** replace diagnostic-string matching for snapping permission guidance with a typed result. Capture preflight and capture-error paths currently use different wording; a permission change during preparation may omit guidance while retaining freehand selection. Preserve the no-prompt policy. See [audit](BOUNDARY-AUDIT.md#a2--snapping-permission-guidance-depends-on-diagnostic-wording-low).
+A1 (raw calibration dependent on corrected placement) and A2 (permission guidance matching diagnostic text) are implemented in 1.1.16 without duplicate algorithms. Focused checks and 1,728 old/new AX geometry comparisons passed; the short native checklist is in TESTING.md. The [audit](BOUNDARY-AUDIT.md) retains the original findings and resolution. No other boundary violation was identified in that review; shared AppDelegate operation state remains the documented maintenance compromise.
 
 ## Continued native use and edge cases
 
