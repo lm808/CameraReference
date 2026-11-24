@@ -1,6 +1,8 @@
-# Camera Reference 1.1.13 — testing candidate
+# Camera Reference 1.1.14 — testing candidate
 
-Build 72 retains successful screenshot working areas after inconclusive background checks when expanded reuse is on. Confirmed geometry changes and explicit clearing still invalidate; reuse-off and AX placement algorithms are unchanged.
+Build 73 corrects the calibration window’s top alignment and gives all seven selection rows consistent instruction/button/status columns. Calibration logic is unchanged.
+
+It retains successful screenshot working areas after inconclusive background checks when expanded reuse is on. Confirmed geometry changes and explicit clearing still invalidate; reuse-off and AX placement algorithms are unchanged.
 
 Guided AX calibration now uses one window with six independently retryable setups and seven rectangle selections. It adds full-screen allowance and photo Fit inset to the ten boundary corrections. A cancellable countdown hides before snapping capture; conflicts identify the affected setups. Review all values before Apply, which backs up the config. No manual-region or placement-mode changes.
 

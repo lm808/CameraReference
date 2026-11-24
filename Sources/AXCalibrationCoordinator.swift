@@ -1,5 +1,10 @@
 import AppKit
 
+// A top-origin document keeps short content at the top and long content scrollable.
+private final class AXCalibrationDocumentView: NSView {
+    override var isFlipped: Bool { true }
+}
+
 // Measurement workflow owns evidence and persistence. Shared selector/countdown
 // only present UI; AXCalibrationPlan owns the independent calibration mathematics.
 final class AXCalibrationCoordinator:NSWindowController,NSWindowDelegate {
@@ -33,18 +38,28 @@ final class AXCalibrationCoordinator:NSWindowController,NSWindowDelegate {
         window.minSize=CGSize(width:760,height:600)
         let warning=NSTextField(wrappingLabelWithString:"Measure six setups on one display. Keep panel widths unchanged. Select the whole working area, including BOTH panes in split views and photo margins, excluding toolbars. Select hides this window for a three-second countdown; return to Lightroom. Hold Option to snap. Escape preserves the previous measurement. No manual region or detection preference is changed.")
         let fit=NSTextField(wrappingLabelWithString:"For setup 1 photo bounds: use Fit and an untransformed photo matching the camera JPEG (no crop or perspective edits). Select the actual photo edges. Keep this setup unchanged between its two measurements.")
-        let stack=NSStackView();stack.orientation = .vertical;stack.alignment = .leading;stack.spacing=10
+        let stack=NSStackView();stack.orientation = .vertical;stack.alignment = .leading;stack.distribution = .fill;stack.spacing=12
         stack.addArrangedSubview(warning)
+        func addSelectionRow(_ label:NSTextField,_ button:NSButton,_ mark:NSTextField) {
+            let row=NSStackView(views:[label,button,mark])
+            row.orientation = .horizontal;row.alignment = .top;row.spacing=12
+            label.setContentHuggingPriority(.required,for:.vertical)
+            label.setContentCompressionResistancePriority(.required,for:.vertical)
+            label.setContentHuggingPriority(.defaultLow,for:.horizontal)
+            button.widthAnchor.constraint(equalToConstant:190).isActive=true
+            mark.widthAnchor.constraint(equalToConstant:100).isActive=true
+            stack.addArrangedSubview(row)
+            row.widthAnchor.constraint(equalTo:stack.widthAnchor).isActive=true
+        }
         for (index,text) in AXCalibrationPlan.instructions.enumerated() {
-            let label=NSTextField(wrappingLabelWithString:"\(index+1). "+text);label.widthAnchor.constraint(equalToConstant:480).isActive=true
+            let label=NSTextField(wrappingLabelWithString:"\(index+1). "+text)
             let button=NSButton(title:"Select area",target:self,action:#selector(selectRegion(_:)));button.tag=index
-            let mark=NSTextField(labelWithString:"Not measured");mark.widthAnchor.constraint(equalToConstant:100).isActive=true
+            let mark=NSTextField(labelWithString:"Not measured")
             buttons.append(button);marks.append(mark)
-            let row=NSStackView(views:[label,button,mark]);row.spacing=10;stack.addArrangedSubview(row)
+            addSelectionRow(label,button,mark)
             if index==0 {
                 photoButton.target=self;photoButton.action=#selector(selectRegion(_:));photoButton.tag=6
-                stack.addArrangedSubview(fit)
-                stack.addArrangedSubview(NSStackView(views:[photoButton,photoMark]))
+                addSelectionRow(fit,photoButton,photoMark)
             }
         }
         status.textColor = .systemRed
@@ -54,11 +69,31 @@ final class AXCalibrationCoordinator:NSWindowController,NSWindowDelegate {
         let close=NSButton(title:"Close",target:self,action:#selector(closeGuide))
         applyButton.target=self;applyButton.action=#selector(apply)
         stack.addArrangedSubview(NSStackView(views:[reset,applyButton,close]))
-        let scroll=NSScrollView();scroll.hasVerticalScroller=true;scroll.documentView=stack
-        scroll.translatesAutoresizingMaskIntoConstraints=false;stack.translatesAutoresizingMaskIntoConstraints=false
+        let scroll=NSScrollView();scroll.hasVerticalScroller=true;scroll.autohidesScrollers=true
+        let document=AXCalibrationDocumentView()
+        scroll.documentView=document
+        scroll.translatesAutoresizingMaskIntoConstraints=false
+        document.translatesAutoresizingMaskIntoConstraints=false;stack.translatesAutoresizingMaskIntoConstraints=false
+        document.addSubview(stack)
         window.contentView!.addSubview(scroll)
-        NSLayoutConstraint.activate([scroll.leadingAnchor.constraint(equalTo:window.contentView!.leadingAnchor,constant:18),scroll.trailingAnchor.constraint(equalTo:window.contentView!.trailingAnchor,constant:-18),scroll.topAnchor.constraint(equalTo:window.contentView!.topAnchor,constant:18),scroll.bottomAnchor.constraint(equalTo:window.contentView!.bottomAnchor,constant:-18),stack.leadingAnchor.constraint(equalTo:scroll.contentView.leadingAnchor),stack.topAnchor.constraint(equalTo:scroll.contentView.topAnchor),stack.widthAnchor.constraint(equalTo:scroll.contentView.widthAnchor)])
-        for text in [warning,fit,status,reviewText] { text.widthAnchor.constraint(equalTo:stack.widthAnchor).isActive=true }
+        NSLayoutConstraint.activate([
+            scroll.leadingAnchor.constraint(equalTo:window.contentView!.leadingAnchor,constant:18),
+            scroll.trailingAnchor.constraint(equalTo:window.contentView!.trailingAnchor,constant:-18),
+            scroll.topAnchor.constraint(equalTo:window.contentView!.topAnchor,constant:18),
+            scroll.bottomAnchor.constraint(equalTo:window.contentView!.bottomAnchor,constant:-18),
+            document.leadingAnchor.constraint(equalTo:scroll.contentView.leadingAnchor),
+            document.topAnchor.constraint(equalTo:scroll.contentView.topAnchor),
+            document.widthAnchor.constraint(equalTo:scroll.contentView.widthAnchor),
+            stack.leadingAnchor.constraint(equalTo:document.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo:document.trailingAnchor),
+            stack.topAnchor.constraint(equalTo:document.topAnchor),
+            stack.bottomAnchor.constraint(equalTo:document.bottomAnchor)
+        ])
+        for text in [warning,status,reviewText] {
+            text.widthAnchor.constraint(equalTo:stack.widthAnchor).isActive=true
+            text.setContentHuggingPriority(.required,for:.vertical)
+            text.setContentCompressionResistancePriority(.required,for:.vertical)
+        }
         startOver();window.center()
     }
     required init?(coder:NSCoder) { fatalError() }

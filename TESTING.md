@@ -1,4 +1,4 @@
-# 1.1.13 / build 72 — focused candidate tests
+# 1.1.14 / build 73 — focused candidate tests
 
 Prior annotations are preserved verbatim in docs/1.1.12-TEST-RESPONSE.md. Main is untouched. Run only release/CameraReference Testing.app in this worktree; quit the previous copy first.
 
@@ -16,6 +16,8 @@ Prior annotations are preserved verbatim in docs/1.1.12-TEST-RESPONSE.md. Main i
 - [ ] Clear overlay region setting forces detection without changing automatic/manual mode. Reuse OFF preserves earlier cache eligibility and inconclusive-check invalidation.
 
 ## Guided AX calibration (Developer tools)
+
+- [ ] Window opens at the top without a large blank gap. All seven selection buttons and measurement statuses align in columns, including after Select becomes Reselect. Resize the window and confirm instructions wrap and the review remains scrollable.
 
 Keep panel widths unchanged, use one display, and measure WORKING AREA including margins and both panes, excluding toolbars. Each row is independently retryable. Enable existing Screen Recording permission for Option-snapping; no prompt is issued by this guide.
 
