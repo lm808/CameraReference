@@ -13,7 +13,7 @@ The app uses macOS `UserDefaults` under `org.local.CameraReference`, normally st
 
 Stable and testing identities share this preference domain and the support folder. Run only one at a time.
 
-Each setting has one authoritative storage location. Calibration remains internal app state; it is not duplicated in the advanced file.
+Each setting has one authoritative storage location. Manual-region calibration uses preferences; guided AX calibration writes reviewed geometry/Fit values to config.conf. Measurements in the guide are session-only, not a second persistent settings store.
 
 ## Advanced configuration
 
@@ -36,7 +36,7 @@ Settings → Advanced settings… → Open config file opens this plain-text fil
 
 New installations and older configs missing this key use `sideSearchPercent = 40`, the author’s current preferred setting. Explicit existing values—including 30—remain unchanged. All four bounds still default to ui.
 
-An inset too small for reliable split scanning offers manual calibration. `overlayAnimation = true` or `false` from an old config is accepted but ignored; overlay animation is always off. Unknown keys, duplicates and invalid values are rejected.
+Screenshot splits divide the validated working area 50/50; they do not scan margins for a divider. Fit inset controls photo fitting after boundary detection. `overlayAnimation = true` or `false` from an old config is accepted but ignored; overlay animation is always off. Unknown keys, duplicates and invalid values are rejected.
 
 On migration, `detection.conf` is copied to `config.conf` only if the latter is absent. Your values—including 30 or an interval of 0—are retained. The old file remains a backup and is no longer read once the new file exists. The 1.1.13 layout migration groups existing assignments and new defaults without replacing explicit values. Inline comments stay with their assignments; deduplicated earlier standalone comments are retained at the end. The original file is backed up as config.before-layout-1.1.13-<ID>.conf. The repository’s example contains defaults only, never your personal settings.
 
@@ -85,3 +85,5 @@ These defaults ship in the parser and example for fresh installations. They appl
 Settings → Advanced settings… reads the current file into Name, Value and Comment columns; only values are editable. Rows and explanations come from assignments, preceding comment lines and inline comments, with no separate editor schema. Unchanged lines, ordering, line endings are preserved. Search matches names and comments, case-insensitively, while retaining unsaved edits to filtered-out rows. New supported settings entered in the file appear when the editor is reopened; no editor code change is required. Save validates with the existing parser and performs a coordinated atomic write only if the file still matches the opened content. Unknown entries remain visible/preserved, but unsupported active keys still fail existing parser validation. Cancel and the close button discard unsaved edits. Open config file retains the existing external editor action.
 
 Guided AX calibration reviews the ten signed/cumulative corrections, full-screen allowance and shared fitInsetPoints before saving. It does not separately calibrate hidden base insets: the hidden offsets already recover the effective boundary. fitInsetPoints affects photo Fit in both placement methods; AX-specific corrections never enter screenshot detection. Apply backs up the current file and rejects external modifications. Developer tools must first be enabled through showDeveloperTools.
+
+The guided photo measurement updates `fitInsetPoints`, a shared setting used by both placement methods. AX-specific signed corrections and full-screen allowance remain exclusive to AX geometry. Guided calibration was accepted in 1.1.14/1.1.15; broader display/version testing remains separate.

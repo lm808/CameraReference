@@ -31,7 +31,7 @@ Use plain three-component versions in CFBundleShortVersionString (candidate `1.1
 | `Sources/main.swift` | Composition/startup/shutdown, shortcuts, invocation entry points, contextual region preferences and shared placement/calibration operation state |
 | `SettingsActions.swift`, `ViewCoordinator.swift` | Settings actions; explicit pane choices, invocation AX inference and guarded live view/photo geometry updates |
 | `CalibrationCoordinator.swift`, `ExportCoordinator.swift` | Calibration transaction/failure prompts and explicit photo-view export coordination |
-| `PlacementCoordinator.swift`, `PlacementImplementations.swift` | Manual/cache/backend routing and separate geometry adapters; original algorithms unchanged |
+| `PlacementCoordinator.swift`, `PlacementImplementations.swift` | Manual/cache/backend routing and separate geometry adapters; calculations remain with their backend owners |
 | `PhotoRequestCoordinator.swift`, `PhotoRequestPipeline.swift` | Request qualification/dispatch versus transport, cancellation and image-cache ownership |
 | `OverlayBehaviour.swift` | Pure behaviour decisions; no reads, timers or window mutations. Callers preserve evidence guards and action order |
 | `AppSettings.swift`, `SettingsMenu.swift` | Mode/default preference interpretation and menu ownership; AppDelegate retains actions and existing triggers |
@@ -94,7 +94,7 @@ Do not commit build/release/dist artifacts, personal config, bridge runtime file
 
 ## Screenshot fallback
 
-Screenshot placement is independent of AX geometry; optional AX view detection supplies layout only. AXPanelState retains the prior signature for view/panel-change policy. Preserve background pixel checks, permission preflights and cache guards. Retired assisted preferences resolve to Screenshot; never reintroduce a third placement path. Current work is tracked in FINAL-WORK.md; guided recalibration is implemented in the candidate and awaits native acceptance.
+Screenshot placement is independent of AX geometry; optional AX view detection supplies layout only. AXPanelState retains the prior signature for view/panel-change policy. Preserve background pixel checks, permission preflights and cache guards. Retired assisted preferences resolve to Screenshot; never reintroduce a third placement path. Current work is tracked in FINAL-WORK.md; guided recalibration and the final candidate are user-accepted through 1.1.15. Main remains unchanged until an explicit merge instruction.
 
 ## Structure migration worktree
 
@@ -109,3 +109,7 @@ Explicit automatic screenshot placement may request Screen Recording; AX-only, b
 Screenshot expanded working-area reuse is a default-on developer preference interpreted by AppSettings. Off preserves the earlier same-photo/same-pane placement and Loupe-only raster cache; it is not “disable all caching”. On may reuse across photos, movement and Develop layouts, but Library Loupe/Compare boundary changes invalidate it. Keep source/request epochs guarding display even though geometry can outlive a photo. Explicit clearing/toggle changes invalidate both geometry layers. AX-only must never consume this option.
 
 1.1.13: inconclusive background pixel checks retain successful placement memory only when expanded screenshot reuse is on; confirmed geometry changes still invalidate. Picture-style metadata belongs to LoadedReference/cache and each displayed ReferenceView, never global current-selection state. Developer visibility is config-owned (showDeveloperTools, default false). Guided calibration uses six independently retryable setup slots plus setup-1 photo bounds; countdown/selector remain presentation-only, workflow owns cancellation/evidence/persistence, pure plan owns signed calculations and conflict checks.
+
+## Accepted boundary audit (2026-11-24)
+
+Read docs/BOUNDARY-AUDIT.md for the 1.1.15 review. Primary boundaries remain intact. Two documented follow-ups remain: raw calibration evidence should not depend on corrected-placement validity; permission guidance should use typed results rather than diagnostic text. Do not silently fold these into unrelated work. Shared Fit settings intentionally affect both backends; AX-specific corrections never enter pixel geometry. Preserve exact user test responses in docs/ before replacing TESTING.md. A documentation-only acceptance/audit update does not authorise rebuilding, restaging, merging or publishing.

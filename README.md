@@ -22,7 +22,7 @@ See [installation](docs/INSTALL.md) for the app and bridge, or [building from so
 | Method | Behaviour |
 |---|---|
 | Accessibility (default for new settings) | Uses panel geometry, view labels and toolbar state, with configurable geometry corrections. Always infers the view; no automatic screenshots or capture fallback. |
-| Screenshot | Finds viewport boundaries in captured pixels. With both AX options off, uses your menu view selection and the original detector. |
+| Screenshot | Finds viewport boundaries in captured pixels. With AX view detection off, uses your menu view selection and independent pixel detection. |
 | Screenshot + AX view detection | Infers the view for the menu and screenshot detector. Placement still comes from pixels. |
 
 Choose the desired pane for split views. These choices do not change Lightroom’s own view. Accessibility needs macOS Accessibility permission. Explicit screenshot placement requests Screen Recording permission when needed. Accessibility placement, background checks and manual snapping do not request it. Existing preferences are preserved when upgrading.
@@ -42,7 +42,7 @@ Confirmed module changes dismiss in every mode. Accessibility mode also checks t
 
 Screenshot with AX view detection now matches Accessibility with updating off: confirmed photo/view/pane/panel changes dismiss; positive Library Grid dismisses and blocks invocation. Missing evidence retains the overlay. Screenshot without inference also dismisses on a confirmed photo-selection change; panel pixel checks only invalidate the cache. Manual and floating behaviour are unchanged. Screenshot placement uses pixel-validated outer bounds and equal splits; AX view detection never supplies placement edges. Background screenshot checks still invalidate cached placement only. Nothing automatically opens a dismissed overlay.
 
-The overlay follows Lightroom movement and can be covered by other apps. Overview, minimise and Space transitions temporarily suspend it; a brief linger during minimise is a known limitation. Intermittent off-screen capture failures remain under investigation.
+The overlay follows Lightroom movement and can be covered by other apps. Clicking an exposed overlay activates Lightroom and brings both forward. Overview, minimise and Space transitions temporarily suspend it; a brief linger during minimise is a known limitation. Intermittent off-screen capture failures remain under investigation.
 
 ## Floating display and navigation
 
@@ -66,13 +66,13 @@ See [troubleshooting](docs/TROUBLESHOOTING.md), [privacy](PRIVACY.md), [remainin
 
 ## Development
 
-[Architecture and source map](docs/ARCHITECTURE.md) describes ownership, mode routing and asynchronous guards. [Methods](docs/METHODS.md) explains current implementation; [research findings](docs/AX-ASSISTANCE.md) records evidence and limitations. [Validation](docs/VALIDATION.md) retains test evidence, [backlog](docs/BACKLOG.md) tracks remaining work, and [historical notes](docs/HISTORICAL-NOTES.md) preserves superseded investigations. [AGENTS.md](AGENTS.md) defines contributor constraints.
+[Architecture and source map](docs/ARCHITECTURE.md) describes ownership, mode routing and asynchronous guards. [Methods](docs/METHODS.md) explains current implementation; [research findings](docs/AX-ASSISTANCE.md) records evidence and limitations. [Validation](docs/VALIDATION.md) retains test evidence, [backlog](docs/BACKLOG.md) tracks remaining work, and [historical notes](docs/HISTORICAL-NOTES.md) preserves superseded investigations. [AGENTS.md](AGENTS.md) defines contributor constraints. The [boundary audit](docs/BOUNDARY-AUDIT.md) records the 1.1.15 review and remaining maintenance seams.
 
 Run `bash test.sh` for automated checks. `bash scripts/stage.sh` builds and refreshes the stable app in `release/`; use `--testing` in a separate candidate worktree for the purple testing app. Run only one copy at a time: settings and bridge are shared. `build/` is intermediate output. Packaging is explicit via `scripts/package.sh`; it does not rebuild. See the source-build guide before replacing a working app.
 
 Licensing remains undecided. No open-source licence has been selected.
 
-For window-stacking investigations, **Developer tools → Record window ordering (5-second delay)…** records fifteen seconds of window metadata after a five-second delay. Reports are saved separately under `~/Library/Application Support/CameraReference/Diagnostics/WindowOrdering/`; no screenshots or window titles are collected. See TESTING.md for the current reproduction steps.
+For window-stacking investigations, **Developer tools → Record window ordering (5-second delay)…** records fifteen seconds of window metadata after a five-second delay. Reports are saved separately under `~/Library/Application Support/CameraReference/Diagnostics/WindowOrdering/`; no screenshots or window titles are collected. These traces are only needed for a specific stacking investigation.
 
 View shortcuts are configurable in **Settings → Keyboard shortcuts…**. Defaults use Control+Option+Command with 8 (Top), 4 (Left), 6 (Right), 2 (Bottom), and 5 (Loupe), accepting both number-row and numeric-keypad keys. They choose this app’s view/pane, not Lightroom’s view. Automatic view detection permits only the matching pane choices; manual Screenshot view selection permits all five. Assigned bindings appear in the menu. Save while a recorder is waiting for a key clears that binding; untouched bindings remain. Clear explicitly removes a binding. The existing overlay shortcut stays Control+Option+Command+J.
 

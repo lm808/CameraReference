@@ -46,3 +46,7 @@ Coordinators still share AppDelegate composition and some operation state. This 
 6. Update the current architecture/method docs when responsibilities or behaviour change. Preserve user test annotations. Automated tests do not establish native acceptance.
 
 Keep independent work in separate commits. Calibration, screenshot corrections and unrelated fixes should be individually reviewable. Never merge a candidate into main before user acceptance. Do not combine a structural cleanup with an unrequested policy change.
+
+## Accepted audit and known seams
+
+See [BOUNDARY-AUDIT.md](BOUNDARY-AUDIT.md) for the 1.1.15 review and its two open findings. Prefer raw observation results independent of corrected-placement success. Pass typed failure/permission reasons across layers rather than testing diagnostic sentences. Keep shared Fit settings explicitly distinguished from backend-specific AX corrections. Overlay input may emit an activation request; the presentation coordinator activates the host and the existing lifecycle owns ordering.

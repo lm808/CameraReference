@@ -1,6 +1,6 @@
 # Architecture and source map
 
-Current candidate: 1.1.12 / build 71; main remains accepted 1.1.10 / build 69. This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
+User-accepted candidate: 1.1.15 / build 74; main remains accepted 1.1.10 / build 69, awaiting a separately authorised merge. This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
 
 ## Required contributor contract
 
@@ -28,7 +28,7 @@ Both humans and agents must follow [CONTRIBUTING-STRUCTURE.md](CONTRIBUTING-STRU
 | OverlayController.swift / FloatingDisplayController.swift | Independent displayed-window state owners: overlay host/lifecycle/identity versus floating panel/view/title/zoom. No timers or placement calculations. |
 | PresentationCoordinator.swift | App-facing presentation and lifecycle coordination; existing guards, callbacks and ordering retained. Lifecycle/identity state is addressed directly on its owner; three panel/view aliases support existing optional bindings. |
 | Core.swift | Protocol/source primitives, cancellation and extraction helpers. |
-| ImageSource.swift | JPEG selection/extraction/orientation/decode, fingerprints and the one-selection RAM cache. |
+| ImageSource.swift | JPEG selection/extraction/orientation/decode, optional camera-style metadata, fingerprints and the one-selection RAM cache. |
 | Export.swift | Display-specific JPEG snapshots and explicit safe export. |
 | AXTrial.swift | Raw panel/label geometry, view classification, signed corrections and pane geometry shared by AX placement and preview. |
 | AXPanelState.swift / PlacementMode.swift | Preserved panel-change signature for view monitoring, and two-backend preference resolution; no AX-guided pixel search. |
@@ -41,7 +41,9 @@ Both humans and agents must follow [CONTRIBUTING-STRUCTURE.md](CONTRIBUTING-STRU
 | Views.swift | Photo view, overlay/floating panels, chrome, previews, diagnostics UI, toasts and menu diagrams. |
 | Calibration.swift / Snapping.swift | Reusable rectangle/cancellation UI and optional edge snapping. Callers own persistence and interpretation. |
 | DetectionConfig.swift / ConfigEditor.swift | Advanced schema/parser/cache/migration and file-driven value editor. |
-| Shortcut.swift / Permissions.swift | Shortcut recording and permission helpers. |
+| Shortcut.swift / ShortcutSettings.swift / ViewShortcuts.swift | Recording widget, transactional shortcut settings, keypad aliases and guarded dispatch through existing view actions. |
+| Permissions.swift | Feature-specific permission checks/prompts. |
+| AXCalibration.swift / AXCalibrationCoordinator.swift | Pure geometry/conflict calculations and the independently retryable measurement/review/save workflow. |
 
 `CameraReference.lrplugin/` owns the Lua bridge, module heartbeat, request tokens and opaque selection revisions. `tests/` contains Swift behaviour/geometry/raster checks and Lua stand-ins. `tools/AXExplorer/` is an independent read-only investigation tool, not part of the shipped app.
 
@@ -130,3 +132,7 @@ The existing CalibrationController returns a global AppKit rectangle or cancella
 `DetectionConfig` owns the default-hidden developer flag and config layout. SettingsMenu owns visibility; SettingsActions/menu refresh applies changes without rebuilding menus. One-time config organization preserves assignments/inline comments, retains deduplicated standalone notes and backs up the old file. `invalidateScreenshotArea` expresses the narrow expanded-reuse exception for inconclusive checks; MonitoringCoordinator retains all existing observation identity guards.
 
 PresentationCoordinator binds an overlay-only host-activation callback on the shared ReferenceView. The view forwards interactive left-clicks; the coordinator validates current panel identity and activates Lightroom. No placement, ordering policy, timers or app lookup are added to the view. Guided calibration row alignment remains presentation-only.
+
+## Boundary audit status
+
+The [2026-11-24 audit](BOUNDARY-AUDIT.md) reviewed this branch through 1.1.15. Primary boundaries remain intact; raw calibration evidence still depends on corrected-proposal validity, and snapping permission guidance still matches diagnostic text. These nonblocking follow-ups are explicit in BACKLOG.md. Shared Fit settings intentionally affect both backends after guided calibration; AX-only geometric corrections do not.

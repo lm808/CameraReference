@@ -62,7 +62,7 @@ Bottom corrections are cumulative. Filmstrip shown with toolbar hidden remains i
 
 Earlier non-maximised displacement came from capture extent/mapping, not something a hard-coded display-width shift should correct. Later intermittent off-screen captures contained padding or inconsistent content scale. Both older 1.0.10 and guarded 1.0.13 failed in supplied cases; this was not established as a simple new-version regression. Successful later captures had matching parent geometry and content scale 1. Restarting Lightroom sometimes cleared the issue; sleep/wake was a user hypothesis, not a confirmed cause. Metadata checks must not block raw diagnostic previews.
 
-Original split outer-bound changes previously regressed placement into UI or tiny gaps. The accepted screenshot method uses the same Full bounds, then bottom/left margin divider traces. Dividers can stop short of the margin edge. Pure Library split failure correlated with Embedded Preview text; removing text by changing photo succeeded, but exact cause/stage is not confirmed.
+Original split outer-bound changes previously regressed placement into UI or tiny gaps. The pre-simplification screenshot method used Full bounds followed by bottom/left margin divider traces; this scanner is retired. The current method validates pixel outer bounds and splits 50/50. Dividers can stop short of the margin edge. Pure Library split failure correlated with Embedded Preview text; removing text by changing photo succeeded, but exact cause/stage is not confirmed.
 
 ## How research is used now
 
@@ -71,7 +71,7 @@ Original split outer-bound changes previously regressed placement into UI or tin
 | Host tracking | AX logical frame cross-checks host geometry | Off-screen/multi-display and lifecycle cases; cannot repair capture pixels |
 | AX placement | Surrounding panels, opacity, toolbar menu and calibrated corrections | Scales, sessions, languages and broader layouts |
 | View inference | Label geometry, independently optional for Screenshot; always on for AX | Recreated/missing labels and native Grid menu marks |
-| Screenshot fallback | Independent pixel outer detection with validated wider side retry | Small-window and hidden-panel native acceptance |
+| Screenshot fallback | Independent pixel outer detection with validated wider side retry | Continued unusual-image/version/display coverage; recorded cases passed through 1.1.15 |
 | Split placement | 50/50 within validated pixel outer bounds; no divider scan | Library Embedded Preview/extra bottom space; both orientations |
 | Background checks | Existing pixel checks retained; AX panel signature used separately by optional view detection | Sustained cost measurements; no screenshot reduction claimed |
 | Diagnostics | Automatic bounded complete reports after invocation when saving enabled | Timing/provenance consistency through rapid changes |
@@ -107,10 +107,16 @@ Production now uses the close/zoom controls’ shared AXGroup to establish a uni
 
 Only in confirmed macOS full screen, overlapping overlay content is masked from its top through the title bar’s lower edge. The mask includes photo, border and label; window frame, image viewport and navigation transform stay fixed. AX preview borders share this mask; floating references do not. Native reveal/hide, unchanged image geometry, title-bar controls and windowed/float regression tests passed on 2026-11-21. The slight polling delay is accepted. Explorer evidence and tools remain separate under investigations/ and build/AXExplorer/.
 
-## Guided recalibration implementation (1.1.12 candidate)
+## Historical guided recalibration implementation (1.1.12 candidate)
 
-Developer tools offers a five-step manual measurement guide. It uses the existing rectangle selector and raw AX metadata, with confirmed toolbar visibility and stable-state checks. Calculations, validation and file persistence are separate from production placement; the accepted formulas/defaults are unchanged until the user explicitly applies reviewed replacements. See METHODS.md for the cumulative offset equations and README.md for the workflow. The guide does not infer a toolbar rectangle from AX and does not resolve the documented AX evidence limitations. Native testing is pending.
+The initial 1.1.12 candidate offered a five-step manual measurement guide. It uses the existing rectangle selector and raw AX metadata, with confirmed toolbar visibility and stable-state checks. Calculations, validation and file persistence are separate from production placement; the accepted formulas/defaults are unchanged until the user explicitly applies reviewed replacements. See METHODS.md for the cumulative offset equations and README.md for the workflow. The guide does not infer a toolbar rectangle from AX and does not resolve the documented AX evidence limitations. Native testing is pending.
 
-## Guided recalibration — 1.1.13 candidate
+## Current guided recalibration — introduced in 1.1.13
 
 The guide now measures effective boundaries directly with six independently retryable setups, plus the actual photo rectangle in setup 1. It recovers the existing ten corrections, the macOS full-screen hidden-top allowance, and the shared Fit inset. Fixed hidden base values are not redundant additional measurements; their corrections absorb effective-boundary changes. See METHODS.md for equations and TESTING.md for native acceptance. Pixel edges support explicit Option-snapping only; AX-only production placement remains capture-free and its mathematics is unchanged.
+
+## Acceptance and boundary audit — 2026-11-24
+
+The six-setup/seven-selection guide, Apply, full-screen/Fit results and layout corrections passed native tests through 1.1.15. Pure screenshot Library/Develop failure and top-edge reproductions also passed after pixel-only validation changes. Earlier dated “pending” statements describe the investigation at that time; current evidence is in VALIDATION.md and the archived 1.1.14/1.1.15 responses. This acceptance does not establish universal Lightroom/version/display support.
+
+The [boundary audit](BOUNDARY-AUDIT.md) identifies a remaining limitation: raw calibration metadata is currently returned through the production proposal, after its corrected-geometry guards. Separate raw evidence in a future focused change; do not weaken production validation or feed calibrated offsets into screenshot detection.

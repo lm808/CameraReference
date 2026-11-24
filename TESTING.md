@@ -1,11 +1,7 @@
-# 1.1.15 / build 74 — focused fixes
+# 1.1.15 / build 74 — accepted
 
-Completed 1.1.14 annotations are preserved verbatim in docs/1.1.14-TEST-RESPONSE.md. All prior tests passed except row alignment; subsequent reports identified the screenshot and focus cases below. Main is untouched. Quit the prior app and open this worktree’s release/CameraReference Testing.app.
+All five focused native checks passed, confirmed by the user on 2026-11-24. The exact annotated checklist is preserved in [1.1.15 test response](docs/1.1.15-TEST-RESPONSE.md). Earlier settings, metadata, reuse and guided-calibration results are preserved in [1.1.14 test response](docs/1.1.14-TEST-RESPONSE.md).
 
-- [ ] Guided AX calibration: all seven button frames and status columns align, including the photo row and after Select changes to Reselect. Status text aligns with its button label. Resize to the minimum width and check wrapping/scrolling. Measurements, countdown and Apply behave as before.
-- [ ] Pure Screenshot, AX view detection off: choose Loupe View, clear overlay region setting to force fresh detection, and invoke on the reported photo in Develop. Compare the top with AX preview: the 18-point downward error should be gone. Repeat in Library after clearing the region. Both must select the correct full working area, not merely return success.
-- [ ] Repeat that photo with screenshot working-area reuse on and off, then another portrait and landscape photo. Check normal/hidden panels and Left/Right and Top/Bottom splits. Header controls and toolbars must remain outside the working area. If any fail or place incorrectly, save diagnostics; they now include leading candidate rectangles and scores.
-- [ ] With an overlay already visible and another application active, single-click the exposed overlay. Lightroom and its overlay come forward together, without a flash-and-hide. Repeat in macOS full screen where possible. Zoom/pan/double-click still work; clicking the floating reference keeps its existing behaviour.
-- [ ] AX-only placement, update/dismiss policy and title-bar clipping remain unchanged.
+No tests remain open for this update. Main is unchanged; acceptance does not itself perform a merge or publish a release.
 
-These are native acceptance checks. Automated pixel fixtures do not prove the exact Library/Develop reproduction is resolved.
+Broader edge-case coverage and two nonblocking audit follow-ups are tracked in [BACKLOG.md](docs/BACKLOG.md). The documentation-only [boundary audit](docs/BOUNDARY-AUDIT.md) changed no executable code and required no rebuild or new native test round.
