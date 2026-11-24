@@ -2,6 +2,9 @@ import AppKit
 import ScreenCaptureKit
 import VideoToolbox
 
+enum ScreenProbeFailureReason {
+    case permissionUnavailable, cancelled, captureFailed
+}
 struct ScreenProbeResult {
     let candidate:CGRect?
     let summary:String
@@ -18,6 +21,10 @@ struct ScreenProbeResult {
     var previewImage:CGImage? = nil
     var displayContainedCapture=false
     var placementUnavailableReason:String? = nil
+    var failureReason:ScreenProbeFailureReason? = nil
+    static func permissionUnavailable()->ScreenProbeResult {
+        ScreenProbeResult(candidate:nil,summary:"Screen Recording permission is unavailable. No capture taken. Use AX placement or manual calibration.",failureReason:.permissionUnavailable)
+    }
 }
 struct EdgeRaster {
     let width: Int, height: Int
@@ -67,7 +74,7 @@ func inspectScreenLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
 }
 @available(macOS 14.0, *)
 func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCapture:Bool=false,settings:DetectionConfig=DetectionConfig(),layout:OverlayLayout = .full,maxPixelWidth:CGFloat? = nil,reuseOuterBoundsForSplits:Bool=false) async -> ScreenProbeResult {
-    guard CGPreflightScreenCaptureAccess() else { return ScreenProbeResult(candidate:nil,summary:"Screen Recording permission is unavailable. No capture taken. Use AX placement or manual calibration.") }
+    guard CGPreflightScreenCaptureAccess() else { return .permissionUnavailable() }
     let probeStarted=ProcessInfo.processInfo.systemUptime
     let ticket=await ScreenGeometryCache.shared.ticket()
     var failureContext="Enumerating Lightroom windows."
@@ -178,8 +185,8 @@ func captureStableLayout(imageSize:CGSize,forCalibration:Bool=false,previewCaptu
         return ScreenProbeResult(candidate:candidate,summary:header+(reused ? "Reused viewport; border samples unchanged.\n" : "Searched for UI borders.\n")+detection.summary+placementSummary+"\nFinal overlay region (AppKit): \(candidate.map{String(describing:$0)} ?? "none").\nPhoto frame (AppKit): \(photoFrame.map{String(describing:$0)} ?? "none").",
             windowID:window.windowID,workingAreaTooNarrow:detection.workingAreaTooNarrow,windowFrame:window.frame,layoutKey:key,split:false,background:detection.background,photoFrame:photoFrame,uiFrame:uiFrame)
 
-    } catch is CancellationError { return ScreenProbeResult(candidate:nil,summary:"Screen inspection cancelled.") }
-    catch { return ScreenProbeResult(candidate:nil,summary:captureFailureSummary(error,context:failureContext)) }
+    } catch is CancellationError { return ScreenProbeResult(candidate:nil,summary:"Screen inspection cancelled.",failureReason:.cancelled) }
+    catch { return captureFailureResult(error,context:failureContext) }
 }
 
 // Both screenshot layouts share the same independently validated outer area.
@@ -300,6 +307,10 @@ func capturePermissionDenied(_ error:Error)->Bool {
         current=item.userInfo[NSUnderlyingErrorKey] as? NSError
     }
     return false
+}
+func captureFailureResult(_ error:Error,context:String)->ScreenProbeResult {
+    ScreenProbeResult(candidate:nil,summary:captureFailureSummary(error,context:context),
+                      failureReason:capturePermissionDenied(error) ? .permissionUnavailable:.captureFailed)
 }
 func captureFailureSummary(_ error:Error,context:String)->String {
     var lines=[capturePermissionDenied(error) ? "Screen Recording permission unavailable. No capture could be taken. Manual calibration remains available without snapping. Enable Screen Recording in macOS System Settings to use capture features.":"Screen inspection failed.",context]

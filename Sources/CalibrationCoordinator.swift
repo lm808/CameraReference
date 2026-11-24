@@ -64,7 +64,7 @@ extension AppDelegate {
         guard calibration === controller,calibrationTimer != nil else { return }
         calibrationTimer?.invalidate();calibrationTimer=nil;calibrationTask=nil
         lastLayout=result.summary
-        controller.start(proposal:proposal,edges:result.snapEdges,snapAvailable:!result.snapEdges.isEmpty,permissionUnavailable:result.summary.hasPrefix("Screen Recording permission unavailable"),instruction:instruction)
+        controller.start(proposal:proposal,edges:result.snapEdges,snapAvailable:!result.snapEdges.isEmpty,permissionUnavailable:result.failureReason == .permissionUnavailable,instruction:instruction)
     }
     @objc func clearAllRegionData() {
         guard !regionResetting else { return };regionResetting=true
