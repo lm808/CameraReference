@@ -20,7 +20,19 @@ struct AXTrialProposal {
     var rawArea:CGRect? = nil
     var panelVisibility:AXPanelVisibility? = nil
 }
-func axTrialProposal(host:CGRect, windows:[AXTrialWindow], settings:DetectionConfig = DetectionConfig(), module:String? = nil, fullScreen:Bool? = nil)->AXTrialProposal? {
+// Raw observation/classification is available even when current signed offsets
+// would make production placement invalid. No second classifier for calibration.
+struct AXRawGeometry {
+    let host:CGRect
+    let rawArea:CGRect
+    let layout:String
+    let panelVisibility:AXPanelVisibility
+    let labels:[CGRect]
+    let gapXRange:ClosedRange<CGFloat>?
+    let gapYRange:ClosedRange<CGFloat>?
+    let notes:[String]
+}
+func axRawGeometry(host:CGRect, windows:[AXTrialWindow], settings:DetectionConfig = DetectionConfig(), fullScreen:Bool? = nil)->AXRawGeometry? {
     guard host.width>200,host.height>200 else { return nil }
     let visible=windows.filter(\.visible).map(\.frame).filter { host.contains($0) && $0 != host }
     // Panel widths stay roughly fixed as Lightroom shrinks. Require a tall
@@ -39,16 +51,16 @@ func axTrialProposal(host:CGRect, windows:[AXTrialWindow], settings:DetectionCon
     }
     let topPanel=strips.filter { $0.midY<host.minY+host.height*0.25 }.map(\.maxY).max()
     let bottomPanel=strips.filter { $0.midY>host.minY+host.height*0.75 }.map(\.minY).min()
-    var left=leftPanel ?? host.minX+settings.axBaseHiddenLeftInsetPoints
-    var right=rightPanel ?? host.maxX-settings.axBaseHiddenRightInsetPoints
+    let left=leftPanel ?? host.minX+settings.axBaseHiddenLeftInsetPoints
+    let right=rightPanel ?? host.maxX-settings.axBaseHiddenRightInsetPoints
     // Remove the calibrated title-bar allowance from the windowed hidden-top base.
     // Only positive native full-screen evidence removes it; unknown preserves
     // existing windowed behaviour and explicit signed corrections still apply.
     let titleBarAdjustment:CGFloat = fullScreen == true ? settings.axFullScreenTitleBarAllowancePoints:0
-    var top=topPanel ?? host.minY+max(0,settings.axBaseHiddenTopInsetPoints-titleBarAdjustment)
-    var bottom=bottomPanel ?? host.maxY-settings.axBaseHiddenBottomInsetPoints
+    let top=topPanel ?? host.minY+max(0,settings.axBaseHiddenTopInsetPoints-titleBarAdjustment)
+    let bottom=bottomPanel ?? host.maxY-settings.axBaseHiddenBottomInsetPoints
     guard right-left>100,bottom-top>100 else { return nil }
-    var area=CGRect(x:left,y:top,width:right-left,height:bottom-top)
+    let area=CGRect(x:left,y:top,width:right-left,height:bottom-top)
     // Observed label-size family. Geometry/opacity only, not session IDs or text.
     let labels=Array(Set(visible.filter { (50...160).contains($0.width) && (15...40).contains($0.height) }.map { NSStringFromRect($0) })).map { NSRectFromString($0) }
     var horizontal=false,vertical=false,notes=[String](), splitX=area.midX,splitY=area.midY
@@ -63,17 +75,26 @@ func axTrialProposal(host:CGRect, windows:[AXTrialWindow], settings:DetectionCon
     if !horizontal && !vertical { notes.append("No clear central label pair; assumed single view.") }
     if splitX != area.midX || splitY != area.midY { notes.append("50/50 midpoint adjusted into the central label gap; raw outer bounds need correction.") }
     if topPanel == nil && fullScreen == true { notes.append("Hidden top: macOS full screen; configured title-bar allowance \(titleBarAdjustment) pt (effective removal \(min(settings.axBaseHiddenTopInsetPoints,titleBarAdjustment)) pt) before view classification.") }
-    let rawArea=area
-    let leftShift=leftPanel == nil ? settings.axHiddenLeftOffsetPoints:settings.axShownLeftOffsetPoints
-    let rightShift=rightPanel == nil ? settings.axHiddenRightOffsetPoints:settings.axShownRightOffsetPoints
-    let topShift=topPanel == nil ? settings.axHiddenTopOffsetPoints:settings.axShownTopOffsetPoints
-    let filmstripShift=bottomPanel == nil ? settings.axFilmstripHiddenOffsetPoints:settings.axFilmstripShownOffsetPoints
+    return AXRawGeometry(host:host,rawArea:area,layout:layout,
+        panelVisibility:AXPanelVisibility(left:leftPanel != nil,right:rightPanel != nil,top:topPanel != nil,bottom:bottomPanel != nil),
+        labels:labels,gapXRange:gapXRange,gapYRange:gapYRange,notes:notes)
+}
+func axTrialProposal(host:CGRect, windows:[AXTrialWindow], settings:DetectionConfig = DetectionConfig(), module:String? = nil, fullScreen:Bool? = nil)->AXTrialProposal? {
+    guard let raw=axRawGeometry(host:host,windows:windows,settings:settings,fullScreen:fullScreen) else { return nil }
+    let rawArea=raw.rawArea,layout=raw.layout,labels=raw.labels,visibility=raw.panelVisibility
+    var left=rawArea.minX,right=rawArea.maxX,top=rawArea.minY,bottom=rawArea.maxY
+    var area=rawArea,notes=raw.notes,splitX=rawArea.midX,splitY=rawArea.midY
+    let gapXRange=raw.gapXRange,gapYRange=raw.gapYRange
+    let leftShift = !visibility.left ? settings.axHiddenLeftOffsetPoints:settings.axShownLeftOffsetPoints
+    let rightShift = !visibility.right ? settings.axHiddenRightOffsetPoints:settings.axShownRightOffsetPoints
+    let topShift = !visibility.top ? settings.axHiddenTopOffsetPoints:settings.axShownTopOffsetPoints
+    let filmstripShift = !visibility.bottom ? settings.axFilmstripHiddenOffsetPoints:settings.axFilmstripShownOffsetPoints
     let toolbarShift=settings.axToolbarState == "hidden" ? 0:settings.axToolbarHeightPoints
     let libraryShift=module == "library" && layout != "Single view" ? settings.axLibraryBottomOffsetPoints:0
     left += leftShift;right += rightShift
     top -= topShift;bottom -= filmstripShift+toolbarShift+libraryShift
     notes.append("Signed offsets (right/up positive): L \(leftShift), R \(rightShift), T \(topShift); bottom filmstrip \(filmstripShift) + toolbar \(toolbarShift) + Library \(libraryShift).")
-    notes.append("Panel evidence L/R/T/B: \(leftPanel != nil)/\(rightPanel != nil)/\(topPanel != nil)/\(bottomPanel != nil). Missing panels use configured base hidden insets.")
+    notes.append("Panel evidence L/R/T/B: \(visibility.left)/\(visibility.right)/\(visibility.top)/\(visibility.bottom). Missing panels use configured base hidden insets.")
     guard right-left>100,bottom-top>100 else { return nil }
     area=CGRect(x:left,y:top,width:right-left,height:bottom-top)
     if let gap=gapXRange { splitX=min(max(area.midX,gap.lowerBound),gap.upperBound) } else { splitX=area.midX }
@@ -87,7 +108,7 @@ func axTrialProposal(host:CGRect, windows:[AXTrialWindow], settings:DetectionCon
         panes=[CGRect(x:left,y:top,width:area.width,height:splitY-top),CGRect(x:left,y:splitY,width:area.width,height:bottom-splitY)]
     } else { panes=[area] }
     let summary="AX trial: \(layout). Top-left global points.\nHost: \(host)\nRaw combined area: \(rawArea)\nAdjusted area: \(area)\nProposed panes: \(panes)\nVisible label candidates: \(labels)\n"+notes.joined(separator:"\n")+"\nAX config corrections applied. Toolbar annotation: \(settings.axToolbarState) (effective preview state; see toolbar diagnostics). No menu layout/pane preference used."
-    return AXTrialProposal(host:host,panes:panes,layout:layout,summary:summary,rawArea:rawArea,panelVisibility:AXPanelVisibility(left:leftPanel != nil,right:rightPanel != nil,top:topPanel != nil,bottom:bottomPanel != nil))
+    return AXTrialProposal(host:host,panes:panes,layout:layout,summary:summary,rawArea:rawArea,panelVisibility:visibility)
 }
 final class AXTrialBorder:NSView {
     let tint:NSColor

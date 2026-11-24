@@ -769,3 +769,20 @@ assert(activationCount==1)
 activationView.releaseContent();assert(activationView.activateHost==nil)
 assert(floatView.activateHost==nil)
 print("PASS: interactive click forwards host activation, disabled/released and floating views remain isolated")
+
+// Calibration must be able to repair invalid corrected placement without
+// weakening the production guards or maintaining another panel classifier.
+let repairHost=CGRect(x:0,y:0,width:600,height:600)
+let repairWindows=[CGRect(x:0,y:0,width:600,height:80),CGRect(x:0,y:500,width:600,height:100),
+                   CGRect(x:0,y:80,width:200,height:420),CGRect(x:400,y:80,width:200,height:420)].map { AXTrialWindow(frame:$0,visible:true) }
+let repairRaw=axRawGeometry(host:repairHost,windows:repairWindows)!
+assert(repairRaw.rawArea==CGRect(x:200,y:80,width:200,height:420))
+var invalidCorrection=DetectionConfig()
+invalidCorrection.axShownLeftOffsetPoints=200;invalidCorrection.axShownRightOffsetPoints = -200
+assert(axTrialProposal(host:repairHost,windows:repairWindows,settings:invalidCorrection)==nil)
+let repairable=axRawGeometry(host:repairHost,windows:repairWindows,settings:invalidCorrection)!
+assert(repairable.rawArea==repairRaw.rawArea && repairable.layout==repairRaw.layout && repairable.panelVisibility==repairRaw.panelVisibility)
+let validRepairProposal=axTrialProposal(host:repairHost,windows:repairWindows)!
+assert(validRepairProposal.rawArea==repairRaw.rawArea && validRepairProposal.panelVisibility==repairRaw.panelVisibility)
+assert(axRawGeometry(host:CGRect(x:0,y:0,width:100,height:100),windows:[])==nil)
+print("PASS: raw calibration evidence survives invalid signed offsets while production placement still rejects them")

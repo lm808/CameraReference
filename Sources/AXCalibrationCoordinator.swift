@@ -25,7 +25,7 @@ final class AXCalibrationCoordinator:NSWindowController,NSWindowDelegate {
     private let applyButton=NSButton(title:"Apply and back up config",target:nil,action:nil)
     private var proposed:[String:CGFloat]?
     private struct Evidence {
-        let proposal:AXTrialProposal
+        let geometry:AXRawGeometry
         let signature:String
         let module:String
         let toolbarShown:Bool
@@ -175,12 +175,12 @@ final class AXCalibrationCoordinator:NSWindowController,NSWindowDelegate {
                         guard let rect else { self.failed("Selection cancelled; previous measurements retained.");return }
                         self.readEvidence { [weak self] after in
                             guard let self,self.generation==token else { return }
-                            guard let after,self.sameEvidence(evidence,after),let raw=evidence.proposal.rawArea else { self.failed("Setup \(step+1) changed during selection. Previous measurement retained; retry.");return }
+                            guard let after,self.sameEvidence(evidence,after) else { self.failed("Setup \(step+1) changed during selection. Previous measurement retained; retry.");return }
                             let selected=appKitRect(rect,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
-                            guard evidence.proposal.host.contains(selected) else { self.failed("Select entirely inside Lightroom. Previous measurement retained.");return }
+                            guard evidence.geometry.host.contains(selected) else { self.failed("Select entirely inside Lightroom. Previous measurement retained.");return }
                             if index==6 { self.photo=selected } else {
                                 if index==0,let previous=self.evidenceByStep[0],!self.sameEvidence(previous,evidence) { self.photo=nil }
-                                self.samples[index]=AXCalibrationSample(raw:raw,selected:selected);self.evidenceByStep[index]=evidence
+                                self.samples[index]=AXCalibrationSample(raw:evidence.geometry.rawArea,selected:selected);self.evidenceByStep[index]=evidence
                             }
                             self.busy=false;self.refreshReview();self.showWindow(nil);NSApp.activate(ignoringOtherApps:true)
                         }
@@ -192,13 +192,13 @@ final class AXCalibrationCoordinator:NSWindowController,NSWindowDelegate {
         }
     }
     private func sameEvidence(_ a:Evidence,_ b:Evidence)->Bool {
-        a.signature==b.signature && a.module==b.module && a.proposal.host==b.proposal.host && a.proposal.rawArea==b.proposal.rawArea && a.proposal.layout==b.proposal.layout && a.fullScreen==b.fullScreen && a.toolbarShown==b.toolbarShown
+        a.signature==b.signature && a.module==b.module && a.geometry.host==b.geometry.host && a.geometry.rawArea==b.geometry.rawArea && a.geometry.layout==b.geometry.layout && a.fullScreen==b.fullScreen && a.toolbarShown==b.toolbarShown
     }
     private func matchesStep(_ e:Evidence,index:Int)->Bool {
         let shown=index==0 || index==3 || index==4
         return e.fullScreen==(index==5) && e.module==(index==4 ? "library":"develop") &&
-            e.proposal.layout==((index==3 || index==4) ? "Side-by-side":"Single view") &&
-            e.proposal.panelVisibility==AXPanelVisibility(left:shown,right:shown,top:shown,bottom:shown) && e.toolbarShown==(index != 2 && index != 5)
+            e.geometry.layout==((index==3 || index==4) ? "Side-by-side":"Single view") &&
+            e.geometry.panelVisibility==AXPanelVisibility(left:shown,right:shown,top:shown,bottom:shown) && e.toolbarShown==(index != 2 && index != 5)
     }
     private func failed(_ message:String) {
         busy=false;refreshReview();status.textColor = .systemRed;status.stringValue=message
@@ -212,9 +212,9 @@ final class AXCalibrationCoordinator:NSWindowController,NSWindowDelegate {
             _=accessibilityMappingReport { host,windows,fullScreen in
                 if let module,let fullScreen,let shown=toolbar.shown {
                     var effective=settings;effective.axFullScreenTitleBarAllowancePoints=0;effective.axToolbarState=shown ? "shown":"hidden"
-                    if let proposal=axTrialProposal(host:host,windows:windows,settings:effective,module:module,fullScreen:fullScreen),
+                    if let geometry=axRawGeometry(host:host,windows:windows,settings:effective,fullScreen:fullScreen),
                        let state=AXPanelState(host:host,visibleFrames:windows.filter(\.visible).map(\.frame),toolbar:effective.axToolbarState) {
-                        result=Evidence(proposal:proposal,signature:state.signature,module:module,toolbarShown:shown,fullScreen:fullScreen)
+                        result=Evidence(geometry:geometry,signature:state.signature,module:module,toolbarShown:shown,fullScreen:fullScreen)
                     }
                 }
             }
