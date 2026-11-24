@@ -272,3 +272,26 @@ for thickness in [3,5,7] {
     expect(abs(result.bounds!.minY-60)<=CGFloat(thickness+2),"Selection frame picked a header")
 }
 print("PASS: asymmetric thin Compare selection frames retain working-area detection")
+
+// A low-contrast photo has long straight edges and can look uniform enough to
+// pass inner-surround validation. Its outside is still the working surround.
+// Exercise several margins: this is evidence orientation, not an 18pt offset.
+for margin in [16,18,25] {
+    var pixels=fixture(bg:[0,0,0]).rgba
+    for y in (60+margin)..<(580-margin) { for x in (120+margin)..<(780-margin) {
+        for channel in 0..<3 { pixels[(y*900+x)*4+channel]=6 }
+    } }
+    let result=detectViewport(in:EdgeRaster(width:900,height:650,rgba:pixels),singlePhoto:true)
+    expect(result.bounds == CGRect(x:120,y:60,width:660,height:520),"Photo-facing edge displaced UI: \(result.summary)")
+}
+print("PASS: low-contrast photo edges cannot replace working-area borders at varying margins")
+
+// A real header band must not be absorbed merely because its background matches.
+var headerPixels=fixture(bg:[0,0,0]).rgba
+for y in 29..<60 { for x in 120..<780 {
+    let value:UInt8 = (y==29 || y==59) ? 90 : ((40..<52).contains(y) && (300..<600).contains(x) ? 150 : 0)
+    for channel in 0..<3 { headerPixels[(y*900+x)*4+channel]=value }
+} }
+let withHeader=detectViewport(in:EdgeRaster(width:900,height:650,rgba:headerPixels),singlePhoto:true)
+expect(withHeader.bounds == CGRect(x:120,y:60,width:660,height:520),"Header controls absorbed into working area: \(withHeader.summary)")
+print("PASS: same-colour header with controls is not absorbed by surround expansion")

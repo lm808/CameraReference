@@ -71,6 +71,7 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
         // Validate parallel inner lines beyond a thin border, never a single corner.
         let depths=[4,6,8,10,12].filter { CGFloat($0)*2 < min(r.width,r.height) }
         var bestSupport:[Double]=[]
+        var innerBackground=[Double]()
         for depth in depths {
             var sides=[[[Double]]]()
             for side in 0..<4 {
@@ -89,7 +90,7 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
             }
             let (background,_)=representative(sides.flatMap{$0})
             let support=sides.map { Double($0.filter { distance($0,background)<=8 }.count)/40 }
-            if support.min()! > (bestSupport.min() ?? 0) { bestSupport=support }
+            if support.min()! > (bestSupport.min() ?? 0) { bestSupport=support;innerBackground=background }
         }
         let support=bestSupport
         guard support.count==4,support.min()!>=0.90 else { return nil }
@@ -102,8 +103,17 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
                 let x=Int(r.minX+r.width*f),y=Int(r.minY+r.height*f)
                 var d=0.0
                 for offset in -1...1 {
-                    if side<2 { let i=Int(side==0 ? r.minX:r.maxX)+offset;d=max(d,distance(rgb(i-1,y),rgb(i,y))) }
-                    else { let i=Int(side==2 ? r.minY:r.maxY)+offset;d=max(d,distance(rgb(x,i-1),rgb(x,i))) }
+                    let outside:[Double],a:[Double],b:[Double]
+                    if side<2 {
+                        let i=Int(side==0 ? r.minX:r.maxX)+offset
+                        a=rgb(i-1,y);b=rgb(i,y);outside=side==0 ? a:b
+                    } else {
+                        let i=Int(side==2 ? r.minY:r.maxY)+offset
+                        a=rgb(x,i-1);b=rgb(x,i);outside=side==2 ? a:b
+                    }
+                    // A photo edge has the working-area surround on its OUTSIDE.
+                    // UI bounds must face the other way: surround inside, UI outside.
+                    if distance(outside,innerBackground)>=3 { d=max(d,distance(a,b)) }
                 }
                 if d>=3 { hits+=1 }
             }
@@ -131,6 +141,9 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
         } } } }
         accepted.sort { $0.1==$1.1 ? $0.0.width*$0.0.height<$1.0.width*$1.0.height : $0.1>$1.1 }
         searchReport="Rectangle search: L \(ls), R \(rs), T \(ts), B \(bs); \(checked) checked, \(accepted.count) supported."
+        searchReport += "\nLeading candidates (capture-local pixels; score): " + accepted.prefix(8).map {
+            "\($0.0) " + String(format:"%.3f",$0.1)
+        }.joined(separator:"; ")
         guard let strongest=accepted.first else {
             // A small window can put valid borders outside the preferred band.
             // Retry to the centre with identical complete-rectangle validation.
@@ -147,14 +160,41 @@ func detectViewport(in raster: EdgeRaster, knownBounds:CGRect? = nil,singlePhoto
         let supported=accepted.filter { strongest.1-$0.1<0.08 }
         let outer=supported.max { $0.0.width*$0.0.height<$1.0.width*$1.0.height }!
         let surround=rgb(Int(outer.0.minX)+12,Int(outer.0.minY)+12)
-        let best=supported.filter { distance(rgb(Int($0.0.minX)+12,Int($0.0.minY)+12),surround)<=8 }.min { $0.0.width*$0.0.height<$1.0.width*$1.0.height }!
+        var best=supported.filter { distance(rgb(Int($0.0.minX)+12,Int($0.0.minY)+12),surround)<=8 }.min { $0.0.width*$0.0.height<$1.0.width*$1.0.height }!
+        // Do not shave off a plain surround band just because a photo or an
+        // internal line provides another strong edge. Header/control bands are
+        // different: their intervening pixels are not the same plain surround.
+        func plainExpansion(from inner:CGRect,to outer:CGRect)->Bool {
+            guard outer.contains(inner),outer != inner else { return false }
+            let strips=[
+                CGRect(x:outer.minX,y:outer.minY,width:inner.minX-outer.minX,height:outer.height),
+                CGRect(x:inner.maxX,y:outer.minY,width:outer.maxX-inner.maxX,height:outer.height),
+                CGRect(x:inner.minX,y:outer.minY,width:inner.width,height:inner.minY-outer.minY),
+                CGRect(x:inner.minX,y:inner.maxY,width:inner.width,height:outer.maxY-inner.maxY)
+            ].filter { $0.width>0 && $0.height>0 }
+            return strips.allSatisfy { strip in
+                // Ignore only the transition's raster fringe, not a calibrated margin.
+                guard strip.width>4,strip.height>4 else { return false }
+                let area=strip.insetBy(dx:2,dy:2)
+                var matching=0
+                for y in 0..<16 { for x in 0..<32 {
+                    let point=rgb(Int(area.minX+area.width*(Double(x)+0.5)/32),Int(area.minY+area.height*(Double(y)+0.5)/16))
+                    if distance(point,surround)<=3 { matching+=1 }
+                } }
+                return Double(matching)/512 >= 0.98
+            }
+        }
+        for candidate in supported.sorted(by: { $0.0.width*$0.0.height < $1.0.width*$1.0.height }) {
+            if candidate.1>=best.1 && plainExpansion(from:best.0,to:candidate.0) { best=candidate }
+        }
+        searchReport += "\nSelected supported rectangle: \(best.0)."
         let distinct=accepted.first { candidate in
             let intersection=candidate.0.intersection(best.0)
             let overlap=intersection.isNull ? 0:intersection.width*intersection.height
             let smaller=min(candidate.0.width*candidate.0.height,best.0.width*best.0.height)
             return overlap/smaller<0.98
         }
-        if let distinct,best.1-distinct.1<0.05 { return failure(searchReport+"\nCompeting UI rectangles are ambiguous. Manual calibration is available.") }
+        if let distinct,best.1-distinct.1<0.05 { return failure(searchReport+"\nSelected \(best.0); competing \(distinct.0).\nCompeting UI rectangles are ambiguous. Manual calibration is available.") }
         func refine(_ side:Int)->Int {
             let base=Int(side==0 ? best.0.minX:side==1 ? best.0.maxX:side==2 ? best.0.minY:best.0.maxY)
             for delta in [0,1,-1,2,-2,3,-3] {

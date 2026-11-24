@@ -36,7 +36,7 @@ Grid detection is separate: only the first View-menu level is searched, traversi
 
 ## Screenshot detection — independent fallback
 
-Full detection generates candidate UI borders in side/top/bottom search ranges and validates whole rectangles using sustained transitions and consistent inner surround. It does not trace the photograph: all four borders require pixel evidence. Candidate ranking and validation remain unchanged apart from rejecting nonpositive/tiny rectangles before sampling.
+Full detection generates candidate UI borders in side/top/bottom search ranges and validates whole rectangles using sustained transitions and consistent inner surround. It does not trace the photograph: all four borders require pixel evidence. Candidate transitions must face out of the inner surround, rather than merely contain a contrast edge. Equally supported enclosing rectangles retain a plain surround band; headers with intervening controls are not expanded across. These are raster checks only, with no AX offset or photo-margin correction. Diagnostics list leading candidates, scores and ambiguity competitors.
 
 sideSearchPercent defaults to 40; explicit user values survive upgrades and define the first search. If no rectangle passes, retry with side ranges reaching the centre (50%), using the same complete validation. Previously this wider result was used only to report a narrow-area failure. Diagnostics now identify when the validated retry supplies placement. Ambiguous or unsupported outer bounds still fail; no AX edges or calibrated offsets participate.
 
@@ -94,3 +94,5 @@ A–E above are independently selectable rows 1–5. F (row 6) is Develop Loupe 
 Row 1 also measures the actual photo at Fit. For selected working area W and centred, contained photo P, the shared isotropic Fit inset is min((W.width−P.width)/2, (W.height−P.height)/2). Aspect-fit letterboxing makes the other margin larger; it is not a second inset. The guide requires centring within 2 pt and a result within 0…100 pt. The user must use a matching untransformed photo; rectangle geometry alone cannot prove RAW/JPEG content or aspect agreement. Photo/area evidence must match; moving/resizing/reconfiguring setup 1 requires its area to be measured again.
 
 There are six setups and seven selections; row 4 is an intentional consistency check. No config writes occur until Apply. Conflicts and missing measurements keep Apply disabled, and cancellation/retry retains prior values. The guide is hidden before the countdown, the countdown is removed before capture, and generation guards reject callbacks after close/reset. Measurements are session-only.
+
+Overlay left-clicks forward a host-activation callback from ReferenceView to PresentationCoordinator. Only the live overlay binds it; floating and preview views do not. Existing workspace activation/lifecycle handling retains ownership of ordering.

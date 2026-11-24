@@ -41,15 +41,30 @@ final class AXCalibrationCoordinator:NSWindowController,NSWindowDelegate {
         let stack=NSStackView();stack.orientation = .vertical;stack.alignment = .leading;stack.distribution = .fill;stack.spacing=12
         stack.addArrangedSubview(warning)
         func addSelectionRow(_ label:NSTextField,_ button:NSButton,_ mark:NSTextField) {
-            let row=NSStackView(views:[label,button,mark])
-            row.orientation = .horizontal;row.alignment = .top;row.spacing=12
-            label.setContentHuggingPriority(.required,for:.vertical)
+            // Explicit column anchors avoid independent stack gravity areas and
+            // AppKit's intrinsic button widths shifting individual rows.
+            let row=NSView()
+            for view in [label,button,mark] {
+                view.translatesAutoresizingMaskIntoConstraints=false;row.addSubview(view)
+            }
+            label.setContentHuggingPriority(.defaultHigh,for:.vertical)
+            button.setContentCompressionResistancePriority(.required,for:.vertical)
             label.setContentCompressionResistancePriority(.required,for:.vertical)
-            label.setContentHuggingPriority(.defaultLow,for:.horizontal)
-            button.widthAnchor.constraint(equalToConstant:190).isActive=true
-            mark.widthAnchor.constraint(equalToConstant:100).isActive=true
             stack.addArrangedSubview(row)
-            row.widthAnchor.constraint(equalTo:stack.widthAnchor).isActive=true
+            NSLayoutConstraint.activate([
+                row.widthAnchor.constraint(equalTo:stack.widthAnchor),
+                label.leadingAnchor.constraint(equalTo:row.leadingAnchor),
+                label.topAnchor.constraint(equalTo:row.topAnchor),
+                label.bottomAnchor.constraint(equalTo:row.bottomAnchor),
+                button.leadingAnchor.constraint(equalTo:label.trailingAnchor,constant:12),
+                button.widthAnchor.constraint(equalToConstant:190),
+                button.topAnchor.constraint(equalTo:row.topAnchor),
+                button.bottomAnchor.constraint(lessThanOrEqualTo:row.bottomAnchor),
+                mark.leadingAnchor.constraint(equalTo:button.trailingAnchor,constant:12),
+                mark.widthAnchor.constraint(equalToConstant:100),
+                mark.trailingAnchor.constraint(equalTo:row.trailingAnchor),
+                mark.firstBaselineAnchor.constraint(equalTo:button.firstBaselineAnchor)
+            ])
         }
         for (index,text) in AXCalibrationPlan.instructions.enumerated() {
             let label=NSTextField(wrappingLabelWithString:"\(index+1). "+text)

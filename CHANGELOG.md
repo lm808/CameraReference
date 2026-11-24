@@ -286,3 +286,9 @@ Build 63 replaces the fixed full-screen allowance with `axFullScreenTitleBarAllo
 ## 1.1.14
 
 - Correct guided calibration top alignment and align all selection rows in consistent columns. Calibration calculations are unchanged.
+
+## 1.1.15
+
+- Align guided-calibration selection rows with explicit shared column positions and button/status baselines.
+- Activate Lightroom when the overlay is clicked, using existing foreground lifecycle handling.
+- Strengthen screenshot border validation and retain plain surround bands when equally supported outer boundaries exist. Include candidate scores in diagnostics. AX placement is unchanged.

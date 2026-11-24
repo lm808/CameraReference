@@ -61,6 +61,7 @@ final class ReferenceView: NSView, NSMenuItemValidation {
     var save: ((ExportSnapshot) -> Void)?
     var canSave: (() -> Bool)?
     var refresh: (() -> Void)?
+    var activateHost: (() -> Void)?
     var backgroundColour=NSColor.black
     var zoomChanged: ((Double)->Void)?
     private var lastZoom: Double = -1
@@ -83,7 +84,7 @@ final class ReferenceView: NSView, NSMenuItemValidation {
     private var drawingViewport:CGRect { showIndicator ? bounds.insetBy(dx:1,dy:1):bounds }
     override var isOpaque: Bool { true }
     override func acceptsFirstMouse(for event:NSEvent?) -> Bool { true }
-    func releaseContent() { zoomChanged=nil; image=nil; exportSnapshot=nil; pictureStyle=nil; refresh=nil; save=nil; canSave=nil }
+    func releaseContent() { activateHost=nil; zoomChanged=nil; image=nil; exportSnapshot=nil; pictureStyle=nil; refresh=nil; save=nil; canSave=nil }
     override func scrollWheel(with event:NSEvent) {
         guard interactive, let image else { return }
         switch scrollIntent(command:event.modifierFlags.contains(.command),precise:event.hasPreciseScrollingDeltas,momentum:!event.momentumPhase.isEmpty) {
@@ -97,6 +98,7 @@ final class ReferenceView: NSView, NSMenuItemValidation {
     }
     override func mouseDown(with event:NSEvent) {
         guard interactive else { return }
+        activateHost?()
         window?.makeFirstResponder(self)
         if movesWindowAtFit && floatingDragMovesWindow(zoom:navigation.zoom,inTitleBar:convert(event.locationInWindow,from:nil).y>=bounds.maxY-32) {
             if event.clickCount==1 { lastDrag=nil;window?.performDrag(with:event);return }

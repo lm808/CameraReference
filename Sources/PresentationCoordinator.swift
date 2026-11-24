@@ -199,6 +199,12 @@ extension AppDelegate {
         p.hasShadow = false; p.hidesOnDeactivate = false; p.isReleasedWhenClosed = false
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
         let view = ReferenceView(frame: NSRect(origin: .zero, size: p.frame.size))
+        view.activateHost = { [weak self, weak p] in
+            guard let self, let p, self.panel === p else { return }
+            // Activation is enough: the existing workspace observer owns ordering.
+            guard !self.isLightroom(), let host=NSWorkspace.shared.runningApplications.first(where:isLightroomApp) else { return }
+            host.activate(options:[])
+        }
         view.showIndicator = true
         view.autoresizingMask = [.width, .height]
         configureImageView(view)

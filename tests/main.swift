@@ -755,3 +755,17 @@ assert(styleMenu.items[0].title=="In-camera picture style: Portrait" && !styleMe
 assert(floatView.menu(for:contextEvent)!.items[0].title=="In-camera picture style: Vivid")
 overlayView.releaseContent();assert(overlayView.pictureStyle==nil && floatView.pictureStyle=="Vivid")
 print("PASS: Canon/Sony optional style extraction, cached identity and independent display menus")
+
+// Only the overlay coordinator supplies host activation. The shared view merely
+// forwards clicks, leaving native activation and window ordering outside it.
+let activationView=ReferenceView(frame:CGRect(x:0,y:0,width:200,height:200))
+var activationCount=0
+activationView.activateHost={activationCount+=1}
+let activationClick=NSEvent.mouseEvent(with:.leftMouseDown,location:CGPoint(x:30,y:30),modifierFlags:[],timestamp:0,windowNumber:0,context:nil,eventNumber:2,clickCount:1,pressure:1)!
+activationView.mouseDown(with:activationClick)
+assert(activationCount==1)
+activationView.interactive=false;activationView.mouseDown(with:activationClick)
+assert(activationCount==1)
+activationView.releaseContent();assert(activationView.activateHost==nil)
+assert(floatView.activateHost==nil)
+print("PASS: interactive click forwards host activation, disabled/released and floating views remain isolated")

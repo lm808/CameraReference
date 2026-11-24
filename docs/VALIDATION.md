@@ -962,3 +962,11 @@ Pure calibration tests recover all twelve parameters, check windowed/full-screen
 ## 1.1.14 — calibration presentation correction
 
 Replaced the direct stack scroll document with a top-origin container and explicit content-height constraints. Selection rows share button/status widths and flexible wrapping instructions. No calibration mathematics, measurement workflow or placement changes. Build/signature and diff checks verify packaging; native layout acceptance remains in TESTING.md.
+
+## 1.1.15 — calibration columns, screenshot evidence and overlay activation
+
+Preserved native 1.1.14 responses verbatim in 1.1.14-TEST-RESPONSE.md. The top-gap fix passed but button/status alignment did not; explicit column anchors and baseline alignment replace independent horizontal stacks. The reported Library failure and Develop cached top edge 18 points low are not counted as passes.
+
+Core tests (including click callback forwarding, disabled/released and floating isolation), Lua bridge, detection, viewport, reset, preview, capture, split and coordinator/migration suites passed. Pixel regression fixtures now cover low-contrast photo edges with several margins and rejection of an intervening header/control band, alongside previous coloured surrounds, thin selection outlines, narrow windows, hidden panels and 50/50 splits. These synthetic results do not prove the exact native Library ambiguity or Develop offset is resolved; candidate-score diagnostics support the next reproduction. No AX calibration values enter pixel selection, no fixed 18-point correction was introduced, and cache policy is unchanged.
+
+Testing build 1.1.15/74 stages separately. Native calibration layout and Lightroom activation require user acceptance. No app launch, live Lightroom manipulation or main change performed.
