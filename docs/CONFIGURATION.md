@@ -23,6 +23,7 @@ Settings → Advanced settings… → Open config file opens this plain-text fil
 
 | Setting | Default | Allowed values / purpose |
 |---|---|---|
+| `showDeveloperTools` | false | true/false; show or hide Developer tools, leaving Advanced settings accessible |
 | `left`, `right` | `ui` | `ui` or `photo`: include UI backdrop or end at calculated photo edge |
 | `top`, `bottom` | `ui` | Same per-side choice |
 | `fitInsetPoints` | 18 | 0–100 macOS points; minimum Fit margin |
@@ -37,7 +38,7 @@ New installations and older configs missing this key use `sideSearchPercent = 40
 
 An inset too small for reliable split scanning offers manual calibration. `overlayAnimation = true` or `false` from an old config is accepted but ignored; overlay animation is always off. Unknown keys, duplicates and invalid values are rejected.
 
-On migration, `detection.conf` is copied to `config.conf` only if the latter is absent. Your values—including 30 or an interval of 0—are retained. The old file remains a backup and is no longer read once the new file exists. New setting defaults are appended where needed without discarding existing comments/values. The repository’s example contains defaults only, never your personal settings.
+On migration, `detection.conf` is copied to `config.conf` only if the latter is absent. Your values—including 30 or an interval of 0—are retained. The old file remains a backup and is no longer read once the new file exists. The 1.1.13 layout migration groups existing assignments and new defaults without replacing explicit values. Inline comments stay with their assignments; deduplicated earlier standalone comments are retained at the end. The original file is backed up as config.before-layout-1.1.13-<ID>.conf. The repository’s example contains defaults only, never your personal settings.
 
 ## Runtime files and RAM
 
@@ -59,7 +60,7 @@ JPEG bytes, decoded images, captured pixels and automatic placement caches are h
 
 ## Geometry corrections
 
-Use ordinary name = value entries in config.conf. Missing geometry keys are appended with defaults; explicit values are preserved. Obsolete v1 settings and prefixed directives have been removed. Screenshot settings and their cache key are unaffected.
+Use ordinary name = value entries in config.conf. Missing geometry keys are seeded with defaults during organization; explicit values are preserved. Obsolete v1 settings and prefixed directives have been removed. Screenshot settings and their cache key are unaffected.
 
 All signed offsets start at raw AX boundaries: **right/up positive; left/down negative**. The code subtracts vertical offsets from top-left Y coordinates. Base hidden insets are distances inward from the window, applied before signed corrections.
 
@@ -73,6 +74,7 @@ All signed offsets start at raw AX boundaries: **right/up positive; left/down ne
 | axLibraryBottomOffsetPoints | 25 |
 | axBaseHiddenLeftInsetPoints / axBaseHiddenRightInsetPoints | 18 / 18 |
 | axBaseHiddenTopInsetPoints / axBaseHiddenBottomInsetPoints | 50 / 0 |
+| axFullScreenTitleBarAllowancePoints | 32 |
 
 Bottom correction is cumulative: filmstrip correction + toolbar height when effectively shown (including a shown fallback) + Library correction in Library split views only (zero in single view). The user-calibrated Library split-view allowance defaults to +25 pt; positive moves the bottom upwards. Unknown toolbar visibility uses toolbarUnknownFallback: shown (default), hidden, or lastKnown. Last-known state is held in RAM per Lightroom process and module; if none exists, assume shown. Diagnostics distinguish fresh readings from fallback. Filmstrip shown/toolbar hidden's -11 pt remains inferred. Correct the combined area, then split at its midpoint constrained between labels.
 
@@ -81,3 +83,5 @@ These defaults ship in the parser and example for fresh installations. They appl
 ### Advanced settings editor
 
 Settings → Advanced settings… reads the current file into Name, Value and Comment columns; only values are editable. Rows and explanations come from assignments, preceding comment lines and inline comments, with no separate editor schema. Unchanged lines, ordering, line endings are preserved. Search matches names and comments, case-insensitively, while retaining unsaved edits to filtered-out rows. New supported settings entered in the file appear when the editor is reopened; no editor code change is required. Save validates with the existing parser and performs a coordinated atomic write only if the file still matches the opened content. Unknown entries remain visible/preserved, but unsupported active keys still fail existing parser validation. Cancel and the close button discard unsaved edits. Open config file retains the existing external editor action.
+
+Guided AX calibration reviews the ten signed/cumulative corrections, full-screen allowance and shared fitInsetPoints before saving. It does not separately calibrate hidden base insets: the hidden offsets already recover the effective boundary. fitInsetPoints affects photo Fit in both placement methods; AX-specific corrections never enter screenshot detection. Apply backs up the current file and rejects external modifications. Developer tools must first be enabled through showDeveloperTools.

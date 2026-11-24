@@ -55,7 +55,7 @@ Use plain three-component versions in CFBundleShortVersionString (candidate `1.1
 | `Views.swift` | Shared photo view, overlay/floating panels, floating chrome, previews/toasts/menu diagrams |
 | `Calibration.swift`, `Snapping.swift` | Drag-selection UI, Option edge snapping and region preference clearing |
 | `Shortcut.swift`, `ShortcutSettings.swift`, `ViewShortcuts.swift`, `Permissions.swift` | Recording widget, transactional binding settings, guarded view-action dispatch and feature-triggered permission prompts |
-| `AXCalibration.swift`, `AXCalibrationCoordinator.swift` | Pure five-measurement offset calculation and separate Developer tools workflow; existing selection UI, explicit reviewed config update with backup |
+| `AXCalibration.swift`, `AXCalibrationCoordinator.swift` | Pure six-setup/seven-selection geometry calculation and separate Developer tools workflow; existing selection UI, explicit reviewed config update with backup |
 | `CameraReference.lrplugin/` | Lua bridge/init/shutdown/diagnostic menus; request tokens, module heartbeat, opaque selection revisions |
 | `tests/` | Swift behaviour/geometry/raster/export checks and Lua bridge stand-ins; native acceptance is separate |
 
@@ -94,7 +94,7 @@ Do not commit build/release/dist artifacts, personal config, bridge runtime file
 
 ## Screenshot fallback
 
-Screenshot placement is independent of AX geometry; optional AX view detection supplies layout only. AXPanelState retains the prior signature for view/panel-change policy. Preserve background pixel checks, permission preflights and cache guards. Retired assisted preferences resolve to Screenshot; never reintroduce a third placement path. Current work is tracked in FINAL-WORK.md; guided recalibration is deferred.
+Screenshot placement is independent of AX geometry; optional AX view detection supplies layout only. AXPanelState retains the prior signature for view/panel-change policy. Preserve background pixel checks, permission preflights and cache guards. Retired assisted preferences resolve to Screenshot; never reintroduce a third placement path. Current work is tracked in FINAL-WORK.md; guided recalibration is implemented in the candidate and awaits native acceptance.
 
 ## Structure migration worktree
 
@@ -104,6 +104,8 @@ For the current migration round, user-directed candidate versions are 1.1.<stage
 
 Current coordinator files are AppDelegate extensions sharing one composition surface. Native selectors and weak callbacks retain the same targets. Request/panel aliases and diagnostic/menu adapters remain intentionally; most state accesses name their owner. Shared placement/cache/calibration IDs remain on composition because their cancellation lifetimes overlap. See docs/ARCHITECTURE.md and docs/migration/FINAL-REVIEW.md before changing these boundaries. Stage 9 code consolidation does not imply native acceptance or permission to merge.
 
-Explicit automatic screenshot placement may request Screen Recording; AX-only, background checks and manual snapping must not prompt. Guided AX calibration uses no pixels and changes only reviewed offset keys after backup and external-edit checks. Its pure calculator and workflow remain separate from CalibrationController and manual region persistence.
+Explicit automatic screenshot placement may request Screen Recording; AX-only, background checks and manual snapping must not prompt. Guided AX calibration uses permission-available pixel edges only for explicit selector snapping, and changes only 12 reviewed geometry/Fit keys after backup and external-edit checks. Its pure calculator and workflow remain separate from CalibrationController and manual region persistence.
 
 Screenshot expanded working-area reuse is a default-on developer preference interpreted by AppSettings. Off preserves the earlier same-photo/same-pane placement and Loupe-only raster cache; it is not “disable all caching”. On may reuse across photos, movement and Develop layouts, but Library Loupe/Compare boundary changes invalidate it. Keep source/request epochs guarding display even though geometry can outlive a photo. Explicit clearing/toggle changes invalidate both geometry layers. AX-only must never consume this option.
+
+1.1.13: inconclusive background pixel checks retain successful placement memory only when expanded screenshot reuse is on; confirmed geometry changes still invalidate. Picture-style metadata belongs to LoadedReference/cache and each displayed ReferenceView, never global current-selection state. Developer visibility is config-owned (showDeveloperTools, default false). Guided calibration uses six independently retryable setup slots plus setup-1 photo bounds; countdown/selector remain presentation-only, workflow owns cancellation/evidence/persistence, pure plan owns signed calculations and conflict checks.

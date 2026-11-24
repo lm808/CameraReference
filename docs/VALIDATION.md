@@ -950,3 +950,11 @@ The five-step calibration calculation test recovers known signed offsets, decomp
 ### Expanded reuse developer switch — same 1.1.12 / 71
 
 Pure cache tests cover new photos, window translations, all Develop layouts, AppKit pane orientation, Library Loupe/Compare separation, small-pane rejection, resize/host/settings/unknown-selection rejection and earlier eligibility with the switch off. Coordinator checks cover default/persisted mode interpretation, AX exclusion, toggle invalidation of both cache layers and explicit region clearing without changing automatic placement. Existing screenshot fixtures and build/signature checks are rerun for this update. Native results remain pending in TESTING.md.
+
+## 1.1.13 candidate — 2026-11-24
+
+1.1.12 user test annotations preserved verbatim in 1.1.12-TEST-RESPONSE.md. The reported failure snapshot showed a nil/ambiguous background result invalidating successful placement; expanded reuse now retains it, while confirmed changed bounds and reuse-off preserve invalidation. Pure tests cover these three cases.
+
+Automated core/Lua/detection/viewport/reset/preview/capture/split suites passed. Core tests include optional Canon/Sony metadata parsing/extraction stand-ins, cached identity, per-view disabled menu lines and release isolation. The config-editor suite hit the known sandbox coordinated temporary-save restriction (error 512), then passed outside the sandbox with approval. The coordinator/migration harness passed separately, including default-hidden/config-enabled Developer tools. Config tests verify explicit value/comment preservation and exact generated-example/template agreement.
+
+Pure calibration tests recover all twelve parameters, check windowed/full-screen top differences, width/height-limited photo Fit and conflict messages; existing five-boundary decomposition tests still pass. Full build succeeded as testing identity, version 1.1.13 build 72. Placement algorithms and main's accepted app remain unchanged. No GUI app was launched; countdown/Space presentation, native snapping/Apply and actual camera file metadata still require the tests in TESTING.md. Real C-RAW/model coverage is not claimed from stand-ins.

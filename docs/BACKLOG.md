@@ -30,10 +30,14 @@ Current source: accepted 1.1.10 / build 69. Migration and its six deferred fixes
 - Additional RAW formats/Sony samples and cropped RAW/JPEG aspect handling.
 - Better screenshot placement across unusual panel widths without personal side-search tuning.
 
-AX placement, view inference and configurable corrections are implemented. Guided manual-selector AX recalibration is the next separate step. Pinch was deliberately removed in favour of Command-scroll. Historical development tasks belong in HISTORICAL-NOTES.md, not here.
+AX placement, view inference and configurable corrections are implemented. Guided manual-selector AX recalibration is implemented in candidate 1.1.13; native Apply/full-screen/Fit validation remains outstanding. Pinch was deliberately removed in favour of Command-scroll. Historical development tasks belong in HISTORICAL-NOTES.md, not here.
 
 ## Migration closure — 2026-11-21
 
 All six deferred items are accepted: floating hover text, full-screen title-bar visibility, AX preview frame constraints, screenshot-with-AX dismissal policy, generic calibration instructions, and floating-window stacking. Final title-bar clipping tests passed; the small reveal delay is accepted. See [validation](VALIDATION.md) and [original test response](migration/1.1.10-CLIPPING-TEST-RESPONSE.md). Superseded attempts are archived in [historical notes](HISTORICAL-NOTES.md).
 
 Matched pre/post-migration latency measurements were not collected; no performance improvement claim is made. The generated-source migration test harness remains useful regression protection; replacing it with direct component construction is future test-infrastructure work, not a release blocker.
+
+## 1.1.13 candidate acceptance
+
+1.1.12 native annotations are preserved in 1.1.12-TEST-RESPONSE.md. Screenshot modes, shortcuts and AX-only regressions were marked passed; working-area reuse and calibration Apply remained deferred. Candidate 1.1.13 retains the cache through inconclusive checks and extends/reworks calibration. Validate these plus Canon C-RAW/Sony style metadata with real samples before merge; synthetic tests do not establish camera-model coverage.

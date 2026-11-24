@@ -1,31 +1,35 @@
-# Final usability candidate — 1.1.12 / build 71
+# 1.1.13 / build 72 — focused candidate tests
 
-Prior notes are preserved in docs/1.1.11-TEST-RESPONSE.md. Run only the candidate staged app; main is unchanged.
+Prior annotations are preserved verbatim in docs/1.1.12-TEST-RESPONSE.md. Main is untouched. Run only release/CameraReference Testing.app in this worktree; quit the previous copy first.
 
-- [ ] Screenshot: Library Compare at minimum and larger window sizes, panels shown/hidden, both pane choices, portrait/landscape photos and Embedded Preview text. Bounds must exclude the header and both toolbar rows. Repeat in Develop and Loupe.
-- [ ] Screenshot: change photo with AX view detection OFF, then ON. A visible overlay dismisses; an off overlay stays off. No unexpected dismissal on unknown selection evidence.
-- [ ] Switch Left/Right or Top/Bottom within the same screenshot split. Correct opposite pane and Fit; repeat after resize/panel changes so stale bounds cannot be reused.
-- [ ] Without recording permission: explicit screenshot placement requests access; AX placement and free manual calibration do not. Do not change the stable app’s permission entry.
-- [ ] Shortcuts: existing J overlay/F floating bindings; Control+Option+Command+8/4/6/2/5 view choices. In automatic views only matching panes apply; manual Screenshot view selection permits all five. Menu shows assignments. Check Lightroom does not also react.
-- [ ] Keyboard settings: clear a binding, Save a waiting/empty recording, leave another untouched, reject duplicates, Cancel changes, restart to check persistence. Existing overlay update/dismiss behaviour must match menu selection.
-- [ ] AX-only regression: live on/off, floating display, manual selection, full-screen clipping unchanged.
+## Settings and metadata
 
-Guided calibration (Developer tools):
+- [ ] Developer tools is initially hidden. Settings → Advanced settings → showDeveloperTools = true → Save reveals it; false hides it again. Normal settings remain accessible.
+- [ ] Existing config values survive the grouped layout; check its backup beside config.conf. Fresh defaults match the example. Editing a value still updates the relevant behaviour.
+- [ ] Right-click the overlay and float for Canon CR3, Canon C-RAW and Sony ARW: grey picture-style line first, divider below, value agrees with the camera setting. Missing data shows Unavailable; the JPEG still loads.
+- [ ] Keep the float on one photo and change the overlay photo; each menu retains its own style. Repeat with a warm cache and AX live refresh. Existing JPEG extraction/orientation and Save remain correct.
 
-- [ ] Complete the five prompted windowed cases, selecting the **combined** working area rather than the photo or one pane. Review the proposed signed values against your current config. No config changes before Apply.
-- [ ] Cancel a measurement, retry, close/reopen, and restart. Manual region and auto/manual choice must remain unchanged. Wrong module/view/panels/toolbar or changed window during selection must reject the measurement.
-- [ ] Apply: verify a backup is reported, comments and unrelated settings survive, and no recording permission is requested. Editing the config externally during the guide must block Apply.
-- [ ] Verify resulting AX placement in Loupe, Left/Right and Top/Bottom, panel shown/hidden cases and a resized window. Full-screen allowance is deliberately not recalibrated.
+## Screenshot working-area reuse
 
-Expanded screenshot reuse (same 1.1.12 / build 71):
+- [ ] With reuse ON, detect a good area, change to the formerly failing photo without resizing/changing panels, then invoke. An inconclusive background check must retain the area; diagnostics distinguish retained/inconclusive from confirmed change.
+- [ ] Move the window: reused area follows it. Resize or change panel/toolbar geometry: confirmed changes invalidate and subsequent invocation recalculates. Develop layout changes reuse equal panes; Library Loupe ↔ Compare recalculates.
+- [ ] Clear overlay region setting forces detection without changing automatic/manual mode. Reuse OFF preserves earlier cache eligibility and inconclusive-check invalidation.
 
-- [ ] Developer tools → Reuse screenshot working area defaults on, is unavailable in Accessibility, and persists its setting.
-- [ ] Detect a good Screenshot area, change photos without resizing/changing panels, then invoke again. Diagnostics should report a placement-cache hit and capture skipped unless a background check invalidated it. Test the previously troublesome photos.
-- [ ] Move Lightroom without resizing; cached geometry follows its new origin. Resize or change panels/toolbar and verify fresh placement rather than stale geometry.
-- [ ] Develop: switch Loupe/Left-Right/Top-Bottom (and selected pane) without changing surrounding panels. Reuse the whole area and derive the correct new pane. Library Loupe ↔ Compare must detect again.
-- [ ] Clear overlay region setting forces fresh detection but leaves the auto/manual choice unchanged. Toggle the reuse option off/on and confirm geometry is cleared in both directions.
-- [ ] Off: a repeated toggle for the same photo/pane may still reuse placement; changing photo or pane restores the earlier cache eligibility. Split captures search outer bounds afresh; Loupe keeps its earlier raster cache. AX and photo caching are unchanged.
+## Guided AX calibration (Developer tools)
 
-- [ ] View shortcuts work with both number-row and keypad digits (also after recording a keypad binding). Conflicting aliases are rejected on Save. Settings order is Loupe, Left, Right, Top, Bottom; invocation shortcuts remain separate.
+Keep panel widths unchanged, use one display, and measure WORKING AREA including margins and both panes, excluding toolbars. Each row is independently retryable. Enable existing Screen Recording permission for Option-snapping; no prompt is issued by this guide.
 
-- [ ] Guided AX calibration: with Screen Recording already granted, hold Option while dragging each measurement and verify edge snapping. Cancel/retry must work; no manual region or auto/manual setting changes. Without permission, show the snapping-unavailable guidance without prompting.
+- [ ] Setup 1: windowed Develop Loupe, all panels/toolbar shown. Select area, then actual PHOTO bounds at Fit using a matching untransformed photo. No crop/perspective edits.
+- [ ] Setup 2: windowed Develop Loupe, all panels hidden, toolbar shown. Select area.
+- [ ] Setup 3: same, toolbar hidden. Select area.
+- [ ] Setup 4: windowed Develop Left/Right, all panels/toolbar shown. Select combined area.
+- [ ] Setup 5: windowed Library Compare, all panels/toolbar shown. Select combined area.
+- [ ] Setup 6: macOS full-screen Develop Loupe, all panels/toolbar hidden. Select area with the native title/menu bars retracted.
+- [ ] Every Select hides the guide, shows 3–2–1 across Spaces, removes the badge before capture, and returns after selection. Escape during countdown/selection retains prior measurements. Hold Option to snap. Scrolling the guide exposes the full review/Apply controls on a smaller display.
+- [ ] Deliberately misselect one row: red conflict identifies the related row; retry either without resetting others. Wrong setup, changed geometry during selection, or changed setup-1 geometry before photo measurement rejects it. Close/reopen retains measurements; Reset clears them.
+- [ ] Review all 12 proposed values. Apply creates a backup, preserves unrelated values/comments, changes no manual region or auto/manual preference. An external config edit during the guide blocks Apply.
+- [ ] Validate resulting Fit/placement in Loupe and both split orientations, Library split, panel/toolbar variations, resized windows and macOS full screen. Without recording permission, selection stays freehand with guidance and no prompt.
+
+## Unchanged paths
+
+- [ ] AX live/update-off behaviour, floating window, full-screen title-bar clipping and manual calibration still work. J/F and view shortcuts remain unchanged.

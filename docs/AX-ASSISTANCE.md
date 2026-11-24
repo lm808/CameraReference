@@ -110,3 +110,7 @@ Only in confirmed macOS full screen, overlapping overlay content is masked from 
 ## Guided recalibration implementation (1.1.12 candidate)
 
 Developer tools offers a five-step manual measurement guide. It uses the existing rectangle selector and raw AX metadata, with confirmed toolbar visibility and stable-state checks. Calculations, validation and file persistence are separate from production placement; the accepted formulas/defaults are unchanged until the user explicitly applies reviewed replacements. See METHODS.md for the cumulative offset equations and README.md for the workflow. The guide does not infer a toolbar rectangle from AX and does not resolve the documented AX evidence limitations. Native testing is pending.
+
+## Guided recalibration — 1.1.13 candidate
+
+The guide now measures effective boundaries directly with six independently retryable setups, plus the actual photo rectangle in setup 1. It recovers the existing ten corrections, the macOS full-screen hidden-top allowance, and the shared Fit inset. Fixed hidden base values are not redundant additional measurements; their corrections absorb effective-boundary changes. See METHODS.md for equations and TESTING.md for native acceptance. Pixel edges support explicit Option-snapping only; AX-only production placement remains capture-free and its mathematics is unchanged.

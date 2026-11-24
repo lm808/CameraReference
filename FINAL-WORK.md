@@ -20,3 +20,14 @@ Existing screenshot caching, permission handling and background checks stay unch
 1.1.12 fixes: border-tolerant screenshot validation, shared outer raster cache/opposite-pane reuse, screenshot photo dismissal independent of inference, explicit placement permission request and configurable numeric view shortcuts. Prior native responses preserved. New candidate needs native acceptance.
 
 Guided calibration implemented separately: five windowed cases, raw AX evidence with panel/toolbar guards, pure offset decomposition, repeated-edge consistency checks, existing selection UI, explicit review and config backup/conflict checks. Native acceptance remains pending.
+
+## 1.1.13 agreed follow-up (current)
+
+- [x] Preserve 1.1.12 native responses verbatim; passed cases and deferred cache/calibration cases recorded separately.
+- [x] Retain successful expanded screenshot area on inconclusive background checks; legacy-off behaviour unchanged.
+- [x] Add camera-recorded style metadata for CR3/C-RAW and ARW to independent displayed-image context menus.
+- [x] Default-hidden Developer tools advanced option; grouped config/default generation with value/comment preservation and backup.
+- [x] Replace sequential guide with six setup rows/seven selections, countdown/Escape, independent retry, red conflicts, full-screen allowance and photo Fit inset; calibration in its own commit.
+- [x] Automated checks/build; updated architecture, methods, source contract and lean test list.
+- [ ] Native acceptance of 1.1.13, especially Apply, full-screen countdown/snapping and actual C-RAW/Sony metadata.
+- [ ] Merge only after acceptance. Main remains ab92404 / 1.1.10 build 69.

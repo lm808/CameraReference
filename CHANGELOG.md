@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.13 — calibration and fallback usability
+
+- Retain successful screenshot geometry after inconclusive background checks when expanded reuse is enabled.
+- Add six-setup, individually retryable calibration with full-screen allowance, photo Fit inset, countdown and conflict reporting.
+- Show Canon/Sony camera picture style in both reference context menus, retaining displayed-photo identity.
+- Hide Developer tools by default behind an advanced setting; group config generation and preserve existing values/comments with a migration backup.
+
 ## 1.1.12 — final usability candidate
 
 - Enable Option edge snapping in guided AX calibration using the shared manual-selector preparation, without requesting Screen Recording permission.
