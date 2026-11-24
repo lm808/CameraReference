@@ -28,3 +28,19 @@ let signed=[sample(raw,[5,-4,-3,12]),sample(raw,[2,-2,-2,20]),sample(raw,[2,-2,-
 let other=try AXCalibrationPlan.replacements(signed)
 assert(other["axLibraryBottomOffsetPoints"] == -5 && other["axShownTopOffsetPoints"] == -3)
 print("PASS: five-step offset recovery, cumulative bottom decomposition, signed coordinates, translated/resized raw areas and inconsistent-measurement rejection")
+
+var full=Dictionary(uniqueKeysWithValues:samples.enumerated().map{($0.offset,$0.element)})
+full[5]=sample(moved,[-1,1,33,17])
+let area=samples[0].selected
+let photo=CGRect(x:area.minX+18,y:area.midY-200,width:area.width-36,height:400)
+let complete=try AXCalibrationPlan.complete(full,photo:photo,baseHiddenTop:50)
+assert(complete.count==12 && complete["axFullScreenTitleBarAllowancePoints"]==32 && complete["fitInsetPoints"]==18)
+var conflict=full;conflict[5]=sample(moved,[9,1,33,17])
+do { _ = try AXCalibrationPlan.complete(conflict,photo:photo,baseHiddenTop:50);fatalError() } catch { assert(error.localizedDescription.contains("Setup 3 conflicts with setup 6")) }
+do { _ = try AXCalibrationPlan.complete(full,photo:photo.offsetBy(dx:10,dy:0),baseHiddenTop:50);fatalError() } catch { assert(error.localizedDescription.contains("Setup 1 photo")) }
+do { _ = try AXCalibrationPlan.complete(full,photo:photo,baseHiddenTop:10);fatalError() } catch {}
+// Height-limited Fit and negative screen coordinates use the same margin formula.
+let tallArea=CGRect(x:-900,y:-300,width:800,height:600)
+let tallPhoto=CGRect(x:tallArea.midX-100,y:tallArea.minY+21,width:200,height:558)
+assert(try! AXCalibrationPlan.fitInset(area:tallArea,photo:tallPhoto)==21)
+print("PASS: six independent setups recover full-screen allowance and photo inset; conflicts identify retryable measurements")

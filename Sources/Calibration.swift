@@ -151,3 +151,47 @@ final class CalibrationController {
     }
     deinit { close() }
 }
+
+// Presentation-only countdown. It never captures pixels or changes Lightroom.
+final class SelectionCountdown {
+    private var panels=[NSPanel]()
+    private var labels=[NSTextField]()
+    private var timer:Timer?
+    private var localMonitor:Any?,globalMonitor:Any?
+    private var remaining=3
+    private var completed:((Bool)->Void)?
+    func start(completed:@escaping(Bool)->Void) {
+        self.completed=completed
+        for screen in NSScreen.screens {
+            let frame=CGRect(x:screen.frame.midX-180,y:screen.frame.maxY-110,width:360,height:46)
+            let panel=NSPanel(contentRect:frame,styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
+            panel.level = .screenSaver;panel.collectionBehavior=[.canJoinAllSpaces,.fullScreenAuxiliary,.ignoresCycle]
+            panel.ignoresMouseEvents=true;panel.isReleasedWhenClosed=false;panel.backgroundColor = .windowBackgroundColor
+            let label=NSTextField(labelWithString:"");label.alignment = .center;label.font = .boldSystemFont(ofSize:16)
+            label.frame=CGRect(x:8,y:12,width:344,height:24);panel.contentView?.addSubview(label)
+            panels.append(panel);labels.append(label);panel.orderFrontRegardless()
+        }
+        update()
+        localMonitor=NSEvent.addLocalMonitorForEvents(matching:.keyDown) { [weak self] event in
+            if event.keyCode==53 { self?.finish(false);return nil };return event
+        }
+        globalMonitor=NSEvent.addGlobalMonitorForEvents(matching:.keyDown) { [weak self] event in
+            if event.keyCode==53 { self?.finish(false) }
+        }
+        timer=Timer(timeInterval:1,repeats:true) { [weak self] _ in
+            guard let self else { return };self.remaining-=1
+            if self.remaining==0 { self.finish(true) } else { self.update() }
+        }
+        RunLoop.main.add(timer!,forMode:.common)
+    }
+    private func update() { labels.forEach{$0.stringValue="Select region in \(remaining)…  Esc cancels"} }
+    func cancel() { finish(false) }
+    private func finish(_ ready:Bool) {
+        timer?.invalidate();timer=nil
+        if let localMonitor { NSEvent.removeMonitor(localMonitor) };localMonitor=nil
+        if let globalMonitor { NSEvent.removeMonitor(globalMonitor) };globalMonitor=nil
+        panels.forEach{$0.orderOut(nil)};panels=[];labels=[]
+        let callback=completed;completed=nil;callback?(ready)
+    }
+    deinit { timer?.invalidate();if let localMonitor { NSEvent.removeMonitor(localMonitor) };if let globalMonitor { NSEvent.removeMonitor(globalMonitor) } }
+}
