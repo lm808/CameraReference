@@ -34,7 +34,7 @@ extension AppDelegate {
         report(mode == .full ? "Loupe View selected.":"\(mode.label) pane selected.")
         followLiveOverlayView(mode,module:currentModule(),requiresViewDetection:false)
     }
-    func refreshAXSelection(_ image:CGImage,snapshot:ExportSnapshot?,epoch:String,panel existing:OverlayPanel,generation:Int) {
+    func refreshAXSelection(_ image:CGImage,snapshot:ExportSnapshot?,epoch:String,panel existing:OverlayPanel,generation:Int,pictureStyle:String?=nil) {
         let module=currentModule(),host=overlayController.overlayHost?.id,settings=reloadDetectionConfig()
         let height=CGDisplayBounds(CGMainDisplayID()).height
         startAXPlacement(epoch:epoch,full:false) { [weak self] ui in
@@ -52,7 +52,7 @@ extension AppDelegate {
             existing.setFrame(area.insetBy(dx:-1,dy:-1),display:false)
             view.imageViewport=view.convert(existing.convertFromScreen(photo),from:nil)
             view.image=NSImage(cgImage:image,size:NSSize(width:image.width,height:image.height))
-            view.exportSnapshot=snapshot
+            view.exportSnapshot=snapshot;view.pictureStyle=pictureStyle
             self.overlayController.overlayEpoch=epoch;self.overlayController.livePanelSignature=self.pendingAXPanelSignature
             self.overlayController.displayedOverlayLayout=self.overlayLayout
             self.recordLifecycle("photo selection refreshed; Fit reset")

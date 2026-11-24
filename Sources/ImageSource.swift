@@ -14,6 +14,26 @@ struct LoadedReference {
     var cameraOrientation: UInt32? = nil
     var sourceFilename: String = ""
     var stages: String = ""
+    var pictureStyle: String? = nil
+}
+
+// ExifTool's Sony CreativeStyle also represents Creative Look on newer cameras.
+// Optional metadata never changes JPEG selection, orientation or decode success.
+func cameraPictureStyle(_ data:Data,extension ext:String)->String? {
+    guard let rows=try? JSONSerialization.jsonObject(with:data) as? [[String:Any]],let row=rows.first else { return nil }
+    let key=ext.lowercased()=="arw" ? "CreativeStyle":"PictureStyle"
+    guard let text=row[key] as? String else { return nil }
+    let clean=text.components(separatedBy:.controlCharacters).joined(separator:" ").trimmingCharacters(in:.whitespacesAndNewlines)
+    guard !clean.isEmpty,!clean.lowercased().hasPrefix("unknown"),clean.count<=160 else { return nil }
+    return clean
+}
+func readCameraPictureStyle(raw:URL,executable:URL?,cancellation:Cancellation)->String? {
+    let ext=raw.pathExtension.lowercased()
+    guard ["cr3","arw"].contains(ext),let executable else { return nil }
+    let tag=ext=="arw" ? "-Sony:CreativeStyle":"-Canon:PictureStyle"
+    guard let data=try? runExifTool(raw:raw,executable:executable,cancellation:cancellation,
+                                  arguments:["-j",tag],timeout:3,byteLimit:16384) else { return nil }
+    return cameraPictureStyle(data,extension:ext)
 }
 
 // A cancellation flag is shared with the worker. No photo bytes or paths are retained here.
@@ -240,9 +260,12 @@ func loadReference(raw: URL, preferEmbedded: Bool, executable: URL?, cancellatio
                 stages.append("Embedded preview: \(embedded.tag)")
                 stages.append(String(format:"Embedded decode/orientation overhead %.0f ms",(ProcessInfo.processInfo.systemUptime-sourceStarted-embedded.extraction)*1000))
             }
+            let metadataStarted=ProcessInfo.processInfo.systemUptime
+            let pictureStyle=readCameraPictureStyle(raw:raw,executable:executable,cancellation:cancellation)
+            stages.append(String(format:"Picture style metadata %.0f ms",(ProcessInfo.processInfo.systemUptime-metadataStarted)*1000))
             try cancellation.check()
             return LoadedReference(image: image, origin: origin, elapsed: ProcessInfo.processInfo.systemUptime - start,
-                                   extraction: extraction, usedFallback: index > 0, embeddedBytes: bytes, cameraOrientation: orientation, sourceFilename: sourceFilename,stages:stages.joined(separator:"; "))
+                                   extraction: extraction, usedFallback: index > 0, embeddedBytes: bytes, cameraOrientation: orientation, sourceFilename: sourceFilename,stages:stages.joined(separator:"; "),pictureStyle:pictureStyle)
         } catch {
             try cancellation.check()
             stages.append(String(format:"%@ attempt failed after %.0f ms",origin.rawValue,(ProcessInfo.processInfo.systemUptime-sourceStarted)*1000))

@@ -75,7 +75,7 @@ let badTool = try script("bad-exiftool", "sys.stdout.buffer.write(b'not a JPEG')
 let failingTool = try script("failed-exiftool", "sys.exit(1)\n")
 let hangingTool = try script("slow-exiftool", "time.sleep(30)\n")
 let hugeTool = try script("huge-exiftool", "sys.stdout.buffer.write(b'x'*2000000)\n")
-// Standalone-first does not invoke the supplied failing tool; embedded-first chooses the pipe image.
+// Optional style failure does not affect standalone-first; embedded-first chooses the pipe image.
 let first = try loadReference(raw: secondRaw, preferEmbedded: false, executable: failingTool, cancellation: Cancellation())
 assert(first.origin == .standalone && !first.usedFallback)
 assert(first.sourceFilename==standalone.lastPathComponent)
@@ -734,3 +734,24 @@ for invalidAllowance in ["-1","201","nan"] {
     do { _=try DetectionConfig.parse("axFullScreenTitleBarAllowancePoints = \(invalidAllowance)");assert(false) } catch {}
 }
 print("PASS: configurable full-screen allowance, default/custom/disabled/range and classification settings")
+
+assert(cameraPictureStyle(Data("[{\"PictureStyle\":\"Portrait\"}]".utf8),extension:"cr3")=="Portrait")
+assert(cameraPictureStyle(Data("[{\"CreativeStyle\":\"ST\"}]".utf8),extension:"arw")=="ST")
+assert(cameraPictureStyle(Data("[{\"PictureStyle\":\"Unknown (99)\"}]".utf8),extension:"cr3")==nil)
+assert(cameraPictureStyle(Data("[]".utf8),extension:"arw")==nil)
+
+let styleTool=try script("style-exiftool", "if '-j' in sys.argv:\n    print('[{\"PictureStyle\":\"Portrait\",\"CreativeStyle\":\"Vivid\"}]')\nelse:\n    sys.stdout.buffer.write(base64.b64decode('\(fixture.base64EncodedString())'))\n")
+let canonStyle=try loadReference(raw:secondRaw,preferEmbedded:true,executable:styleTool,cancellation:Cancellation())
+assert(canonStyle.pictureStyle=="Portrait" && canonStyle.image.width==32)
+let sonyStyle=readCameraPictureStyle(raw:folder.appendingPathComponent("style.ARW"),executable:styleTool,cancellation:Cancellation())
+assert(sonyStyle=="Vivid")
+let styleCache=SelectionImageCache();styleCache.observe("photo1");styleCache.insert(canonStyle,key:"a",epoch:"photo1")
+assert(styleCache.value(key:"a",epoch:"photo1")?.pictureStyle=="Portrait")
+overlayView.image=NSImage(cgImage:fixtureImage,size:.zero);floatView.image=overlayView.image
+overlayView.pictureStyle="Portrait";floatView.pictureStyle="Vivid"
+let contextEvent=NSEvent.mouseEvent(with:.rightMouseDown,location:.zero,modifierFlags:[],timestamp:0,windowNumber:0,context:nil,eventNumber:1,clickCount:1,pressure:1)!
+let styleMenu=overlayView.menu(for:contextEvent)!
+assert(styleMenu.items[0].title=="In-camera picture style: Portrait" && !styleMenu.items[0].isEnabled && styleMenu.items[1].isSeparatorItem)
+assert(floatView.menu(for:contextEvent)!.items[0].title=="In-camera picture style: Vivid")
+overlayView.releaseContent();assert(overlayView.pictureStyle==nil && floatView.pictureStyle=="Vivid")
+print("PASS: Canon/Sony optional style extraction, cached identity and independent display menus")

@@ -30,11 +30,11 @@ extension AppDelegate {
         placementModule=currentModule()
         placementMemory=PlacementMemory(ui:ui,window:appKitRect(window,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height),windowID:id,epoch:epoch,settingsKey:settings.key,layout:layout,background:result.background)
     }
-    func showUI(_ image:CGImage,ui:CGRect,snapshot:ExportSnapshot?,settings:DetectionConfig) {
+    func showUI(_ image:CGImage,ui:CGRect,snapshot:ExportSnapshot?,settings:DetectionConfig,pictureStyle:String?=nil) {
         let height=CGDisplayBounds(CGMainDisplayID()).height
         guard let placed=settings.placement(ui:appKitRect(ui,primaryHeight:height),image:CGSize(width:image.width,height:image.height)) else { return }
         if let view=display(image,in:appKitRect(placed.region,primaryHeight:height),photoFrame:appKitRect(placed.photo,primaryHeight:height)) {
-            view.exportSnapshot=snapshot
+            view.exportSnapshot=snapshot;view.pictureStyle=pictureStyle
             if let b=placementMemory?.background { view.backgroundColour=NSColor(srgbRed:b[0],green:b[1],blue:b[2],alpha:1) }
         }
     }
@@ -44,7 +44,7 @@ extension AppDelegate {
         func show(_ ui:CGRect) {
             guard let size=floatingPhotoSize(viewport:ui.size,image:imageSize,settings:settings),size.width>0,size.height>0 else { report("UI working area is too small for floating placement.");return }
             displayFloating(loaded.image,origin:loaded.origin,filename:loaded.sourceFilename,area:ui,photoSize:size)
-            floatingView?.exportSnapshot=snapshot
+            floatingView?.exportSnapshot=snapshot;floatingView?.pictureStyle=loaded.pictureStyle
         }
         if !CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) {
             if let full=calibratedUI(.full) { show(full);return }
@@ -71,7 +71,7 @@ extension AppDelegate {
             show(placement.areaAppKit)
         }
     }
-    func displayManual(_ image:CGImage,in area:CGRect,snapshot:ExportSnapshot?) {
+    func displayManual(_ image:CGImage,in area:CGRect,snapshot:ExportSnapshot?,pictureStyle:String?=nil) {
         if CameraPreferences.shared.string(forKey:regionKey("regionKind")) == "ui" {
             let settings=reloadDetectionConfig()
             // placement uses top-left coordinates, even though calibration is AppKit.
@@ -79,27 +79,27 @@ extension AppDelegate {
             guard let placed=settings.placement(ui:topLeft,image:CGSize(width:image.width,height:image.height)) else { report("Calibration is too small for the configured Fit inset.");return }
             let region=appKitRect(placed.region,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
             let photo=appKitRect(placed.photo,primaryHeight:CGDisplayBounds(CGMainDisplayID()).height)
-            display(image,in:region,photoFrame:photo)?.exportSnapshot=snapshot
+            if let view=display(image,in:region,photoFrame:photo) { view.exportSnapshot=snapshot;view.pictureStyle=pictureStyle }
         } else {
             report("Please recalibrate: select the entire UI working area between the panels.")
             beginCalibration(useManualOnAccept:true)
         }
     }
-    func resolveOverlay(_ image:CGImage,snapshot:ExportSnapshot?,selectionEpoch expectedEpoch:String? = nil) {
+    func resolveOverlay(_ image:CGImage,snapshot:ExportSnapshot?,selectionEpoch expectedEpoch:String? = nil,pictureStyle:String?=nil) {
         let settings=reloadDetectionConfig()
         guard CameraPreferences.shared.bool(forKey:regionKey("automaticBounds")) else {
-            if let area=region { displayManual(image,in:area,snapshot:snapshot) }
+            if let area=region { displayManual(image,in:area,snapshot:snapshot,pictureStyle:pictureStyle) }
             else { askForCalibration() }; return
         }
         if placementBackend(automatic:true,axOnly:axPlacementEnabled) == .accessibility {
             startAXPlacement(epoch:expectedEpoch,full:false) { [weak self] ui in
                 guard let self else { return }
                 guard let ui else { self.askForCalibration(reason:"AX placement unavailable. No screenshot fallback was used.");return }
-                self.showUI(image,ui:ui,snapshot:snapshot,settings:settings)
+                self.showUI(image,ui:ui,snapshot:snapshot,settings:settings,pictureStyle:pictureStyle)
             };return
         }
         if let ui=cachedUI(epoch:expectedEpoch,settings:settings,layout:overlayLayout) {
-            showUI(image,ui:ui,snapshot:snapshot,settings:settings)
+            showUI(image,ui:ui,snapshot:snapshot,settings:settings,pictureStyle:pictureStyle)
             return
         }
         guard #available(macOS 14.0,*), FeaturePermission.screenCapture.ensure() else {
@@ -111,7 +111,7 @@ extension AppDelegate {
             guard let area=result.candidate else { self.askForCalibration(workingAreaTooNarrow:result.workingAreaTooNarrow,reason:result.placementUnavailableReason); return }
             self.rememberPlacement(result,epoch:expectedEpoch,settings:settings,layout:self.overlayLayout)
             guard let view=self.display(image,in:area,photoFrame:result.photoFrame) else { return }
-            view.exportSnapshot=snapshot
+            view.exportSnapshot=snapshot;view.pictureStyle=pictureStyle
             view.backgroundColour=NSColor(srgbRed:result.background[0],green:result.background[1],blue:result.background[2],alpha:1)
             self.report("Reference shown using UI viewing-area bounds.")
         }

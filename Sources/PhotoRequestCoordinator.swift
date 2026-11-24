@@ -102,8 +102,8 @@ extension AppDelegate {
                 if target == .overlay {
                     guard self.isLightroom(), supportedLightroomModule(self.currentModule()) else { self.report("Overlay cancelled: Library or Develop is no longer active."); return }
                     if let refreshingPanel,let epoch {
-                        self.refreshAXSelection(loaded.image,snapshot:snapshot,epoch:epoch,panel:refreshingPanel,generation:refreshGeneration)
-                    } else { self.resolveOverlay(loaded.image,snapshot:snapshot,selectionEpoch:epoch) }
+                        self.refreshAXSelection(loaded.image,snapshot:snapshot,epoch:epoch,panel:refreshingPanel,generation:refreshGeneration,pictureStyle:loaded.pictureStyle)
+                    } else { self.resolveOverlay(loaded.image,snapshot:snapshot,selectionEpoch:epoch,pictureStyle:loaded.pictureStyle) }
                 } else if target == .detect {
                     self.startPhotoDetection(imageSize:CGSize(width:loaded.image.width,height:loaded.image.height))
                 } else if target == .window {

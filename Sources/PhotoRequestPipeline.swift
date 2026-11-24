@@ -73,7 +73,7 @@ final class PhotoRequestPipeline {
                 let signature=epoch == nil ? nil:referenceFileSignature(raw:raw,preferEmbedded:prefer,executable:executable)
                 var loaded:LoadedReference
                 if let epoch,let signature,let cached=imageCache.value(key:signature,epoch:epoch),selectionEpoch()==epoch {
-                    loaded=LoadedReference(image:cached.image,origin:cached.origin,elapsed:ProcessInfo.processInfo.systemUptime-started,extraction:nil,usedFallback:cached.usedFallback,embeddedBytes:cached.embeddedBytes,cameraOrientation:cached.cameraOrientation,sourceFilename:cached.sourceFilename,stages:"RAM cache hit; source files revalidated")
+                    loaded=LoadedReference(image:cached.image,origin:cached.origin,elapsed:ProcessInfo.processInfo.systemUptime-started,extraction:nil,usedFallback:cached.usedFallback,embeddedBytes:cached.embeddedBytes,cameraOrientation:cached.cameraOrientation,sourceFilename:cached.sourceFilename,stages:"RAM cache hit; source files revalidated",pictureStyle:cached.pictureStyle)
                 } else {
                     loaded=try loadReference(raw:raw,preferEmbedded:prefer,executable:executable,cancellation:work)
                     loaded.stages += epoch == nil ? "; RAM cache unavailable: reload bridge 0.5.3 or check heartbeat":"; RAM cache miss"

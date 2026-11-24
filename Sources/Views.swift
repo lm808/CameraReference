@@ -57,6 +57,7 @@ final class ReferenceView: NSView, NSMenuItemValidation {
     override var needsPanelToBecomeKey:Bool { true }
     var image: NSImage? { didSet { navigation.reset(); clearToast(); needsDisplay=true } }
     var exportSnapshot: ExportSnapshot?
+    var pictureStyle:String?
     var save: ((ExportSnapshot) -> Void)?
     var canSave: (() -> Bool)?
     var refresh: (() -> Void)?
@@ -82,7 +83,7 @@ final class ReferenceView: NSView, NSMenuItemValidation {
     private var drawingViewport:CGRect { showIndicator ? bounds.insetBy(dx:1,dy:1):bounds }
     override var isOpaque: Bool { true }
     override func acceptsFirstMouse(for event:NSEvent?) -> Bool { true }
-    func releaseContent() { zoomChanged=nil; image=nil; exportSnapshot=nil; refresh=nil; save=nil; canSave=nil }
+    func releaseContent() { zoomChanged=nil; image=nil; exportSnapshot=nil; pictureStyle=nil; refresh=nil; save=nil; canSave=nil }
     override func scrollWheel(with event:NSEvent) {
         guard interactive, let image else { return }
         switch scrollIntent(command:event.modifierFlags.contains(.command),precise:event.hasPreciseScrollingDeltas,momentum:!event.momentumPhase.isEmpty) {
@@ -114,6 +115,10 @@ final class ReferenceView: NSView, NSMenuItemValidation {
     override func menu(for event:NSEvent) -> NSMenu? {
         guard interactive, image != nil else { return nil }
         let menu=NSMenu()
+        if allowsReferenceActions {
+            let info=NSMenuItem(title:"In-camera picture style: "+(pictureStyle ?? "Unavailable"),action:nil,keyEquivalent:"")
+            info.isEnabled=false;menu.addItem(info);menu.addItem(.separator())
+        }
         for (title,action) in [("Fit",#selector(fit)),("100% (one image pixel per display pixel)",#selector(actualPixels)),("Reload selected photo",#selector(reload))] {
             if action == #selector(reload) && !allowsReferenceActions { continue }
             let item=NSMenuItem(title:title,action:action,keyEquivalent:""); item.target=self; menu.addItem(item)
