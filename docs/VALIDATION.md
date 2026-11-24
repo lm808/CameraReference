@@ -1,3 +1,5 @@
+> Archived annotated checklists and test responses named below are historical references. Their original files are retained locally under ignored `investigations/test-history/`, not distributed with the source. This document retains the validation summaries.
+
 # Validation evidence
 
 Dated build/test records and original user annotations follow. A historical “pending” or “current” statement belongs to that entry, not necessarily today. For current outstanding checks see [TESTING.md](../TESTING.md); for the implemented behaviour see [METHODS.md](METHODS.md).
@@ -10,7 +12,7 @@ Core, Lua bridge, detection, viewport, reset, preview, capture, split and config
 
 ## 1.1.10 / build 69 — final user acceptance, 2026-11-21
 
-The user confirmed “all tests pass” after title-bar clipping, then authorised documentation cleanup and merge. Original final annotations are preserved verbatim in [clipping response](migration/1.1.10-CLIPPING-TEST-RESPONSE.md); earlier [initial](migration/1.1.10-TEST-RESPONSE.md) and [follow-up](migration/1.1.10-FOLLOW-UP-RESPONSE.md) responses retain their corrections and superseded failures.
+The user confirmed “all tests pass” after title-bar clipping, then authorised documentation cleanup and merge. Original final annotations are preserved verbatim in [validation summary](VALIDATION.md); earlier [validation summary](VALIDATION.md) and [follow-up](migration/1.1.10-FOLLOW-UP-RESPONSE.md) responses retain their corrections and superseded failures.
 
 Accepted: title-bar reveal/retraction, unchanged zoom/pan/photo geometry, usable revealed controls, windowed/float regression, and the earlier deferred-fix checks. The small clipping delay is explicitly accepted. Migration stage 9 acceptance remains in its original file. All six migration-deferred issues are closed.
 
@@ -973,7 +975,7 @@ Testing build 1.1.15/74 stages separately. Native calibration layout and Lightro
 
 ## 2026-11-24 — 1.1.15 native acceptance and boundary audit
 
-User marked all five focused 1.1.15 checks passed and explicitly confirmed “all tests pass”. Exact annotations are preserved in [1.1.15-TEST-RESPONSE.md](1.1.15-TEST-RESPONSE.md). This closes calibration row alignment, the exact Library Loupe ambiguity/Develop top-edge case, reuse/panel/layout checks, overlay-click activation and unchanged AX behaviour. Earlier 1.1.14 annotations cover metadata/config and the complete guided-calibration workflow.
+User marked all five focused 1.1.15 checks passed and explicitly confirmed “all tests pass”. Exact annotations are preserved in [validation summary](VALIDATION.md). This closes calibration row alignment, the exact Library Loupe ambiguity/Develop top-edge case, reuse/panel/layout checks, overlay-click activation and unchanged AX behaviour. Earlier 1.1.14 annotations cover metadata/config and the complete guided-calibration workflow.
 
 A documentation-only source audit reviewed branch changes against main ab92404 through source commit 1624d65. [BOUNDARY-AUDIT.md](BOUNDARY-AUDIT.md) records preserved ownership, two nonblocking dependency findings and performance/coverage limits. No tests were rerun because executable code was unchanged; existing automated evidence above is retained. No rebuild, restage, version change, merge, app launch or Lightroom interaction occurred. Main remains 1.1.10/69; accepted candidate remains 1.1.15/74. Broader platform/camera/timing coverage is not inferred from this acceptance.
 

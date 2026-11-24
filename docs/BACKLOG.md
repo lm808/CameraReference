@@ -1,6 +1,6 @@
 # Outstanding work
 
-Current accepted main: 1.1.16 / build 75. All three focused native checks passed; the exact response is preserved in [1.1.16-TEST-RESPONSE.md](1.1.16-TEST-RESPONSE.md). Migration and its six deferred fixes are complete; wider checks below remain separate. [TESTING.md](../TESTING.md) holds the actionable checklist; [research findings](AX-ASSISTANCE.md) and [validation](VALIDATION.md) retain evidence.
+Current accepted main: 1.1.16 / build 75. All three focused native checks passed; the exact response is preserved in [validation summary](VALIDATION.md). Migration and its six deferred fixes are complete; wider checks below remain separate. [TESTING.md](../TESTING.md) holds the actionable checklist; [research findings](AX-ASSISTANCE.md) and [validation](VALIDATION.md) retain evidence.
 
 ## Screenshot fallback
 
@@ -37,10 +37,10 @@ AX placement, view inference and configurable corrections are implemented. Guide
 
 ## Migration closure — 2026-11-21
 
-All six deferred items are accepted: floating hover text, full-screen title-bar visibility, AX preview frame constraints, screenshot-with-AX dismissal policy, generic calibration instructions, and floating-window stacking. Final title-bar clipping tests passed; the small reveal delay is accepted. See [validation](VALIDATION.md) and [original test response](migration/1.1.10-CLIPPING-TEST-RESPONSE.md). Superseded attempts are archived in [historical notes](HISTORICAL-NOTES.md).
+All six deferred items are accepted: floating hover text, full-screen title-bar visibility, AX preview frame constraints, screenshot-with-AX dismissal policy, generic calibration instructions, and floating-window stacking. Final title-bar clipping tests passed; the small reveal delay is accepted. See [validation](VALIDATION.md) and [validation summary](VALIDATION.md). Superseded attempts are archived in [historical notes](HISTORICAL-NOTES.md).
 
 Matched pre/post-migration latency measurements were not collected; no performance improvement claim is made. The generated-source migration test harness remains useful regression protection; replacing it with direct component construction is future test-infrastructure work, not a release blocker.
 
 ## Final branch acceptance — 2026-11-24
 
-[1.1.14 annotations](1.1.14-TEST-RESPONSE.md) passed settings/config migration, CR3/C-RAW/ARW metadata, reuse and guided calibration, with row alignment still outstanding. [1.1.15 annotations](1.1.15-TEST-RESPONSE.md) passed the alignment, exact Library/Develop screenshot cases, cache/panel/layout regressions, overlay-click activation and unchanged AX behaviour. Broader camera-model, platform and timing coverage above is not implied by these passes.
+[validation summary](VALIDATION.md) passed settings/config migration, CR3/C-RAW/ARW metadata, reuse and guided calibration, with row alignment still outstanding. [validation summary](VALIDATION.md) passed the alignment, exact Library/Develop screenshot cases, cache/panel/layout regressions, overlay-click activation and unchanged AX behaviour. Broader camera-model, platform and timing coverage above is not implied by these passes.

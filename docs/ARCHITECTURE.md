@@ -1,6 +1,6 @@
 # Architecture and source map
 
-Current accepted main: 1.1.16 / build 75. The completed native checklist is preserved in [1.1.16 test response](1.1.16-TEST-RESPONSE.md). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
+Current accepted main: 1.1.16 / build 75. The completed native checklist is preserved in [validation summary](VALIDATION.md). This is a map of the code as it exists, not a proposed refactor. Paths below are relative to the repository root. Contributor rules are in [AGENTS.md](../AGENTS.md); calculation rationale is in [METHODS.md](METHODS.md).
 
 ## Required contributor contract
 
